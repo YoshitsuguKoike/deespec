@@ -30,3 +30,16 @@ go.work.sum
 # Editor/IDE
 .idea/
 .vscode/
+
+# Build output
+dist/
+
+# Runtime generated files
+.artifacts/
+state.json
+journal.ndjson
+workflow.yaml
+state.lock
+
+.claude/flows/
+

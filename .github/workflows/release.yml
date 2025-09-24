@@ -1,9 +1,9 @@
-## 5) GitHub Actions（タグでリリース）
-
 name: release
 on:
   push:
-    tags: ["deespec_v*"]
+    tags:
+      - "deespec_v*"
+      - "v*"
 
 jobs:
   build-and-release:

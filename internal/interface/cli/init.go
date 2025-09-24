@@ -1,18 +1,19 @@
 package cli
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
-	_ "embed"
+
 	"github.com/spf13/cobra"
 )
 
-//go:embed ../../templates/workflow.yaml.tmpl
+//go:embed templates/workflow.yaml.tmpl
 var wfTmpl string
 
-//go:embed ../../templates/state.json.tmpl
+//go:embed templates/state.json.tmpl
 var stTmpl string
 
 func newInitCmd() *cobra.Command {

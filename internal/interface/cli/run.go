@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/YoshitsuguKoike/deespec/internal/app"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/external/claudecli"
@@ -63,6 +63,8 @@ func newRunCmd() *cobra.Command {
 }
 
 func runOnce() error {
+	startTime := time.Now()
+
 	// 1) ロック
 	release, err := fs.AcquireLock("state.lock")
 	if err != nil {
@@ -84,6 +86,7 @@ func runOnce() error {
 	next := st.Current
 	output := "# no-op\n"
 	decision := "OK"
+	errorMsg := ""
 
 	// 3) ステップ別処理
 	switch st.Current {
@@ -92,6 +95,7 @@ func runOnce() error {
 		result, err := agent.Run(context.Background(), prompt)
 		if err != nil {
 			output = fmt.Sprintf("# Plan failed\n\nError: %v\n\nDECISION: NEEDS_CHANGES\n", err)
+			errorMsg = err.Error()
 		} else {
 			output = result
 		}
@@ -102,6 +106,7 @@ func runOnce() error {
 		result, err := agent.Run(context.Background(), prompt)
 		if err != nil {
 			output = fmt.Sprintf("# Implement failed\n\nError: %v\n\nDECISION: NEEDS_CHANGES\n", err)
+			errorMsg = err.Error()
 		} else {
 			output = result
 		}
@@ -112,6 +117,7 @@ func runOnce() error {
 		result, err := agent.Run(context.Background(), prompt)
 		if err != nil {
 			output = fmt.Sprintf("# Test failed\n\nError: %v\n\nDECISION: NEEDS_CHANGES\n", err)
+			errorMsg = err.Error()
 		} else {
 			output = result
 		}
@@ -123,6 +129,7 @@ func runOnce() error {
 		if err != nil {
 			output = fmt.Sprintf("# Review failed\n\nError: %v\n\nDECISION: NEEDS_CHANGES\n", err)
 			decision = "NEEDS_CHANGES"
+			errorMsg = err.Error()
 		} else {
 			output = result
 			decision = parseDecision(result)
@@ -170,28 +177,30 @@ func runOnce() error {
 	}
 	st.Current = next
 
-	// 6) ジャーナル追記
-	journalRec := map[string]any{
-		"ts":        time.Now().UTC().Format(time.RFC3339),
-		"turn":      st.Turn,
-		"step":      st.Current,
-		"artifacts": []string{outFile},
+	// 6) ジャーナル追記（正規化版）
+	elapsedMs := int(time.Since(startTime).Milliseconds())
+
+	journalRec := map[string]interface{}{
+		"ts":         time.Now().UTC().Format(time.RFC3339Nano),
+		"turn":       st.Turn,
+		"step":       st.Current,
+		"decision":   "",
+		"elapsed_ms": elapsedMs,
+		"error":      errorMsg,
+		"artifacts":  []string{outFile},
 	}
+
+	// decision は review または done の時のみセット
 	if st.Current == "review" || st.Current == "done" {
 		journalRec["decision"] = decision
 	}
-	appendJournal(journalRec)
+
+	// 正規化してから書き込み
+	if err := app.AppendNormalizedJournal(journalRec); err != nil {
+		// ジャーナル書き込みエラーは無視（ワークフローは継続）
+		fmt.Fprintf(os.Stderr, "Warning: failed to write journal: %v\n", err)
+	}
 
 	// 7) 保存（CAS + atomic）
 	return saveStateCAS("state.json", st, prevV)
-}
-
-func appendJournal(rec map[string]any) {
-	f, err := os.OpenFile("journal.ndjson", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	b, _ := json.Marshal(rec)
-	_, _ = f.Write(append(b, '\n'))
 }

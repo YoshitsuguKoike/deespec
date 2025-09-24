@@ -1,8 +1,15 @@
 # deespec
 
-### Install (1-liner)
+## Installation
+
+### Linux / macOS
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<ORG>/<REPO>/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/YoshitsuguKoike/deespec/main/scripts/install.sh | bash
+```
+
+### Windows (PowerShell)
+```powershell
+iwr -useb https://raw.githubusercontent.com/YoshitsuguKoike/deespec/main/scripts/install.ps1 | iex
 ```
 
 ### Quick start

@@ -72,6 +72,8 @@ func newDoctorCmd() *cobra.Command {
 			if err := checkStateJSON(paths.State); err != nil {
 				if os.IsNotExist(err) {
 					fmt.Printf("INFO: state.json not found at %s (run 'deespec init' first)\n", paths.State)
+				} else if strings.Contains(err.Error(), "WARN:") {
+					fmt.Printf("%v\n", err)
 				} else {
 					fmt.Printf("ERROR: state.json validation failed: %v\n", err)
 				}
@@ -83,8 +85,10 @@ func newDoctorCmd() *cobra.Command {
 			if err := checkHealthJSON(paths.Health); err != nil {
 				if os.IsNotExist(err) {
 					fmt.Printf("INFO: health.json not found at %s\n", paths.Health)
+				} else if strings.Contains(err.Error(), "WARN:") {
+					fmt.Printf("%v\n", err)
 				} else {
-					fmt.Printf("WARN: health.json validation warning: %v\n", err)
+					fmt.Printf("ERROR: health.json validation failed: %v\n", err)
 				}
 			} else {
 				fmt.Printf("OK: health.json found and valid\n")
@@ -397,13 +401,14 @@ func checkStateJSON(path string) error {
 		return fmt.Errorf("missing 'step' field (e.g., \"plan\")")
 	}
 
-	// Validate step value
+	// Validate step value (WARN level for invalid values)
 	step := state["step"].(string)
 	validSteps := map[string]bool{
 		"plan": true, "implement": true, "test": true, "review": true, "done": true,
 	}
 	if !validSteps[step] {
-		return fmt.Errorf("invalid step value '%s' (expected: plan, implement, test, review, or done)", step)
+		// Return a special error type to indicate warning level
+		return fmt.Errorf("WARN: .deespec/var/state.json has invalid step '%s' (expected: plan|implement|test|review|done)", step)
 	}
 
 	if _, ok := state["turn"].(float64); !ok {
@@ -434,9 +439,20 @@ func checkHealthJSON(path string) error {
 	}
 
 	// Validate types
-	if _, ok := health["ts"].(string); !ok {
+	tsStr, ok := health["ts"].(string)
+	if !ok {
 		return fmt.Errorf("'ts' must be a string")
 	}
+
+	// Check timestamp format (should be RFC3339-ish with Z ending)
+	if !strings.HasSuffix(tsStr, "Z") {
+		return fmt.Errorf("WARN: health.ts should be in UTC (RFC3339Nano format ending with 'Z')")
+	}
+	// Check for nanosecond precision
+	if !strings.Contains(tsStr, ".") && !strings.Contains(tsStr, "T") {
+		return fmt.Errorf("WARN: health.ts should use RFC3339Nano precision")
+	}
+
 	if _, ok := health["turn"].(float64); !ok {
 		return fmt.Errorf("'turn' must be a number")
 	}

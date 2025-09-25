@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"github.com/YoshitsuguKoike/deespec/internal/app"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
 )
@@ -67,18 +68,38 @@ func newDoctorCmd() *cobra.Command {
 				fmt.Printf("OK: workflow.yaml found at %s\n", paths.Workflow)
 			}
 
-			// Check state.json exists
-			if _, err := os.Stat(paths.State); err != nil {
-				fmt.Printf("INFO: state.json not found at %s (run 'deespec init' first)\n", paths.State)
+			// Check state.json exists and validate schema
+			if err := checkStateJSON(paths.State); err != nil {
+				if os.IsNotExist(err) {
+					fmt.Printf("INFO: state.json not found at %s (run 'deespec init' first)\n", paths.State)
+				} else {
+					fmt.Printf("ERROR: state.json validation failed: %v\n", err)
+				}
 			} else {
-				fmt.Printf("OK: state.json found at %s\n", paths.State)
+				fmt.Printf("OK: state.json found and valid at %s\n", paths.State)
+			}
+
+			// Check health.json schema
+			if err := checkHealthJSON(paths.Health); err != nil {
+				if os.IsNotExist(err) {
+					fmt.Printf("INFO: health.json not found at %s\n", paths.Health)
+				} else {
+					fmt.Printf("WARN: health.json validation warning: %v\n", err)
+				}
+			} else {
+				fmt.Printf("OK: health.json found and valid\n")
 			}
 
 			// Check journal (INFO if not exists, not ERROR)
 			if _, err := os.Stat(paths.Journal); err != nil {
 				fmt.Printf("INFO: journal.ndjson not found (first run not executed yet)\n")
 			} else {
-				fmt.Printf("OK: journal.ndjson found at %s\n", paths.Journal)
+				// Validate NDJSON format
+				if err := checkJournalNDJSON(paths.Journal); err != nil {
+					fmt.Printf("WARN: journal.ndjson format issue: %v\n", err)
+				} else {
+					fmt.Printf("OK: journal.ndjson found and valid at %s\n", paths.Journal)
+				}
 			}
 
 			// Check review_policy.yaml exists
@@ -102,12 +123,30 @@ func newDoctorCmd() *cobra.Command {
 				fmt.Printf("OK: specs/pbi directory is writable\n")
 			}
 
-			// Check optional templates
+			// Check optional templates (SBI-INIT-006 finalization)
 			templatesDir := filepath.Join(paths.Home, "templates")
 			if _, err := os.Stat(filepath.Join(templatesDir, "spec_feedback.yaml")); err != nil {
 				fmt.Printf("INFO: spec_feedback.yaml not found (will use built-in template)\n")
 			} else {
 				fmt.Printf("OK: spec_feedback.yaml template found\n")
+			}
+
+			// Check takeover template (SBI-INIT-007 addition)
+			if _, err := os.Stat(filepath.Join(templatesDir, "spec_takeover.yaml")); err != nil {
+				fmt.Printf("INFO: spec_takeover.yaml not found (will use built-in template)\n")
+			} else {
+				fmt.Printf("OK: spec_takeover.yaml template found\n")
+			}
+
+			// Check SBI meta template schema
+			if err := checkSBIMetaTemplate(filepath.Join(templatesDir, "spec_sbi_meta.yaml")); err != nil {
+				if os.IsNotExist(err) {
+					fmt.Printf("INFO: spec_sbi_meta.yaml not found (will use built-in template)\n")
+				} else {
+					fmt.Printf("WARN: spec_sbi_meta.yaml template issue: %v\n", err)
+				}
+			} else {
+				fmt.Printf("OK: spec_sbi_meta.yaml template schema valid\n")
 			}
 
 			// Check for scheduler (launchd/systemd)
@@ -331,4 +370,133 @@ func checkSystemdJSON(result *DoctorJSON) {
 			result.StartIntervalSec = 300
 		}
 	}
+}
+
+// checkStateJSON validates the state.json schema
+func checkStateJSON(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	var state map[string]interface{}
+	if err := json.Unmarshal(data, &state); err != nil {
+		return fmt.Errorf("invalid JSON format: %w", err)
+	}
+
+	// Check required fields
+	if _, ok := state["version"].(float64); !ok {
+		return fmt.Errorf("missing or invalid 'version' field (must be number)")
+	}
+
+	// Check for step field (v1 uses step, not current)
+	if _, hasStep := state["step"].(string); !hasStep {
+		if _, hasCurrent := state["current"]; hasCurrent {
+			return fmt.Errorf(".deespec/var/state.json uses old 'current' field - should use 'step' (e.g., \"plan\")")
+		}
+		return fmt.Errorf("missing 'step' field (e.g., \"plan\")")
+	}
+
+	// Validate step value
+	step := state["step"].(string)
+	validSteps := map[string]bool{
+		"plan": true, "implement": true, "test": true, "review": true, "done": true,
+	}
+	if !validSteps[step] {
+		return fmt.Errorf("invalid step value '%s' (expected: plan, implement, test, review, or done)", step)
+	}
+
+	if _, ok := state["turn"].(float64); !ok {
+		return fmt.Errorf("missing or invalid 'turn' field (must be number)")
+	}
+
+	return nil
+}
+
+// checkHealthJSON validates the health.json schema
+func checkHealthJSON(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	var health map[string]interface{}
+	if err := json.Unmarshal(data, &health); err != nil {
+		return fmt.Errorf("invalid JSON format: %w", err)
+	}
+
+	// Check required fields
+	requiredFields := []string{"ts", "turn", "step", "ok", "error"}
+	for _, field := range requiredFields {
+		if _, ok := health[field]; !ok {
+			return fmt.Errorf("missing required field '%s'", field)
+		}
+	}
+
+	// Validate types
+	if _, ok := health["ts"].(string); !ok {
+		return fmt.Errorf("'ts' must be a string")
+	}
+	if _, ok := health["turn"].(float64); !ok {
+		return fmt.Errorf("'turn' must be a number")
+	}
+	if _, ok := health["step"].(string); !ok {
+		return fmt.Errorf("'step' must be a string")
+	}
+	if _, ok := health["ok"].(bool); !ok {
+		return fmt.Errorf("'ok' must be a boolean")
+	}
+	if _, ok := health["error"].(string); !ok {
+		return fmt.Errorf("'error' must be a string")
+	}
+
+	return nil
+}
+
+// checkJournalNDJSON validates NDJSON format
+func checkJournalNDJSON(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	if len(data) == 0 {
+		return nil // Empty journal is valid
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		if line == "" {
+			continue // Skip empty lines
+		}
+		var entry map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			return fmt.Errorf("invalid JSON at line %d: %w", i+1, err)
+		}
+	}
+
+	return nil
+}
+
+// checkSBIMetaTemplate validates the SBI meta.yaml template schema
+func checkSBIMetaTemplate(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	var meta map[string]interface{}
+	if err := yaml.Unmarshal(data, &meta); err != nil {
+		return fmt.Errorf("invalid YAML format: %w", err)
+	}
+
+	// Check required fields for SBI meta template
+	requiredFields := []string{"id", "title", "priority", "status", "pbi_id"}
+	for _, field := range requiredFields {
+		if _, ok := meta[field]; !ok {
+			return fmt.Errorf("missing required field '%s'", field)
+		}
+	}
+
+	return nil
 }

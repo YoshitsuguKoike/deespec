@@ -67,7 +67,7 @@ All files will be created under the .deespec/ directory.`,
 				filesWritten = append(filesWritten, tmpl.Path)
 			}
 
-			// Create health.json with initial state
+			// Create health.json with initial state (only if not exists or force)
 			healthPath := filepath.Join(deespecDir, "var", "health.json")
 			if force || !fileExists(healthPath) {
 				healthContent := fmt.Sprintf(`{"ts":"%s","turn":0,"step":"plan","ok":true,"error":""}`,
@@ -76,6 +76,9 @@ All files will be created under the .deespec/ directory.`,
 					return fmt.Errorf("failed to write health.json: %w", err)
 				}
 			}
+
+			// Note: journal.ndjson is NOT created during init
+			// It will be created automatically during first run
 
 			// Print success message
 			fmt.Printf("Initialized .deespec v0.1.14 structure in %s:\n", deespecDir)

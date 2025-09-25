@@ -74,10 +74,24 @@ func newDoctorCmd() *cobra.Command {
 				if envPath := os.Getenv("DEESPEC_WORKFLOW"); envPath != "" {
 					wfPath = envPath
 				}
-				if _, err := workflow.LoadWorkflow(ctx, wfPath); err != nil {
+				wf, err := workflow.LoadWorkflow(ctx, wfPath)
+				if err != nil {
 					fmt.Printf("ERROR: workflow validation failed: %v\n", err)
 				} else {
-					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only)\n")
+					// Display with supported agents
+					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only; agents=[\"claude_cli\",\"system\"])\n")
+
+					// Check if prompt files exist and are readable
+					allPromptsOK := true
+					for _, step := range wf.Steps {
+						if _, err := os.Stat(step.ResolvedPromptPath); err != nil {
+							fmt.Printf("ERROR: prompt_path not found/readable: %s (%v)\n", step.ResolvedPromptPath, err)
+							allPromptsOK = false
+						}
+					}
+					if allPromptsOK && len(wf.Steps) > 0 {
+						fmt.Printf("OK: All prompt files found and accessible\n")
+					}
 				}
 			}
 

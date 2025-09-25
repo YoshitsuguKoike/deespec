@@ -9,6 +9,9 @@ import (
 )
 
 func TestLoadWorkflow(t *testing.T) {
+	// Set DEE_HOME for testing
+	t.Setenv("DEE_HOME", ".deespec")
+
 	tests := []struct {
 		name    string
 		yaml    string
@@ -158,6 +161,33 @@ steps:
     prompt_path: prompts/system/test.md`,
 			wantErr: "",
 		},
+		{
+			name: "absolute path not allowed",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: /etc/passwd`,
+			wantErr: `workflow.steps[0]: "prompt_path" must be relative to .deespec`,
+		},
+		{
+			name: "parent directory reference not allowed",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: ../outside.md`,
+			wantErr: `workflow.steps[0]: "prompt_path" must not contain ".."`,
+		},
+		{
+			name: "parent directory in middle not allowed",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/../../../etc/passwd`,
+			wantErr: `workflow.steps[0]: "prompt_path" must not contain ".."`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -186,6 +216,73 @@ steps:
 				}
 				if wf == nil {
 					t.Error("LoadWorkflow() returned nil workflow without error")
+				}
+			}
+		})
+	}
+}
+
+func TestResolvePromptPath(t *testing.T) {
+	// Set DEE_HOME for testing
+	t.Setenv("DEE_HOME", ".deespec")
+
+	tests := []struct {
+		name          string
+		yaml          string
+		wantResolved  []string
+		checkResolved bool
+	}{
+		{
+			name: "simple relative path resolution",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md`,
+			wantResolved:  []string{".deespec/prompts/system/plan.md"},
+			checkResolved: true,
+		},
+		{
+			name: "multiple paths resolution",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md
+  - id: impl
+    agent: claude_cli
+    prompt_path: prompts/system/implement.md`,
+			wantResolved:  []string{".deespec/prompts/system/plan.md", ".deespec/prompts/system/implement.md"},
+			checkResolved: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create temp file with YAML content
+			tmpDir := t.TempDir()
+			wfPath := filepath.Join(tmpDir, "workflow.yaml")
+			if err := os.WriteFile(wfPath, []byte(tt.yaml), 0644); err != nil {
+				t.Fatal(err)
+			}
+
+			// Load workflow
+			ctx := context.Background()
+			wf, err := LoadWorkflow(ctx, wfPath)
+			if err != nil {
+				t.Fatalf("LoadWorkflow() error = %v", err)
+			}
+
+			// Check resolved paths
+			if tt.checkResolved {
+				if len(wf.Steps) != len(tt.wantResolved) {
+					t.Fatalf("Expected %d steps, got %d", len(tt.wantResolved), len(wf.Steps))
+				}
+				for i, step := range wf.Steps {
+					if !strings.HasSuffix(step.ResolvedPromptPath, tt.wantResolved[i]) {
+						t.Errorf("Step[%d].ResolvedPromptPath = %q, want suffix %q",
+							i, step.ResolvedPromptPath, tt.wantResolved[i])
+					}
 				}
 			}
 		})

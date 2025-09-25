@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
+	"github.com/YoshitsuguKoike/deespec/internal/app"
 )
 
 // LoadWorkflow loads and validates a workflow from the specified path
@@ -31,6 +33,12 @@ func LoadWorkflow(ctx context.Context, wfPath string) (*Workflow, error) {
 
 	// Validate schema
 	if err := validateWorkflow(&wf); err != nil {
+		return nil, err
+	}
+
+	// Resolve prompt paths
+	paths := app.GetPaths()
+	if err := resolvePromptPaths(&wf, paths); err != nil {
 		return nil, err
 	}
 
@@ -111,4 +119,44 @@ func validateWorkflow(wf *Workflow) error {
 	}
 
 	return nil
+}
+
+// resolvePromptPaths resolves and validates prompt paths for all steps
+func resolvePromptPaths(wf *Workflow, paths app.Paths) error {
+	for i := range wf.Steps {
+		step := &wf.Steps[i]
+		resolved, err := resolvePromptPath(paths, step.PromptPath, i)
+		if err != nil {
+			return err
+		}
+		step.ResolvedPromptPath = resolved
+	}
+	return nil
+}
+
+// resolvePromptPath resolves a single prompt path relative to .deespec
+func resolvePromptPath(paths app.Paths, raw string, idx int) (string, error) {
+	s := strings.TrimSpace(raw)
+	stepIdx := fmt.Sprintf("workflow.steps[%d]", idx)
+
+	// Check for absolute path
+	if filepath.IsAbs(s) {
+		return "", fmt.Errorf(`%s: "prompt_path" must be relative to .deespec`, stepIdx)
+	}
+
+	// Check for parent directory references
+	// Clean the path and check if it escapes
+	cleaned := filepath.Clean(s)
+	if strings.HasPrefix(cleaned, "..") || strings.Contains(cleaned, "/..") || strings.Contains(cleaned, `\..`) {
+		return "", fmt.Errorf(`%s: "prompt_path" must not contain ".."`, stepIdx)
+	}
+
+	// Also check the raw string for safety
+	if strings.Contains(s, "..") {
+		return "", fmt.Errorf(`%s: "prompt_path" must not contain ".."`, stepIdx)
+	}
+
+	// Resolve relative to .deespec home
+	resolved := filepath.Join(paths.Home, s)
+	return resolved, nil
 }

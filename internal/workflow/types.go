@@ -7,10 +7,11 @@ type Decision struct {
 
 // Step represents a single step in the workflow
 type Step struct {
-	ID         string    `yaml:"id"`
-	Agent      string    `yaml:"agent"`
-	PromptPath string    `yaml:"prompt_path"`
-	Decision   *Decision `yaml:"decision,omitempty"`
+	ID                string    `yaml:"id"`
+	Agent             string    `yaml:"agent"`
+	PromptPath        string    `yaml:"prompt_path"`
+	Decision          *Decision `yaml:"decision,omitempty"`
+	ResolvedPromptPath string   `yaml:"-"` // Internal: absolute path resolved from prompt_path
 }
 
 // Workflow represents the complete workflow configuration

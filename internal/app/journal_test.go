@@ -7,10 +7,80 @@ import (
 	"testing"
 )
 
-func TestNormalizeJournalEntry_FillsMissingKeys(t *testing.T) {
+func TestNormalizeJournalEntry_FillsDefaults(t *testing.T) {
+	// Test with nil entry
+	out := NormalizeJournalEntry(nil)
+
+	// Check required fields are filled
+	if out.TS == "" {
+		t.Fatalf("ts should be filled with timestamp")
+	}
+	if out.Step != "unknown" {
+		t.Errorf("step should default to 'unknown', got %q", out.Step)
+	}
+	if out.Artifacts == nil {
+		t.Fatalf("artifacts must not be nil")
+	}
+	if len(out.Artifacts) != 0 {
+		t.Errorf("artifacts should be empty array, got %v", out.Artifacts)
+	}
+
+	// Test with empty entry
+	in := &JournalEntry{}
+	out2 := NormalizeJournalEntry(in)
+
+	if out2.TS == "" {
+		t.Fatalf("ts should be filled")
+	}
+	if out2.Step != "unknown" {
+		t.Errorf("step should be 'unknown' for empty step")
+	}
+	if out2.Artifacts == nil {
+		t.Fatalf("artifacts must not be nil")
+	}
+}
+
+func TestNormalizeJournalEntry_PreservesExistingValues(t *testing.T) {
+	entry := &JournalEntry{
+		TS:        "2025-01-01T00:00:00Z",
+		Turn:      5,
+		Step:      "review",
+		Decision:  "OK",
+		ElapsedMs: 1500,
+		Error:     "some error",
+		Artifacts: []string{"file1.txt", "file2.txt"},
+	}
+
+	normalized := NormalizeJournalEntry(entry)
+
+	// Check values are preserved
+	if normalized.TS != "2025-01-01T00:00:00Z" {
+		t.Error("ts should be preserved")
+	}
+	if normalized.Turn != 5 {
+		t.Error("turn should be preserved")
+	}
+	if normalized.Step != "review" {
+		t.Error("step should be preserved")
+	}
+	if normalized.Decision != "OK" {
+		t.Error("decision should be preserved")
+	}
+	if normalized.ElapsedMs != 1500 {
+		t.Error("elapsed_ms should be preserved")
+	}
+	if normalized.Error != "some error" {
+		t.Error("error should be preserved")
+	}
+	if len(normalized.Artifacts) != 2 || normalized.Artifacts[0] != "file1.txt" {
+		t.Error("artifacts should be preserved")
+	}
+}
+
+func TestNormalizeJournalEntryMap_FillsMissingKeys(t *testing.T) {
 	// Test with empty entry
 	entry := map[string]interface{}{}
-	normalized := NormalizeJournalEntry(entry)
+	normalized := NormalizeJournalEntryMap(entry)
 
 	// Check all required keys are present
 	requiredKeys := []string{"ts", "turn", "step", "decision", "elapsed_ms", "error", "artifacts"}
@@ -41,16 +111,16 @@ func TestNormalizeJournalEntry_FillsMissingKeys(t *testing.T) {
 	}
 
 	// Check artifacts is array type
-	artifacts, ok := normalized["artifacts"].([]interface{})
+	artifacts, ok := normalized["artifacts"].([]string)
 	if !ok {
-		t.Error("artifacts should be an array")
+		t.Error("artifacts should be []string type")
 	}
 	if len(artifacts) != 0 {
 		t.Error("artifacts should default to empty array")
 	}
 }
 
-func TestNormalizeJournalEntry_PreservesExistingValues(t *testing.T) {
+func TestNormalizeJournalEntryMap_PreservesExistingValues(t *testing.T) {
 	entry := map[string]interface{}{
 		"ts":         "2025-01-01T00:00:00Z",
 		"turn":       5,
@@ -61,7 +131,7 @@ func TestNormalizeJournalEntry_PreservesExistingValues(t *testing.T) {
 		"artifacts":  []string{"file1.txt", "file2.txt"},
 	}
 
-	normalized := NormalizeJournalEntry(entry)
+	normalized := NormalizeJournalEntryMap(entry)
 
 	// Check values are preserved
 	if normalized["ts"] != "2025-01-01T00:00:00Z" {
@@ -83,23 +153,23 @@ func TestNormalizeJournalEntry_PreservesExistingValues(t *testing.T) {
 		t.Error("error should be preserved")
 	}
 
-	// Check artifacts conversion
-	artifacts, ok := normalized["artifacts"].([]interface{})
+	// Check artifacts
+	artifacts, ok := normalized["artifacts"].([]string)
 	if !ok || len(artifacts) != 2 {
-		t.Error("artifacts should be converted to []interface{}")
+		t.Error("artifacts should be preserved as []string")
 	}
 }
 
-func TestNormalizeJournalEntry_HandlesStringArtifacts(t *testing.T) {
+func TestNormalizeJournalEntryMap_HandlesStringArtifacts(t *testing.T) {
 	// Test single string artifact
 	entry := map[string]interface{}{
 		"artifacts": "single_file.txt",
 	}
-	normalized := NormalizeJournalEntry(entry)
+	normalized := NormalizeJournalEntryMap(entry)
 
-	artifacts, ok := normalized["artifacts"].([]interface{})
+	artifacts, ok := normalized["artifacts"].([]string)
 	if !ok {
-		t.Fatal("artifacts should be an array")
+		t.Fatal("artifacts should be []string type")
 	}
 	if len(artifacts) != 1 || artifacts[0] != "single_file.txt" {
 		t.Error("single string artifact should be converted to array")
@@ -109,18 +179,18 @@ func TestNormalizeJournalEntry_HandlesStringArtifacts(t *testing.T) {
 	entry2 := map[string]interface{}{
 		"artifacts": "",
 	}
-	normalized2 := NormalizeJournalEntry(entry2)
+	normalized2 := NormalizeJournalEntryMap(entry2)
 
-	artifacts2, ok := normalized2["artifacts"].([]interface{})
+	artifacts2, ok := normalized2["artifacts"].([]string)
 	if !ok {
-		t.Fatal("artifacts should be an array")
+		t.Fatal("artifacts should be []string type")
 	}
 	if len(artifacts2) != 0 {
 		t.Error("empty string artifact should be converted to empty array")
 	}
 }
 
-func TestJournalWriter_AppendEntry(t *testing.T) {
+func TestJournalWriter_Append(t *testing.T) {
 	// Create temp directory for test
 	tmpDir := t.TempDir()
 	journalPath := filepath.Join(tmpDir, "test_journal.ndjson")
@@ -129,12 +199,12 @@ func TestJournalWriter_AppendEntry(t *testing.T) {
 	writer := NewJournalWriter(journalPath)
 
 	// Write an entry with missing fields
-	entry := map[string]interface{}{
-		"turn": 1,
-		"step": "test",
+	entry := &JournalEntry{
+		Turn: 1,
+		Step: "test",
 	}
 
-	err := writer.AppendEntry(entry)
+	err := writer.Append(entry)
 	if err != nil {
 		t.Fatalf("Failed to append entry: %v", err)
 	}
@@ -164,6 +234,13 @@ func TestJournalWriter_AppendEntry(t *testing.T) {
 	}
 	if written["step"] != "test" {
 		t.Error("step value should be preserved")
+	}
+
+	// Verify artifacts is array type
+	if artifacts, ok := written["artifacts"].([]interface{}); !ok {
+		t.Error("artifacts should be an array")
+	} else if len(artifacts) != 0 {
+		t.Error("artifacts should be empty array")
 	}
 }
 
@@ -202,5 +279,48 @@ func TestJournalWriter_QuickAppend(t *testing.T) {
 	}
 	if written["elapsed_ms"].(float64) != 1500 {
 		t.Error("elapsed_ms should be 1500")
+	}
+
+	// Check artifacts
+	if artifacts, ok := written["artifacts"].([]interface{}); !ok {
+		t.Error("artifacts should be array")
+	} else if len(artifacts) != 1 || artifacts[0] != "output.md" {
+		t.Error("artifacts should contain 'output.md'")
+	}
+}
+
+func TestJournalWriter_ValidationWarning(t *testing.T) {
+	// Test validation with DEE_VALIDATE=1
+	tmpDir := t.TempDir()
+	journalPath := filepath.Join(tmpDir, "test_journal.ndjson")
+
+	// Enable validation
+	os.Setenv("DEE_VALIDATE", "1")
+	defer os.Unsetenv("DEE_VALIDATE")
+
+	writer := NewJournalWriter(journalPath)
+
+	// Write valid entry - should not fail
+	entry := &JournalEntry{
+		Turn:      1,
+		Step:      "test",
+		Artifacts: []string{},
+	}
+
+	err := writer.Append(entry)
+	if err != nil {
+		t.Fatalf("Valid entry should not fail even with validation: %v", err)
+	}
+
+	// Even with nil artifacts, normalization should fix it
+	entry2 := &JournalEntry{
+		Turn:      2,
+		Step:      "implement",
+		Artifacts: nil, // This will be normalized to []
+	}
+
+	err = writer.Append(entry2)
+	if err != nil {
+		t.Fatalf("Entry should not fail after normalization: %v", err)
 	}
 }

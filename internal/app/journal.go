@@ -1,25 +1,51 @@
 package app
 
 import (
-	"encoding/json"
-	"os"
 	"time"
 )
 
 // JournalEntry represents a normalized journal entry with all required fields
 type JournalEntry struct {
-	Ts         string      `json:"ts"`
-	Turn       int         `json:"turn"`
-	Step       string      `json:"step"`
-	Decision   string      `json:"decision"`
-	ElapsedMs  int         `json:"elapsed_ms"`
-	Error      string      `json:"error"`
-	Artifacts  interface{} `json:"artifacts"`
+	TS        string   `json:"ts"`
+	Turn      int      `json:"turn"`
+	Step      string   `json:"step"`
+	Decision  string   `json:"decision"`
+	ElapsedMs int64    `json:"elapsed_ms"`
+	Error     string   `json:"error"`
+	Artifacts []string `json:"artifacts"`
 }
 
 // NormalizeJournalEntry ensures all required fields are present in the journal entry
 // It fills missing fields with zero values to maintain consistent schema
-func NormalizeJournalEntry(entry map[string]interface{}) map[string]interface{} {
+func NormalizeJournalEntry(in *JournalEntry) JournalEntry {
+	e := JournalEntry{}
+	if in != nil {
+		e = *in
+	}
+
+	// ts - timestamp (RFC3339Nano format)
+	if e.TS == "" {
+		e.TS = time.Now().UTC().Format(time.RFC3339Nano)
+	}
+
+	// step - default to "unknown" if empty
+	if e.Step == "" {
+		e.Step = "unknown"
+	}
+
+	// artifacts - ensure non-nil (empty array if nil)
+	if e.Artifacts == nil {
+		e.Artifacts = []string{}
+	}
+
+	// Numbers and strings use zero values (0, "") which is acceptable
+	// decision, error, turn, and elapsed_ms can remain as zero values
+
+	return e
+}
+
+// NormalizeJournalEntryMap handles normalization from a map for backward compatibility
+func NormalizeJournalEntryMap(entry map[string]interface{}) map[string]interface{} {
 	// Ensure all required keys exist with proper defaults
 	normalized := make(map[string]interface{})
 
@@ -56,6 +82,8 @@ func NormalizeJournalEntry(entry map[string]interface{}) map[string]interface{} 
 	// elapsed_ms - elapsed time in milliseconds
 	if elapsed, ok := entry["elapsed_ms"].(int); ok {
 		normalized["elapsed_ms"] = elapsed
+	} else if elapsed, ok := entry["elapsed_ms"].(int64); ok {
+		normalized["elapsed_ms"] = int(elapsed)
 	} else if elapsed, ok := entry["elapsed_ms"].(float64); ok {
 		normalized["elapsed_ms"] = int(elapsed)
 	} else {
@@ -70,49 +98,33 @@ func NormalizeJournalEntry(entry map[string]interface{}) map[string]interface{} 
 	}
 
 	// artifacts - normalize to array format
-	if artifacts, ok := entry["artifacts"]; ok {
-		switch v := artifacts.(type) {
+	// IMPORTANT: Must always be an array, never null or string
+	artifacts := []string{}
+	if artifactsRaw, ok := entry["artifacts"]; ok {
+		switch v := artifactsRaw.(type) {
 		case []interface{}:
-			normalized["artifacts"] = v
-		case []string:
-			// Convert []string to []interface{} for consistency
-			arr := make([]interface{}, len(v))
-			for i, s := range v {
-				arr[i] = s
+			for _, item := range v {
+				if s, ok := item.(string); ok {
+					artifacts = append(artifacts, s)
+				}
 			}
-			normalized["artifacts"] = arr
+		case []string:
+			artifacts = v
 		case string:
 			// Convert single string to array
 			if v != "" {
-				normalized["artifacts"] = []interface{}{v}
-			} else {
-				normalized["artifacts"] = []interface{}{}
+				artifacts = []string{v}
 			}
-		default:
-			normalized["artifacts"] = []interface{}{}
 		}
-	} else {
-		normalized["artifacts"] = []interface{}{}
 	}
+	normalized["artifacts"] = artifacts
 
 	return normalized
 }
 
 // AppendNormalizedJournal writes a normalized journal entry to the journal file
+// Deprecated: Use JournalWriter.Append instead for better control and validation
 func AppendNormalizedJournal(entry map[string]interface{}) error {
-	normalized := NormalizeJournalEntry(entry)
-
-	f, err := os.OpenFile("journal.ndjson", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	b, err := json.Marshal(normalized)
-	if err != nil {
-		return err
-	}
-
-	_, err = f.Write(append(b, '\n'))
-	return err
+	writer := NewJournalWriter("journal.ndjson")
+	return writer.AppendMap(entry)
 }

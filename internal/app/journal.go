@@ -38,8 +38,13 @@ func NormalizeJournalEntry(in *JournalEntry) JournalEntry {
 		e.Artifacts = []string{}
 	}
 
+	// decision - normalize empty to "PENDING"
+	if e.Decision == "" {
+		e.Decision = "PENDING"
+	}
+
 	// Numbers and strings use zero values (0, "") which is acceptable
-	// decision, error, turn, and elapsed_ms can remain as zero values
+	// error, turn, and elapsed_ms can remain as zero values
 
 	return e
 }
@@ -73,10 +78,10 @@ func NormalizeJournalEntryMap(entry map[string]interface{}) map[string]interface
 	}
 
 	// decision - decision value (OK, NEEDS_CHANGES, etc.)
-	if decision, ok := entry["decision"].(string); ok {
+	if decision, ok := entry["decision"].(string); ok && decision != "" {
 		normalized["decision"] = decision
 	} else {
-		normalized["decision"] = ""
+		normalized["decision"] = "PENDING"
 	}
 
 	// elapsed_ms - elapsed time in milliseconds

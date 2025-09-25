@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -80,6 +81,12 @@ All files will be created under the .deespec/ directory.`,
 			// Note: journal.ndjson is NOT created during init
 			// It will be created automatically during first run
 
+			// Update .gitignore to exclude .deespec/var
+			if err := updateGitignore(dir); err != nil {
+				// Non-fatal error, just warn
+				fmt.Printf("Warning: Could not update .gitignore: %v\n", err)
+			}
+
 			// Print success message
 			fmt.Printf("Initialized .deespec v0.1.14 structure in %s:\n", deespecDir)
 			fmt.Println("  ├── etc/")
@@ -135,4 +142,55 @@ func writeFileAtomic(path string, content []byte, perm os.FileMode) error {
 	}
 
 	return nil
+}
+
+// updateGitignore adds deespec v1 exclusion rules to .gitignore
+func updateGitignore(rootDir string) error {
+	gitignorePath := filepath.Join(rootDir, ".gitignore")
+
+	// Define the deespec block
+	deespecBlock := `# >>> deespec v1
+/.deespec/var/
+/.deespec/var/*
+!/.deespec/var/.keep
+# <<< deespec v1`
+
+	// Read existing content (or start with empty)
+	var existingContent []byte
+	if fileExists(gitignorePath) {
+		var err error
+		existingContent, err = os.ReadFile(gitignorePath)
+		if err != nil {
+			return fmt.Errorf("failed to read .gitignore: %w", err)
+		}
+	}
+
+	contentStr := string(existingContent)
+
+	// Check if deespec block already exists
+	if strings.Contains(contentStr, "# >>> deespec v1") {
+		// Already present, nothing to do (idempotent)
+		return nil
+	}
+
+	// Prepare new content
+	var newContent strings.Builder
+	newContent.WriteString(contentStr)
+
+	// Ensure there's a newline before our block
+	if len(contentStr) > 0 && !strings.HasSuffix(contentStr, "\n") {
+		newContent.WriteString("\n")
+	}
+
+	// Add an extra newline for separation if file has content
+	if len(contentStr) > 0 {
+		newContent.WriteString("\n")
+	}
+
+	// Add deespec block
+	newContent.WriteString(deespecBlock)
+	newContent.WriteString("\n")
+
+	// Write atomically
+	return writeFileAtomic(gitignorePath, []byte(newContent.String()), 0644)
 }

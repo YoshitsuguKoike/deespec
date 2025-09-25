@@ -153,6 +153,9 @@ func newDoctorCmd() *cobra.Command {
 				fmt.Printf("OK: spec_sbi_meta.yaml template schema valid\n")
 			}
 
+			// Check .gitignore for deespec block
+			checkGitignore()
+
 			// Check for scheduler (launchd/systemd)
 			checkScheduler()
 
@@ -162,6 +165,22 @@ func newDoctorCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	return cmd
+}
+
+func checkGitignore() {
+	gitignorePath := ".gitignore"
+	if data, err := os.ReadFile(gitignorePath); err == nil {
+		content := string(data)
+		if strings.Contains(content, "# >>> deespec v1") {
+			fmt.Println("INFO: .gitignore deespec block present (v1)")
+		} else {
+			fmt.Println("INFO: .gitignore deespec block not found (recommended)")
+		}
+	} else if os.IsNotExist(err) {
+		fmt.Println("INFO: .gitignore not found (will be created by 'deespec init')")
+	} else {
+		fmt.Printf("WARN: Cannot read .gitignore: %v\n", err)
+	}
 }
 
 func checkScheduler() {

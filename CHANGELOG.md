@@ -4,12 +4,15 @@
 
 ## \[Unreleased]
 
+### 追加
+
+* **decision 列挙ガード**: 空の decision を `"PENDING"` に正規化、列挙値（PENDING|NEEDS_CHANGES|OK）の検証
+* **`doctor --json`**: 機械可読な診断結果出力（runner/active/working_dir/agent_bin/start_interval_sec）
+* **CI 強化**: decision 列挙検証ステップを `verify_journal.sh` に追加
+
 ### 追加予定
 
-* `decision:""` を `"PENDING"` に統一するオプトイン設定（後方互換を維持）
-* `doctor` の検査強化（`.artifacts` 書込権限／`journal.ndjson` 非JSON行検知）
 * `scripts/metrics.py`（レビューOK率・平均 `elapsed_ms` のローカル集計）
-* CI: NDJSON 検証ステップの堅牢化（非オブジェクト行混入検出、r011 対応）
 
 ---
 

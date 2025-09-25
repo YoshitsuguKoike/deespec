@@ -97,5 +97,15 @@ jq -s '
 }
 echo "OK"
 
+# 7) Decision enum validation (PENDING|NEEDS_CHANGES|OK)
+echo -n "Checking decision enum values... "
+jq -s 'map(.decision=="PENDING" or .decision=="NEEDS_CHANGES" or .decision=="OK") | all' "$FILE" | grep -qx true || {
+  echo "FAILED"
+  echo "ERROR: Invalid decision values found (must be PENDING, NEEDS_CHANGES, or OK)" >&2
+  jq -r 'select(.decision != "PENDING" and .decision != "NEEDS_CHANGES" and .decision != "OK") | "Line \(.): decision=\(.decision)"' "$FILE" | head -5 >&2
+  exit 1
+}
+echo "OK"
+
 echo ""
 echo "✅ Journal schema validation PASSED"

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/YoshitsuguKoike/deespec/internal/app"
 )
 
 type StatusOutput struct {
@@ -66,7 +67,8 @@ func newStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show current workflow status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			st, err := loadState(".deespec/var/state.json")
+			paths := app.GetPaths()
+			st, err := loadState(paths.State)
 			if err != nil {
 				if jsonOutput {
 					output := StatusOutput{

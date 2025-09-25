@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/YoshitsuguKoike/deespec/internal/app"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
 )
 
@@ -35,27 +36,79 @@ func newDoctorCmd() *cobra.Command {
 			if jsonOutput {
 				return runDoctorJSON()
 			}
+			paths := app.GetPaths()
 			cfg := config.Load()
 			fmt.Println("AgentBin:", cfg.AgentBin)
-			fmt.Println("ArtifactsDir:", cfg.ArtifactsDir)
+			fmt.Println("ArtifactsDir:", paths.Artifacts)  // Use paths instead of cfg
 			fmt.Println("Timeout:", cfg.Timeout)
+			fmt.Println("DeespecHome:", paths.Home)
 
 			if _, err := exec.LookPath(cfg.AgentBin); err != nil {
 				fmt.Printf("WARN: %s not found in PATH\n", cfg.AgentBin)
 			} else {
 				fmt.Printf("OK: %s found\n", cfg.AgentBin)
 			}
-			if err := os.MkdirAll(cfg.ArtifactsDir, 0o755); err != nil {
+			if err := os.MkdirAll(paths.Artifacts, 0o755); err != nil {
 				return fmt.Errorf("artifacts dir error: %w", err)
 			}
-			probeFile := filepath.Join(cfg.ArtifactsDir, ".probe")
+			probeFile := filepath.Join(paths.Var, ".probe")
 			if f, err := os.Create(probeFile); err != nil {
 				return fmt.Errorf("write check failed: %w", err)
 			} else {
 				f.Close()
 				os.Remove(probeFile) // Clean up probe file
 			}
-			fmt.Println("OK: write permission in artifacts dir")
+			fmt.Println("OK: write permission in var dir")
+
+			// Check workflow.yaml exists
+			if _, err := os.Stat(paths.Workflow); err != nil {
+				fmt.Printf("WARN: workflow.yaml not found at %s\n", paths.Workflow)
+			} else {
+				fmt.Printf("OK: workflow.yaml found at %s\n", paths.Workflow)
+			}
+
+			// Check state.json exists
+			if _, err := os.Stat(paths.State); err != nil {
+				fmt.Printf("INFO: state.json not found at %s (run 'deespec init' first)\n", paths.State)
+			} else {
+				fmt.Printf("OK: state.json found at %s\n", paths.State)
+			}
+
+			// Check journal (INFO if not exists, not ERROR)
+			if _, err := os.Stat(paths.Journal); err != nil {
+				fmt.Printf("INFO: journal.ndjson not found (first run not executed yet)\n")
+			} else {
+				fmt.Printf("OK: journal.ndjson found at %s\n", paths.Journal)
+			}
+
+			// Check review_policy.yaml exists
+			policyPath := filepath.Join(paths.Policies, "review_policy.yaml")
+			if _, err := os.Stat(policyPath); err != nil {
+				fmt.Printf("INFO: review_policy.yaml not found at %s\n", policyPath)
+			} else {
+				fmt.Printf("OK: review_policy.yaml found at %s\n", policyPath)
+			}
+
+			// Check specs directories
+			if err := checkWritable(paths.SpecsSBI); err != nil {
+				fmt.Printf("WARN: specs/sbi directory not writable: %v\n", err)
+			} else {
+				fmt.Printf("OK: specs/sbi directory is writable\n")
+			}
+
+			if err := checkWritable(paths.SpecsPBI); err != nil {
+				fmt.Printf("WARN: specs/pbi directory not writable: %v\n", err)
+			} else {
+				fmt.Printf("OK: specs/pbi directory is writable\n")
+			}
+
+			// Check optional templates
+			templatesDir := filepath.Join(paths.Home, "templates")
+			if _, err := os.Stat(filepath.Join(templatesDir, "spec_feedback.yaml")); err != nil {
+				fmt.Printf("INFO: spec_feedback.yaml not found (will use built-in template)\n")
+			} else {
+				fmt.Printf("OK: spec_feedback.yaml template found\n")
+			}
 
 			// Check for scheduler (launchd/systemd)
 			checkScheduler()
@@ -114,6 +167,29 @@ func checkScheduler() {
 	}
 }
 
+func checkWritable(dir string) error {
+	if _, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			// Try to create the directory
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return fmt.Errorf("cannot create directory: %w", err)
+			}
+		} else {
+			return fmt.Errorf("cannot access directory: %w", err)
+		}
+	}
+
+	// Test write permission
+	testFile := filepath.Join(dir, ".write_test")
+	if f, err := os.Create(testFile); err != nil {
+		return fmt.Errorf("not writable: %w", err)
+	} else {
+		f.Close()
+		os.Remove(testFile)
+	}
+	return nil
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
 }
@@ -129,6 +205,7 @@ func containsHelper(s, substr string) bool {
 
 func runDoctorJSON() error {
 	cfg := config.Load()
+	paths := app.GetPaths()
 	result := DoctorJSON{
 		Runner:     "none",
 		Active:     false,
@@ -140,13 +217,17 @@ func runDoctorJSON() error {
 	// Check working directory
 	if wd, err := os.Getwd(); err == nil {
 		result.WorkingDir = wd
-		// Check write permission
-		probeFile := filepath.Join(wd, ".probe")
-		if f, err := os.Create(probeFile); err != nil {
-			result.Errors = append(result.Errors, "working_dir not writable")
+		// Check write permission in var directory
+		if err := os.MkdirAll(paths.Var, 0755); err == nil {
+			probeFile := filepath.Join(paths.Var, ".probe")
+			if f, err := os.Create(probeFile); err != nil {
+				result.Errors = append(result.Errors, "var_dir not writable")
+			} else {
+				f.Close()
+				os.Remove(probeFile)
+			}
 		} else {
-			f.Close()
-			os.Remove(probeFile)
+			result.Errors = append(result.Errors, "cannot create var directory")
 		}
 	}
 

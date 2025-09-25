@@ -108,15 +108,18 @@ func generateReviewNote(output string, turn int, decision string, turnDir string
 func runOnce() error {
 	startTime := time.Now()
 
+	// Get paths
+	paths := app.GetPaths()
+
 	// 1) ロック
-	release, err := fs.AcquireLock(".deespec/var/state.lock")
+	release, err := fs.AcquireLock(paths.StateLock)
 	if err != nil {
 		return err
 	}
 	defer release()
 
 	// 2) 読み込み
-	st, err := loadState(".deespec/var/state.json")
+	st, err := loadState(paths.State)
 	if err != nil {
 		return fmt.Errorf("read state: %w", err)
 	}
@@ -258,11 +261,11 @@ func runOnce() error {
 
 	// 8) health.json 更新（エラーに関わらず更新）
 	healthOk := errorMsg == ""
-	if err := app.WriteHealth(".deespec/var/health.json", currentTurn, next, healthOk, errorMsg); err != nil {
+	if err := app.WriteHealth(paths.Health, currentTurn, next, healthOk, errorMsg); err != nil {
 		// health.json書き込みエラーも無視（ワークフローは継続）
-		fmt.Fprintf(os.Stderr, "Warning: failed to write .deespec/var/health.json: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Warning: failed to write %s: %v\n", paths.Health, err)
 	}
 
 	// 9) 保存（CAS + atomic）
-	return saveStateCAS(".deespec/var/state.json", st, prevV)
+	return saveStateCAS(paths.State, st, prevV)
 }

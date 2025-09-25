@@ -145,8 +145,11 @@ func runOnce() error {
 		next = "plan"
 	}
 
-	// 4) 成果物出力
-	turnDir := filepath.Join(st.ArtifactsDir, fmt.Sprintf("turn%d", st.Turn))
+	// 4) 現在のターンを固定（これが成果物とジャーナルで使用される）
+	currentTurn := st.Turn
+
+	// 5) 成果物出力
+	turnDir := filepath.Join(st.ArtifactsDir, fmt.Sprintf("turn%d", currentTurn))
 	if err := os.MkdirAll(turnDir, 0o755); err != nil {
 		return err
 	}
@@ -169,29 +172,21 @@ func runOnce() error {
 	}
 	st.LastArtifacts[stepName] = outFile
 
-	// 5) 遷移・ターン更新
-	if st.Current == "review" && next == "implement" {
-		// ブーメラン時はturn据え置き
-	} else if st.Current != "done" && next != st.Current {
-		st.Turn++
-	}
-	st.Current = next
-
-	// 6) ジャーナル追記（正規化版）
+	// 6) ジャーナル追記（currentTurnを使用）
 	elapsedMs := int(time.Since(startTime).Milliseconds())
 
 	journalRec := map[string]interface{}{
 		"ts":         time.Now().UTC().Format(time.RFC3339Nano),
-		"turn":       st.Turn,
-		"step":       st.Current,
+		"turn":       currentTurn,  // 固定されたターン番号を使用
+		"step":       next,         // 次のステップを記録
 		"decision":   "",
 		"elapsed_ms": elapsedMs,
 		"error":      errorMsg,
 		"artifacts":  []string{outFile},
 	}
 
-	// decision は review または done の時のみセット
-	if st.Current == "review" || st.Current == "done" {
+	// decision は review の時のみセット（次がdoneまたはimplementの場合）
+	if st.Current == "review" {
 		journalRec["decision"] = decision
 	}
 
@@ -201,6 +196,14 @@ func runOnce() error {
 		fmt.Fprintf(os.Stderr, "Warning: failed to write journal: %v\n", err)
 	}
 
-	// 7) 保存（CAS + atomic）
+	// 7) ターンとステップの更新（ジャーナル記録後）
+	if st.Current == "review" && next == "implement" {
+		// ブーメラン時はturn据え置き
+	} else if st.Current != "done" && next != st.Current {
+		st.Turn++
+	}
+	st.Current = next
+
+	// 8) 保存（CAS + atomic）
 	return saveStateCAS("state.json", st, prevV)
 }

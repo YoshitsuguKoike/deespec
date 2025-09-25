@@ -70,7 +70,7 @@ func newStatusCmd() *cobra.Command {
 			if err != nil {
 				if jsonOutput {
 					output := StatusOutput{
-						Ts:    time.Now().Format(time.RFC3339Nano),
+						Ts:    time.Now().UTC().Format(time.RFC3339Nano),
 						Turn:  0,
 						Step:  "unknown",
 						Ok:    false,
@@ -99,7 +99,7 @@ func newStatusCmd() *cobra.Command {
 				}
 
 				output := StatusOutput{
-					Ts:    time.Now().Format(time.RFC3339Nano),
+					Ts:    time.Now().UTC().Format(time.RFC3339Nano),
 					Turn:  turn,
 					Step:  step,
 					Ok:    lastError == "",

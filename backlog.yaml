@@ -1,7 +1,645 @@
+# /deespec/etc/backlog.yaml
+# コメント: v1 以降の細粒度SBIバックログ（最初はすべて status: todo）
+# コメント: priority は小さいほど先。depends_on は存在しないIDは後で都度調整可。
+
 tasks:
-  - id: SBI-001
-    title: "review_note.md の自動生成"
-    objective: "各ターンの要旨を記録し、末尾に DECISION を付与"
-    priority: 1
-    status: doing
-    spec: specs/sbi/SBI-001_review_note.yaml
+  # ========== A. ディレクトリ/初期化 (.deespec 集約) ==========
+  - id: SBI-INIT-001
+    title: ".deespec 標準構成のドキュメント化（etc/prompts/specs/var）"
+    priority: 10
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-001_init_layout/meta.yaml
+    labels: [init, docs]
+
+  - id: SBI-INIT-002
+    title: "init: go:embed から .deespec 展開（テンプレ資産同梱）"
+    priority: 10
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-002_init_embed/meta.yaml
+    labels: [init, code]
+
+  - id: SBI-INIT-003
+    title: "init: .deespec/etc/workflow.yaml 生成（prompt_path 前提）"
+    priority: 11
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-003_init_workflow/meta.yaml
+    labels: [init, code]
+    depends_on: [SBI-INIT-002]
+
+  - id: SBI-INIT-004
+    title: "init: prompts/system/{impl,review,test,plan,done}.md を生成"
+    priority: 12
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-004_init_prompts/meta.yaml
+    labels: [init, code]
+    depends_on: [SBI-INIT-002]
+
+  - id: SBI-INIT-005
+    title: "init: etc/policies/review_policy.yaml 生成（初期値埋め込み）"
+    priority: 12
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-005_init_policy/meta.yaml
+    labels: [init, code]
+    depends_on: [SBI-INIT-002]
+
+  - id: SBI-INIT-006
+    title: "init: specs/{sbi,pbi}/ 空ディレクトリ作成"
+    priority: 13
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-006_init_specs_dirs/meta.yaml
+    labels: [init, code]
+    depends_on: [SBI-INIT-002]
+
+  - id: SBI-INIT-007
+    title: "init: var/{state.json,journal.ndjson,health.json,artifacts/} 生成"
+    priority: 13
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-007_init_var/meta.yaml
+    labels: [init, code]
+    depends_on: [SBI-INIT-002]
+
+  - id: SBI-INIT-008
+    title: "init: state.json 初期値（turn=0, step=plan）を書込み"
+    priority: 14
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-008_state_boot/meta.yaml
+    labels: [init, code]
+    depends_on: [SBI-INIT-007]
+
+  - id: SBI-INIT-009
+    title: "init: .gitignore テンプレ（.deespec/var 除外）生成"
+    priority: 15
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-009_gitignore/meta.yaml
+    labels: [init, docs]
+    depends_on: [SBI-INIT-002]
+
+  - id: SBI-INIT-010
+    title: "init --force の上書き挙動（既存保護/上書き確認）"
+    priority: 15
+    status: todo
+    spec: .deespec/specs/sbi/SBI-INIT-010_init_force/meta.yaml
+    labels: [init, code]
+    depends_on: [SBI-INIT-002]
+
+  # ========== B. workflow.yaml (prompt_path 導入) ==========
+  - id: SBI-WF-001
+    title: "workflowローダ: prompt_path のみ許可（prompt 廃止）"
+    priority: 20
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WF-001_prompt_path_loader/meta.yaml
+    labels: [workflow, code]
+
+  - id: SBI-WF-002
+    title: "prompt_path 相対パス解決（.deespec 起点/絶対禁止）"
+    priority: 21
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WF-002_prompt_path_resolve/meta.yaml
+    labels: [workflow, code]
+    depends_on: [SBI-WF-001]
+
+  - id: SBI-WF-003
+    title: "変数差し込み：許可リスト {turn,task_id,project_name,language}"
+    priority: 21
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WF-003_prompt_vars/meta.yaml
+    labels: [workflow, code]
+    depends_on: [SBI-WF-001]
+
+  - id: SBI-WF-004
+    title: "未定義/許可外プレースホルダ検出（エラー化）"
+    priority: 22
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WF-004_prompt_vars_guard/meta.yaml
+    labels: [workflow, code]
+    depends_on: [SBI-WF-003]
+
+  - id: SBI-WF-005
+    title: "decision.regex コンパイル検査（review step）"
+    priority: 22
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WF-005_decision_regex/meta.yaml
+    labels: [workflow, code]
+    depends_on: [SBI-WF-001]
+
+  - id: SBI-WF-006
+    title: "constraints.max_prompt_kb（64KB）サイズ制限"
+    priority: 23
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WF-006_prompt_size_guard/meta.yaml
+    labels: [workflow, code]
+    depends_on: [SBI-WF-001]
+
+  # ========== C. doctor (整合チェック) ==========
+  - id: SBI-DR-001
+    title: "doctor: workflow.yaml 存在/読取検査"
+    priority: 30
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DR-001_doctor_workflow/meta.yaml
+    labels: [doctor, code]
+
+  - id: SBI-DR-002
+    title: "doctor: 全stepの prompt_path 存在/読取/サイズ検査"
+    priority: 30
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DR-002_doctor_prompts/meta.yaml
+    labels: [doctor, code]
+    depends_on: [SBI-WF-002, SBI-WF-006]
+
+  - id: SBI-DR-003
+    title: "doctor: 許可外プレースホルダ検出"
+    priority: 31
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DR-003_doctor_vars/meta.yaml
+    labels: [doctor, code]
+    depends_on: [SBI-WF-004]
+
+  - id: SBI-DR-004
+    title: "doctor: policies/review_policy.yaml のスキーマ検査"
+    priority: 31
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DR-004_doctor_policy/meta.yaml
+    labels: [doctor, code]
+
+  - id: SBI-DR-005
+    title: "doctor: .deespec/var 書込テスト（試験ファイル→削除）"
+    priority: 32
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DR-005_doctor_var_write/meta.yaml
+    labels: [doctor, code]
+
+  - id: SBI-DR-006
+    title: "doctor: state.json スキーマ検査（turn/step 型）"
+    priority: 32
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DR-006_doctor_state/meta.yaml
+    labels: [doctor, code]
+
+  - id: SBI-DR-007
+    title: "doctor: journal NDJSON純度（非JSON行=0）"
+    priority: 33
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DR-007_doctor_journal_purity/meta.yaml
+    labels: [doctor, code]
+
+  - id: SBI-DR-008
+    title: "doctor: artifacts/turn* 整合（ターン一致）"
+    priority: 33
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DR-008_doctor_artifacts/meta.yaml
+    labels: [doctor, code]
+
+  - id: SBI-DR-009
+    title: "doctor --json に各結果を出力（機械可読）"
+    priority: 34
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DR-009_doctor_json/meta.yaml
+    labels: [doctor, code]
+
+  # ========== D. SBI登録 CLI ==========
+  - id: SBI-REG-001
+    title: "sbi register: --stdin/--file 入口実装"
+    priority: 40
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REG-001_register_entry/meta.yaml
+    labels: [register, code]
+
+  - id: SBI-REG-002
+    title: "sbi register: 入力検証（ID/重複/危険パス/Exit規約）"
+    priority: 41
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REG-002_register_validate/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-REG-001]
+
+  - id: SBI-REG-003
+    title: "specs/sbi/SBI-[pbiId|0]-slug/ Atomic生成（instruction/acceptance/meta）"
+    priority: 42
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REG-003_register_write/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-REG-002]
+
+  - id: SBI-REG-004
+    title: "--from-dir 取り込み（不足はテンプレ補完）"
+    priority: 43
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REG-004_register_from_dir/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-REG-003]
+
+  - id: SBI-REG-005
+    title: "etc/backlog.yaml への追加/--update 上書き"
+    priority: 44
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REG-005_register_backlog/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-REG-003]
+
+  - id: SBI-REG-006
+    title: "No-Op 検出（完全一致時 Exit=0 + warnings）"
+    priority: 44
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REG-006_register_noop/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-REG-002]
+
+  - id: SBI-REG-007
+    title: "結果JSON（ok/spec_path/warnings）をSTDOUT 1行で出力"
+    priority: 45
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REG-007_register_stdout/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-REG-001]
+
+  # ========== E. --pick 切替 ==========
+  - id: SBI-PICK-001
+    title: "--pick: state.current_task_id を原子的に設定"
+    priority: 46
+    status: todo
+    spec: .deespec/specs/sbi/SBI-PICK-001_pick_state/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-REG-005]
+
+  - id: SBI-PICK-002
+    title: "--pick: backlog の status=doing に更新（CAS/lock 同期）"
+    priority: 46
+    status: todo
+    spec: .deespec/specs/sbi/SBI-PICK-002_pick_backlog/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-REG-005]
+
+  - id: SBI-PICK-003
+    title: "競合時は Exit=2（警告）／--force で上書き"
+    priority: 47
+    status: todo
+    spec: .deespec/specs/sbi/SBI-PICK-003_pick_conflict/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-PICK-001, SBI-PICK-002]
+
+  - id: SBI-PICK-004
+    title: "journal に pick イベント記録（追跡性）"
+    priority: 47
+    status: todo
+    spec: .deespec/specs/sbi/SBI-PICK-004_pick_journal/meta.yaml
+    labels: [register, code]
+    depends_on: [SBI-PICK-001]
+
+  # ========== F. 不完全指示 → FB-SBI ==========
+  - id: SBI-FB-001
+    title: "実装不能テンプレ impl_unimplementable.md を追加"
+    priority: 50
+    status: todo
+    spec: .deespec/specs/sbi/SBI-FB-001_template_impl_unimpl/meta.yaml
+    labels: [feedback, templates]
+
+  - id: SBI-FB-002
+    title: "レビュー不能テンプレ review_unreviewable.md を追加"
+    priority: 50
+    status: todo
+    spec: .deespec/specs/sbi/SBI-FB-002_template_review_unreviewable/meta.yaml
+    labels: [feedback, templates]
+
+  - id: SBI-FB-003
+    title: "空/崩壊検知→不能テンプレ出力→DECISION: NEEDS_CHANGES"
+    priority: 51
+    status: todo
+    spec: .deespec/specs/sbi/SBI-FB-003_unable_flow/meta.yaml
+    labels: [feedback, code]
+    depends_on: [SBI-FB-001, SBI-FB-002]
+
+  - id: SBI-FB-004
+    title: "policy: max_feedback=3 / priority_boost=1 の読込"
+    priority: 52
+    status: todo
+    spec: .deespec/specs/sbi/SBI-FB-004_policy_load/meta.yaml
+    labels: [feedback, policy]
+    depends_on: [SBI-INIT-005]
+
+  - id: SBI-FB-005
+    title: "FB-SBI 自動登録（命名: SBI-FB-[parent]-t{turn}-slug / Pick即着手）"
+    priority: 53
+    status: todo
+    spec: .deespec/specs/sbi/SBI-FB-005_fb_autoreg/meta.yaml
+    labels: [feedback, code]
+    depends_on: [SBI-FB-003, SBI-REG-001, SBI-PICK-001]
+
+  # ========== G. 打ち切り → Takeover → Re-Eval → ナレッジ ==========
+  - id: SBI-TK-001
+    title: "上限超で Takeover-SBI 自動登録（テンプレ追加）"
+    priority: 60
+    status: todo
+    spec: .deespec/specs/sbi/SBI-TK-001_takeover_register/meta.yaml
+    labels: [takeover, code]
+    depends_on: [SBI-FB-004, SBI-REG-001]
+
+  - id: SBI-TK-002
+    title: "Takeover 後に実装者 Re-Eval SBI を発行"
+    priority: 61
+    status: todo
+    spec: .deespec/specs/sbi/SBI-TK-002_reval_register/meta.yaml
+    labels: [takeover, code]
+    depends_on: [SBI-TK-001]
+
+  - id: SBI-TK-003
+    title: "sessions/session_{date}.md に反省ログ追記"
+    priority: 61
+    status: todo
+    spec: .deespec/specs/sbi/SBI-TK-003_sessions_reflect/meta.yaml
+    labels: [takeover, docs]
+    depends_on: [SBI-TK-001]
+
+  - id: SBI-TK-004
+    title: "knowledge/lessons.md に 1行サマリ追記"
+    priority: 62
+    status: todo
+    spec: .deespec/specs/sbi/SBI-TK-004_knowledge_append/meta.yaml
+    labels: [takeover, docs]
+    depends_on: [SBI-TK-001]
+
+  - id: SBI-TK-005
+    title: "journal に cutoff/takeover/re-eval イベント記録"
+    priority: 62
+    status: todo
+    spec: .deespec/specs/sbi/SBI-TK-005_journal_events/meta.yaml
+    labels: [takeover, code]
+    depends_on: [SBI-TK-001]
+
+  # ========== H. セッション/並走 ==========
+  - id: SBI-SES-001
+    title: "var/session.json（session_id/last_heartbeat/lease_sec）導入"
+    priority: 70
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-001_session_file/meta.yaml
+    labels: [session, code]
+
+  - id: SBI-SES-002
+    title: "heartbeat 更新（run開始/終了時）"
+    priority: 71
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-002_heartbeat/meta.yaml
+    labels: [session, code]
+    depends_on: [SBI-SES-001]
+
+  - id: SBI-SES-003
+    title: "Pick戦略: affinity優先→null→孤児adopt（lease超過）"
+    priority: 72
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-003_pick_strategy/meta.yaml
+    labels: [session, code]
+    depends_on: [SBI-SES-002]
+
+  - id: SBI-SES-004
+    title: "孤児adopt: CASで session_affinity 更新 & handover_count++"
+    priority: 73
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-004_adopt_flow/meta.yaml
+    labels: [session, code]
+    depends_on: [SBI-SES-003]
+
+  - id: SBI-SES-005
+    title: "sbi register: --session-affinity this を既定ON（切替可）"
+    priority: 73
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-005_register_affinity/meta.yaml
+    labels: [session, register]
+    depends_on: [SBI-REG-001]
+
+  - id: SBI-SES-006
+    title: "doctor: セッション健全性/孤児推定の表示"
+    priority: 74
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-006_doctor_session/meta.yaml
+    labels: [session, doctor]
+    depends_on: [SBI-SES-001, SBI-DR-009]
+
+  - id: SBI-SES-007
+    title: "--session-id 指定/未指定時の乱数生成実装"
+    priority: 74
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-007_session_id/meta.yaml
+    labels: [session, code]
+    depends_on: [SBI-SES-001]
+
+  - id: SBI-SES-008
+    title: "並走 deespec の整合テスト（衝突/二重Pick回避）"
+    priority: 75
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-008_parallel_test/meta.yaml
+    labels: [session, test]
+    depends_on: [SBI-SES-003, SBI-SES-004]
+
+  - id: SBI-SES-009
+    title: "session policy: lease/adopt/pick_strategy の初期値読込"
+    priority: 75
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-009_session_policy/meta.yaml
+    labels: [session, policy]
+    depends_on: [SBI-INIT-005]
+
+  - id: SBI-SES-010
+    title: "（任意）deespec adopt --orphans 手動引継ぎコマンド"
+    priority: 76
+    status: todo
+    spec: .deespec/specs/sbi/SBI-SES-010_adopt_cli/meta.yaml
+    labels: [session, cli]
+    depends_on: [SBI-SES-004]
+
+  # ========== I. 常駐ワーカー ==========
+  - id: SBI-WKR-EXEC-001
+    title: "worker executor: forループで run --once を常駐実行"
+    priority: 80
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WKR-EXEC-001_exec_loop/meta.yaml
+    labels: [worker, executor]
+    depends_on: [SBI-SES-001]
+
+  - id: SBI-WKR-EXEC-002
+    title: "executor: --interval/--heartbeat-sec/--max-loops/優雅停止"
+    priority: 81
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WKR-EXEC-002_exec_flags/meta.yaml
+    labels: [worker, executor]
+    depends_on: [SBI-WKR-EXEC-001]
+
+  - id: SBI-WKR-REG-001
+    title: "worker registrar: inbox(.deespec/inbox)監視→sbi register"
+    priority: 82
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WKR-REG-001_reg_watch/meta.yaml
+    labels: [worker, registrar]
+    depends_on: [SBI-REG-001]
+
+  - id: SBI-WKR-REG-002
+    title: "registrar: inbox→done/error の冪等移動"
+    priority: 83
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WKR-REG-002_reg_idempotent/meta.yaml
+    labels: [worker, registrar]
+    depends_on: [SBI-WKR-REG-001]
+
+  - id: SBI-WKR-REG-003
+    title: "executor/registrar 並走テスト（衝突防止）"
+    priority: 84
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WKR-REG-003_parallel_test/meta.yaml
+    labels: [worker, test]
+    depends_on: [SBI-WKR-EXEC-002, SBI-WKR-REG-002]
+
+  - id: SBI-WKR-REG-004
+    title: "doctor --json にワーカー情報（種別/heartbeat/処理数）追加"
+    priority: 85
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WKR-REG-004_doctor_workers/meta.yaml
+    labels: [worker, doctor]
+    depends_on: [SBI-DR-009]
+
+  - id: SBI-WKR-REG-005
+    title: "docs: systemd/launchd ユニット例（常駐化手順）"
+    priority: 86
+    status: todo
+    spec: .deespec/specs/sbi/SBI-WKR-REG-005_docs_units/meta.yaml
+    labels: [worker, docs]
+
+  # ========== J. CI/検証 ==========
+  - id: SBI-CI-001
+    title: "CI: .deespec/var/journal.ndjson を唯一の検査対象に固定"
+    priority: 90
+    status: todo
+    spec: .deespec/specs/sbi/SBI-CI-001_ci_journal_path/meta.yaml
+    labels: [ci, verify]
+
+  - id: SBI-CI-002
+    title: "verify_journal.sh: NDJSON純度/7キー/UTC/turn整合/列挙/配列を検証"
+    priority: 91
+    status: todo
+    spec: .deespec/specs/sbi/SBI-CI-002_ci_verify_script/meta.yaml
+    labels: [ci, verify]
+
+  - id: SBI-CI-003
+    title: "CI: workflow.yaml の prompt_path 参照切れ/サイズ/未定義{} をブロック"
+    priority: 92
+    status: todo
+    spec: .deespec/specs/sbi/SBI-CI-003_ci_prompt_ref/meta.yaml
+    labels: [ci, verify]
+
+  - id: SBI-CI-004
+    title: "CI: specs/sbi/**/meta.yaml の ID重複/必須キー検査"
+    priority: 93
+    status: todo
+    spec: .deespec/specs/sbi/SBI-CI-004_ci_meta_lint/meta.yaml
+    labels: [ci, verify]
+
+  - id: SBI-CI-005
+    title: "CI: prompts/system/*.md の MaxPromptKB 検査"
+    priority: 93
+    status: todo
+    spec: .deespec/specs/sbi/SBI-CI-005_ci_prompt_size/meta.yaml
+    labels: [ci, verify]
+
+  - id: SBI-CI-006
+    title: "PRテンプレ更新（SBI ID/DoD/CI緑チェック）"
+    priority: 94
+    status: todo
+    spec: .deespec/specs/sbi/SBI-CI-006_pr_template/meta.yaml
+    labels: [ci, docs]
+
+  - id: SBI-CI-007
+    title: "Release: 2段階フロー（build→artifacts→release一回）再確認"
+    priority: 95
+    status: todo
+    spec: .deespec/specs/sbi/SBI-CI-007_release_flow/meta.yaml
+    labels: [ci, release]
+
+  - id: SBI-CI-008
+    title: "成果物命名（darwin .exe等）最終調整"
+    priority: 95
+    status: todo
+    spec: .deespec/specs/sbi/SBI-CI-008_artifact_names/meta.yaml
+    labels: [ci, release]
+
+  # ========== K. ドキュメント/テンプレ ==========
+  - id: SBI-DOC-001
+    title: "README更新（.deespec集約/prompt_path/SBI登録/doctor/CI）"
+    priority: 96
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DOC-001_readme/meta.yaml
+    labels: [docs]
+
+  - id: SBI-DOC-002
+    title: "CHANGELOG: v1 Breaking（旧互換削除）/ 目玉機能記載"
+    priority: 96
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DOC-002_changelog/meta.yaml
+    labels: [docs]
+
+  - id: SBI-DOC-003
+    title: "docs/DECISIONS_v1.md（本ブレスト合意）"
+    priority: 96
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DOC-003_decisions/meta.yaml
+    labels: [docs]
+
+  - id: SBI-DOC-004
+    title: "prompts/system/* のテンプレ整備（impl/review/test/plan/done）"
+    priority: 97
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DOC-004_prompts_templates/meta.yaml
+    labels: [docs, templates]
+
+  - id: SBI-DOC-005
+    title: "templates/spec_feedback.yaml / spec_takeover.yaml / impl_unimplementable.md"
+    priority: 97
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DOC-005_sbi_templates/meta.yaml
+    labels: [docs, templates]
+
+  - id: SBI-DOC-006
+    title: "policies/review_policy.yaml 初期値の明文化"
+    priority: 97
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DOC-006_policy_doc/meta.yaml
+    labels: [docs, policy]
+
+  - id: SBI-DOC-007
+    title: "docs/SBI_GUIDE.md（1タスク=1ディレクトリ/不能レポ運用）"
+    priority: 97
+    status: todo
+    spec: .deespec/specs/sbi/SBI-DOC-007_sbi_guide/meta.yaml
+    labels: [docs]
+
+  # ========== L. リリース/スモーク ==========
+  - id: SBI-REL-001
+    title: "v1.0.0 ブランチ作成・互換削除の明示"
+    priority: 98
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REL-001_branch/meta.yaml
+    labels: [release]
+
+  - id: SBI-REL-002
+    title: "タグ→Release→install.sh スモーク（init→run→status）"
+    priority: 98
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REL-002_smoke/meta.yaml
+    labels: [release, test]
+
+  - id: SBI-REL-003
+    title: "5分ループ/Executor で2サイクル health 前進確認"
+    priority: 98
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REL-003_loop_health/meta.yaml
+    labels: [release, ops]
+
+  - id: SBI-REL-004
+    title: "sbi register --stdin --pick → 実行 → journal末尾確認"
+    priority: 99
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REL-004_register_smoke/meta.yaml
+    labels: [release, test]
+
+  - id: SBI-REL-005
+    title: "doctor: prompt_path/セッション健全/孤児推定の表示確認"
+    priority: 99
+    status: todo
+    spec: .deespec/specs/sbi/SBI-REL-005_doctor_smoke/meta.yaml
+    labels: [release, ops]

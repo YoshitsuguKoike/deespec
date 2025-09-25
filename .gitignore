@@ -43,3 +43,8 @@ state.lock
 
 .claude/flows/
 
+# deespec v1 runtime directory
+/.deespec/var/
+/.deespec/var/*
+!/.deespec/var/.keep
+

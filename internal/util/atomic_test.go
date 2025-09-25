@@ -7,6 +7,44 @@ import (
 	"testing"
 )
 
+func TestNormalizeCRLFToLF(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []byte
+		want  []byte
+	}{
+		{
+			name:  "CRLF to LF",
+			input: []byte("line1\r\nline2\r\n"),
+			want:  []byte("line1\nline2\n"),
+		},
+		{
+			name:  "LF unchanged",
+			input: []byte("line1\nline2\n"),
+			want:  []byte("line1\nline2\n"),
+		},
+		{
+			name:  "mixed CRLF and LF",
+			input: []byte("line1\r\nline2\nline3\r\n"),
+			want:  []byte("line1\nline2\nline3\n"),
+		},
+		{
+			name:  "empty",
+			input: []byte(""),
+			want:  []byte(""),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NormalizeCRLFToLF(tt.input)
+			if string(got) != string(tt.want) {
+				t.Errorf("NormalizeCRLFToLF() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestWriteFileAtomic(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -123,6 +161,33 @@ func TestWriteFileAtomic(t *testing.T) {
 		expected := string(newContent) + "\n"
 		if string(data) != expected {
 			t.Errorf("Content = %q, want %q", string(data), expected)
+		}
+	})
+
+	t.Run("normalizes CRLF to LF", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testPath := filepath.Join(tmpDir, "crlf.txt")
+		content := []byte("line1\r\nline2\r\nline3")
+
+		err := WriteFileAtomic(testPath, content, 0644)
+		if err != nil {
+			t.Fatalf("WriteFileAtomic() error = %v", err)
+		}
+
+		data, err := os.ReadFile(testPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Should convert CRLF to LF and add trailing newline
+		expected := "line1\nline2\nline3\n"
+		if string(data) != expected {
+			t.Errorf("Content = %q, want %q", string(data), expected)
+		}
+
+		// Verify no CRLF remains
+		if strings.Contains(string(data), "\r\n") {
+			t.Error("File should not contain CRLF")
 		}
 	})
 

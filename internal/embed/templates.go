@@ -73,35 +73,51 @@ func GetTemplates() ([]Template, error) {
 	return templates, nil
 }
 
-// WriteTemplate writes a template file atomically
-func WriteTemplate(baseDir string, tmpl Template, force bool) error {
+// WriteTemplateResult represents the result of writing a template
+type WriteTemplateResult struct {
+	Path    string
+	Action  string // "WROTE", "SKIP", "WROTE (force)"
+}
+
+// WriteTemplate writes a template file atomically and returns the action taken
+func WriteTemplate(baseDir string, tmpl Template, force bool) (*WriteTemplateResult, error) {
 	fullPath := filepath.Join(baseDir, tmpl.Path)
+	result := &WriteTemplateResult{Path: tmpl.Path}
 
 	// Create directory if needed
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
 	// Check if file exists (unless force is true)
-	if !force {
-		if _, err := os.Stat(fullPath); err == nil {
-			// File exists, skip
-			return nil
-		}
+	exists := false
+	if _, err := os.Stat(fullPath); err == nil {
+		exists = true
+	}
+
+	if exists && !force {
+		// File exists, skip
+		result.Action = "SKIP"
+		return result, nil
 	}
 
 	// Write to temp file first for atomic write
 	tmpFile := fullPath + ".tmp"
 	if err := os.WriteFile(tmpFile, tmpl.Content, tmpl.Mode); err != nil {
-		return fmt.Errorf("failed to write temp file %s: %w", tmpFile, err)
+		return nil, fmt.Errorf("failed to write temp file %s: %w", tmpFile, err)
 	}
 
 	// Atomic rename
 	if err := os.Rename(tmpFile, fullPath); err != nil {
 		os.Remove(tmpFile) // Clean up temp file
-		return fmt.Errorf("failed to rename %s to %s: %w", tmpFile, fullPath, err)
+		return nil, fmt.Errorf("failed to rename %s to %s: %w", tmpFile, fullPath, err)
 	}
 
-	return nil
+	if force && exists {
+		result.Action = "WROTE (force)"
+	} else {
+		result.Action = "WROTE"
+	}
+	return result, nil
 }

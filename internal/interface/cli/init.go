@@ -60,22 +60,34 @@ All files will be created under the .deespec/ directory.`,
 			}
 
 			// Write all template files
-			var filesWritten []string
 			for _, tmpl := range templates {
-				if err := embed.WriteTemplate(deespecDir, tmpl, force); err != nil {
+				result, err := embed.WriteTemplate(deespecDir, tmpl, force)
+				if err != nil {
 					return fmt.Errorf("failed to write %s: %w", tmpl.Path, err)
 				}
-				filesWritten = append(filesWritten, tmpl.Path)
+				if result.Action == "SKIP" {
+					fmt.Printf("SKIP: %s (exists; use --force to overwrite)\n", filepath.Join(deespecDir, result.Path))
+				} else {
+					fmt.Printf("%s: %s\n", result.Action, filepath.Join(deespecDir, result.Path))
+				}
 			}
 
 			// Create health.json with initial state (only if not exists or force)
 			healthPath := filepath.Join(deespecDir, "var", "health.json")
-			if force || !fileExists(healthPath) {
+			healthExists := fileExists(healthPath)
+			if force || !healthExists {
 				healthContent := fmt.Sprintf(`{"ts":"%s","turn":0,"step":"plan","ok":true,"error":""}`,
 					time.Now().UTC().Format(time.RFC3339Nano))
 				if err := writeFileAtomic(healthPath, []byte(healthContent), 0644); err != nil {
 					return fmt.Errorf("failed to write health.json: %w", err)
 				}
+				if force && healthExists {
+					fmt.Printf("WROTE (force): %s\n", healthPath)
+				} else {
+					fmt.Printf("WROTE: %s\n", healthPath)
+				}
+			} else {
+				fmt.Printf("SKIP: %s (exists; use --force to overwrite)\n", healthPath)
 			}
 
 			// Note: journal.ndjson is NOT created during init
@@ -170,6 +182,7 @@ func updateGitignore(rootDir string) error {
 	// Check if deespec block already exists
 	if strings.Contains(contentStr, "# >>> deespec v1") {
 		// Already present, nothing to do (idempotent)
+		fmt.Printf("SKIP: .gitignore deespec block already present\n")
 		return nil
 	}
 
@@ -192,5 +205,9 @@ func updateGitignore(rootDir string) error {
 	newContent.WriteString("\n")
 
 	// Write atomically
-	return writeFileAtomic(gitignorePath, []byte(newContent.String()), 0644)
+	err := writeFileAtomic(gitignorePath, []byte(newContent.String()), 0644)
+	if err == nil {
+		fmt.Printf("APPENDED: .gitignore deespec v1 block\n")
+	}
+	return err
 }

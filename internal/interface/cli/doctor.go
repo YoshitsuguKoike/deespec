@@ -69,6 +69,7 @@ func newDoctorCmd() *cobra.Command {
 			}
 
 			// Check state.json exists and validate schema
+			stateInfo := ""
 			if err := checkStateJSON(paths.State); err != nil {
 				if os.IsNotExist(err) {
 					fmt.Printf("INFO: state.json not found at %s (run 'deespec init' first)\n", paths.State)
@@ -79,6 +80,15 @@ func newDoctorCmd() *cobra.Command {
 				}
 			} else {
 				fmt.Printf("OK: state.json found and valid at %s\n", paths.State)
+				// Load state for summary display
+				if data, err := os.ReadFile(paths.State); err == nil {
+					var state map[string]interface{}
+					if json.Unmarshal(data, &state) == nil {
+						step := state["step"]
+						turn := state["turn"]
+						stateInfo = fmt.Sprintf("State: step=%v turn=%v", step, turn)
+					}
+				}
 			}
 
 			// Check health.json schema
@@ -158,6 +168,13 @@ func newDoctorCmd() *cobra.Command {
 
 			// Check for scheduler (launchd/systemd)
 			checkScheduler()
+
+			// Print summary information
+			fmt.Println("\n--- Summary ---")
+			if stateInfo != "" {
+				fmt.Println(stateInfo)
+			}
+			fmt.Println("Logic: ok = (last journal.error == \"\")")
 
 			return nil
 		},

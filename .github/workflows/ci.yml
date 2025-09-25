@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [ main ]
 
+
 jobs:
   schema-check:
     runs-on: ubuntu-latest

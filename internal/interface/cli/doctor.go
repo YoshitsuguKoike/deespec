@@ -78,8 +78,8 @@ func newDoctorCmd() *cobra.Command {
 				if err != nil {
 					fmt.Printf("ERROR: workflow validation failed: %v\n", err)
 				} else {
-					// Display with supported agents
-					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only; agents=[\"claude_cli\",\"system\"])\n")
+					// Display with supported agents and placeholders
+					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only; agents=[\"claude_cli\",\"system\"]; placeholders=[\"turn\",\"task_id\",\"project_name\",\"language\"])\n")
 
 					// Check if prompt files exist and are readable
 					allPromptsOK := true

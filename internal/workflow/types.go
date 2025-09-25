@@ -16,6 +16,7 @@ type Step struct {
 
 // Workflow represents the complete workflow configuration
 type Workflow struct {
-	Name  string `yaml:"name"`
-	Steps []Step `yaml:"steps"`
+	Name  string            `yaml:"name"`
+	Steps []Step            `yaml:"steps"`
+	Vars  map[string]string `yaml:"vars,omitempty"` // Optional variables for prompt expansion
 }

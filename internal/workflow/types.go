@@ -1,5 +1,7 @@
 package workflow
 
+import "regexp"
+
 // AllowedAgents defines the allowed agent types for workflow steps
 var AllowedAgents = []string{"claude_cli", "system"}
 
@@ -8,6 +10,9 @@ var allowedAgentsSet = map[string]struct{}{
 	"claude_cli": {},
 	"system":     {},
 }
+
+// DefaultDecisionRegex is the default pattern for review decisions
+const DefaultDecisionRegex = `^DECISION:\s+(OK|NEEDS_CHANGES)\s*$`
 
 // IsAllowedAgent checks if an agent is in the allowed set
 func IsAllowedAgent(agent string) bool {
@@ -22,11 +27,12 @@ type Decision struct {
 
 // Step represents a single step in the workflow
 type Step struct {
-	ID                string    `yaml:"id"`
-	Agent             string    `yaml:"agent"`
-	PromptPath        string    `yaml:"prompt_path"`
-	Decision          *Decision `yaml:"decision,omitempty"`
-	ResolvedPromptPath string   `yaml:"-"` // Internal: absolute path resolved from prompt_path
+	ID                 string    `yaml:"id"`
+	Agent              string    `yaml:"agent"`
+	PromptPath         string    `yaml:"prompt_path"`
+	Decision           *Decision `yaml:"decision,omitempty"`
+	ResolvedPromptPath string    `yaml:"-"` // Internal: absolute path resolved from prompt_path
+	CompiledDecision   *regexp.Regexp `yaml:"-"` // Internal: compiled regex for review decision
 }
 
 // Workflow represents the complete workflow configuration

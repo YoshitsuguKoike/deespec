@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -36,6 +38,11 @@ func LoadWorkflow(ctx context.Context, wfPath string) (*Workflow, error) {
 
 	// Validate schema
 	if err := validateWorkflow(&wf); err != nil {
+		return nil, err
+	}
+
+	// Validate and compile decision regex
+	if err := validateAndCompileDecisions(&wf); err != nil {
 		return nil, err
 	}
 
@@ -159,4 +166,39 @@ func resolvePromptPath(paths app.Paths, raw string, idx int) (string, error) {
 	// Resolve relative to .deespec home
 	resolved := filepath.Join(paths.Home, s)
 	return resolved, nil
+}
+
+// validateAndCompileDecisions validates and compiles decision regex patterns
+func validateAndCompileDecisions(wf *Workflow) error {
+	for i := range wf.Steps {
+		step := &wf.Steps[i]
+
+		// Check if decision is present
+		if step.Decision != nil && strings.TrimSpace(step.Decision.Regex) != "" {
+			// Decision is only allowed on review step
+			if step.ID != "review" {
+				return fmt.Errorf(`workflow.steps[%d]: decision is only allowed on step id "review"`, i)
+			}
+
+			// Compile the regex
+			re, err := regexp.Compile(step.Decision.Regex)
+			if err != nil {
+				return fmt.Errorf(`workflow.steps[%d]: decision.regex compile failed: %v`, i, err)
+			}
+			step.CompiledDecision = re
+
+			// Sanity check (warn only)
+			if !strings.Contains(step.Decision.Regex, "OK") || !strings.Contains(step.Decision.Regex, "NEEDS_CHANGES") {
+				log.Printf("WARN: workflow.steps[%d]: decision.regex may not capture OK/NEEDS_CHANGES", i)
+			}
+		} else if step.ID == "review" {
+			// Apply default for review step
+			re := regexp.MustCompile(DefaultDecisionRegex)
+			step.CompiledDecision = re
+			if step.Decision == nil {
+				step.Decision = &Decision{Regex: DefaultDecisionRegex}
+			}
+		}
+	}
+	return nil
 }

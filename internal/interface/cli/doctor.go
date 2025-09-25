@@ -91,6 +91,21 @@ func newDoctorCmd() *cobra.Command {
 					}
 					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only; agents=[%s]; placeholders=[%s])\n", agentsList, placeholdersList)
 
+					// Check for decision.regex on review step
+					for _, step := range wf.Steps {
+						if step.ID == "review" && step.CompiledDecision != nil {
+							pattern := ""
+							if step.Decision != nil {
+								pattern = step.Decision.Regex
+							}
+							if pattern == "" {
+								pattern = workflow.DefaultDecisionRegex
+							}
+							fmt.Printf("OK: decision.regex compiled for review (pattern='%s')\n", pattern)
+							break
+						}
+					}
+
 					// Check if prompt files exist and are readable
 					allPromptsOK := true
 					for _, step := range wf.Steps {

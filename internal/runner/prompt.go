@@ -45,7 +45,7 @@ func ExpandStepPrompt(ctx context.Context, step workflow.Step, vars map[string]s
 // ExpandWorkflowPrompts expands all prompts in a workflow
 func ExpandWorkflowPrompts(ctx context.Context, wf *workflow.Workflow, paths app.Paths) ([]*ExpandedPrompt, error) {
 	// Load state if it exists
-	st, err := state.LoadState(paths.StateFile)
+	st, err := state.LoadState(paths.State)
 	if err != nil {
 		// State might not exist yet, use nil
 		st = nil
@@ -83,7 +83,7 @@ func PrepareStepExecution(ctx context.Context, wf *workflow.Workflow, stepID str
 	}
 
 	// Load state if it exists
-	st, err := state.LoadState(paths.StateFile)
+	st, err := state.LoadState(paths.State)
 	if err != nil {
 		// State might not exist yet, use nil
 		st = nil

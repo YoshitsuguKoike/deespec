@@ -27,14 +27,14 @@ steps:
 			wantErr: "",
 		},
 		{
-			name: "with decision regex",
+			name: "review step with decision regex",
 			yaml: `name: test
 steps:
-  - id: plan
+  - id: review
     agent: claude_cli
-    prompt_path: prompts/system/plan.md
+    prompt_path: prompts/system/review.md
     decision:
-      regex: "^(yes|no)$"`,
+      regex: "^DECISION:\\s+(OK|NEEDS_CHANGES)\\s*$"`,
 			wantErr: "",
 		},
 		{
@@ -228,6 +228,54 @@ steps:
     agent: system
     prompt_path: prompts/system/plan.md`,
 			wantErr: "",
+		},
+		{
+			name: "decision on review step with default regex",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md
+  - id: review
+    agent: claude_cli
+    prompt_path: prompts/system/review.md`,
+			wantErr: "",
+		},
+		{
+			name: "decision on review step with custom regex",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md
+  - id: review
+    agent: claude_cli
+    prompt_path: prompts/system/review.md
+    decision:
+      regex: "^REVIEW_RESULT:\\s*(OK|NEEDS_CHANGES)\\s*$"`,
+			wantErr: "",
+		},
+		{
+			name: "decision on non-review step is not allowed",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md
+    decision:
+      regex: "^DECISION:\\s+(OK|NEEDS_CHANGES)\\s*$"`,
+			wantErr: `workflow.steps[0]: decision is only allowed on step id "review"`,
+		},
+		{
+			name: "invalid regex in decision",
+			yaml: `name: test
+steps:
+  - id: review
+    agent: system
+    prompt_path: prompts/system/review.md
+    decision:
+      regex: "("`,
+			wantErr: `workflow.steps[0]: decision.regex compile failed:`,
 		},
 	}
 

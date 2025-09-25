@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  schema-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.22' }
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Build
+        run: go build -o dist/deespec ./cmd/deespec
+      - name: Init & One Run (tmp workdir)
+        run: |
+          rm -rf ./tmp && mkdir -p ./tmp && cd ./tmp
+          ../dist/deespec init
+          ../dist/deespec run --once
+      - name: JQ schema checks (7 keys / artifacts=array / UTC / turn-consistency)
+        run: |
+          cd ./tmp
+          jq -s 'map(has("ts") and has("turn") and has("step") and has("decision") and has("elapsed_ms") and has("error") and has("artifacts")) | all' journal.ndjson | grep -qx true
+          jq -s 'map((.artifacts|type)=="array") | all' journal.ndjson | grep -qx true
+          jq -s 'map((.ts|endswith("Z"))) | all' journal.ndjson | grep -qx true
+          jq -s 'map((if (.artifacts|length)==0 then true else ([ .artifacts[] | contains(("/turn"+(.turn|tostring)+"/")) ] | all) end)) | all' journal.ndjson | grep -qx true

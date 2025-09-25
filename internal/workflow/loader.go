@@ -41,6 +41,9 @@ func LoadWorkflow(ctx context.Context, wfPath string) (*Workflow, error) {
 		return nil, err
 	}
 
+	// Normalize constraints
+	normalizeConstraints(&wf.Constraints)
+
 	// Validate and compile decision regex
 	if err := validateAndCompileDecisions(&wf); err != nil {
 		return nil, err
@@ -201,4 +204,12 @@ func validateAndCompileDecisions(wf *Workflow) error {
 		}
 	}
 	return nil
+}
+
+// normalizeConstraints applies defaults and validates constraints
+func normalizeConstraints(c *Constraints) {
+	// Apply default or fallback for invalid values
+	if c.MaxPromptKB <= 0 || c.MaxPromptKB > MaxPromptKBUpper {
+		c.MaxPromptKB = DefaultMaxPromptKB
+	}
 }

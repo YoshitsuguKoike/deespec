@@ -89,7 +89,12 @@ func newDoctorCmd() *cobra.Command {
 					for i := 1; i < len(workflow.Allowed); i++ {
 						placeholdersList += fmt.Sprintf(",%q", workflow.Allowed[i])
 					}
-					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only; agents=[%s]; placeholders=[%s])\n", agentsList, placeholdersList)
+					// Get prompt size limit
+					sizeLimit := wf.Constraints.MaxPromptKB
+					if sizeLimit <= 0 {
+						sizeLimit = workflow.DefaultMaxPromptKB
+					}
+					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only; agents=[%s]; placeholders=[%s]; prompt_size_limit=%dKB)\n", agentsList, placeholdersList, sizeLimit)
 
 					// Check for decision.regex on review step
 					for _, step := range wf.Steps {

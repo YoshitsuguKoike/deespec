@@ -19,11 +19,11 @@ type ExpandedPrompt struct {
 }
 
 // ExpandStepPrompt reads and expands a single step's prompt
-func ExpandStepPrompt(ctx context.Context, step workflow.Step, vars map[string]string) (*ExpandedPrompt, error) {
-	// Read the prompt file
-	rawContent, err := os.ReadFile(step.ResolvedPromptPath)
+func ExpandStepPrompt(ctx context.Context, step workflow.Step, vars map[string]string, limitKB int) (*ExpandedPrompt, error) {
+	// Read the prompt file with size limit
+	rawContent, err := ReadPromptWithLimit(step.ResolvedPromptPath, limitKB)
 	if err != nil {
-		return nil, fmt.Errorf("read prompt file %s: %w", step.ResolvedPromptPath, err)
+		return nil, err
 	}
 
 	original := string(rawContent)
@@ -54,10 +54,16 @@ func ExpandWorkflowPrompts(ctx context.Context, wf *workflow.Workflow, paths app
 	// Build the variable map
 	vars := workflow.BuildVarMap(ctx, paths, wf.Vars, st)
 
+	// Get the size limit from workflow constraints
+	limitKB := wf.Constraints.MaxPromptKB
+	if limitKB <= 0 {
+		limitKB = workflow.DefaultMaxPromptKB
+	}
+
 	// Expand prompts for all steps
 	var prompts []*ExpandedPrompt
 	for _, step := range wf.Steps {
-		prompt, err := ExpandStepPrompt(ctx, step, vars)
+		prompt, err := ExpandStepPrompt(ctx, step, vars, limitKB)
 		if err != nil {
 			return nil, err
 		}
@@ -92,6 +98,32 @@ func PrepareStepExecution(ctx context.Context, wf *workflow.Workflow, stepID str
 	// Build the variable map
 	vars := workflow.BuildVarMap(ctx, paths, wf.Vars, st)
 
+	// Get the size limit from workflow constraints
+	limitKB := wf.Constraints.MaxPromptKB
+	if limitKB <= 0 {
+		limitKB = workflow.DefaultMaxPromptKB
+	}
+
 	// Expand the prompt
-	return ExpandStepPrompt(ctx, *targetStep, vars)
+	return ExpandStepPrompt(ctx, *targetStep, vars, limitKB)
+}
+
+// ReadPromptWithLimit reads a prompt file with size limit enforcement
+func ReadPromptWithLimit(path string, limitKB int) ([]byte, error) {
+	// Get file info to check size
+	fi, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("prompt stat: %w", err)
+	}
+
+	// Check if file size exceeds limit
+	limitBytes := int64(limitKB * 1024)
+	if fi.Size() > limitBytes {
+		// Calculate size in KB (rounded up)
+		sizeKB := (fi.Size() + 1023) / 1024
+		return nil, fmt.Errorf("prompt file too large (size=%dKB, limit=%dKB): %s", sizeKB, limitKB, path)
+	}
+
+	// Read the file
+	return os.ReadFile(path)
 }

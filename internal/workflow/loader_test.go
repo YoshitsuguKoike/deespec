@@ -277,6 +277,59 @@ steps:
       regex: "("`,
 			wantErr: `workflow.steps[0]: decision.regex compile failed:`,
 		},
+		{
+			name: "constraints with default max_prompt_kb",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md`,
+			wantErr: "",
+		},
+		{
+			name: "constraints with valid max_prompt_kb",
+			yaml: `name: test
+constraints:
+  max_prompt_kb: 128
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md`,
+			wantErr: "",
+		},
+		{
+			name: "constraints with zero max_prompt_kb falls back to default",
+			yaml: `name: test
+constraints:
+  max_prompt_kb: 0
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md`,
+			wantErr: "",
+		},
+		{
+			name: "constraints with negative max_prompt_kb falls back to default",
+			yaml: `name: test
+constraints:
+  max_prompt_kb: -10
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md`,
+			wantErr: "",
+		},
+		{
+			name: "constraints with too large max_prompt_kb falls back to default",
+			yaml: `name: test
+constraints:
+  max_prompt_kb: 1024
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md`,
+			wantErr: "",
+		},
 	}
 
 	for _, tt := range tests {

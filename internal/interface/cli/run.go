@@ -62,6 +62,49 @@ func newRunCmd() *cobra.Command {
 	return cmd
 }
 
+// generateReviewNote creates a review_note.md file for SBI-001
+func generateReviewNote(output string, turn int, decision string, turnDir string) (string, error) {
+	// TODO(human) - implement review note generation
+	// Extract summary from agent output and create review note with DECISION
+
+	// Create a brief summary of the review
+	lines := strings.Split(output, "\n")
+	summary := "## Review Summary\n\n"
+
+	// Take first few non-empty lines as summary (up to 5 lines)
+	lineCount := 0
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && lineCount < 5 {
+			summary += "- " + trimmed + "\n"
+			lineCount++
+		}
+	}
+
+	// Add turn information
+	summary += fmt.Sprintf("\n## Turn Information\n\n")
+	summary += fmt.Sprintf("- Turn: %d\n", turn)
+	summary += fmt.Sprintf("- Timestamp: %s\n", time.Now().UTC().Format(time.RFC3339))
+
+	// Determine DECISION based on the decision parameter
+	finalDecision := "NEEDS_CHANGES"
+	if decision == "OK" || strings.Contains(strings.ToUpper(output), "APPROVED") ||
+	   strings.Contains(strings.ToUpper(output), "LOOKS GOOD") {
+		finalDecision = "OK"
+	}
+
+	// Add DECISION as the last line
+	summary += fmt.Sprintf("\nDECISION: %s", finalDecision)
+
+	// Write the review note
+	noteFile := filepath.Join(turnDir, "review_note.md")
+	if err := os.WriteFile(noteFile, []byte(summary), 0o644); err != nil {
+		return "", err
+	}
+
+	return noteFile, nil
+}
+
 func runOnce() error {
 	startTime := time.Now()
 
@@ -172,7 +215,16 @@ func runOnce() error {
 	}
 	st.LastArtifacts[stepName] = outFile
 
-	// 6) ジャーナル追記（currentTurnを使用）
+	// 6) review_note.md生成（SBI-001: reviewステップ完了時）
+	artifacts := []string{outFile}
+	if st.Current == "review" {
+		// TODO(human) - implement generateReviewNote function
+		if noteFile, err := generateReviewNote(output, currentTurn, decision, turnDir); err == nil && noteFile != "" {
+			artifacts = append(artifacts, noteFile)
+		}
+	}
+
+	// 7) ジャーナル追記（currentTurnを使用）
 	elapsedMs := int(time.Since(startTime).Milliseconds())
 
 	journalRec := map[string]interface{}{
@@ -182,7 +234,7 @@ func runOnce() error {
 		"decision":   "",
 		"elapsed_ms": elapsedMs,
 		"error":      errorMsg,
-		"artifacts":  []string{outFile},
+		"artifacts":  artifacts,
 	}
 
 	// decision は review の時のみセット（次がdoneまたはimplementの場合）

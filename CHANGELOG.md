@@ -4,15 +4,25 @@
 
 ## \[Unreleased]
 
-### 追加
-
-* **decision 列挙ガード**: 空の decision を `"PENDING"` に正規化、列挙値（PENDING|NEEDS_CHANGES|OK）の検証
-* **`doctor --json`**: 機械可読な診断結果出力（runner/active/working_dir/agent_bin/start_interval_sec）
-* **CI 強化**: decision 列挙検証ステップを `verify_journal.sh` に追加
-
 ### 追加予定
 
 * `scripts/metrics.py`（レビューOK率・平均 `elapsed_ms` のローカル集計）
+
+---
+
+## \[v0.1.12] - 2025-09-25
+
+### 追加
+
+* **decision 列挙ガード**: 空の decision を `"PENDING"` に正規化、列挙値（PENDING|NEEDS_CHANGES|OK）の検証
+* **`doctor --json`**: 機械可読な診断結果出力（runner/active/working_dir/agent_bin/start_interval_sec、exit code 0/2/1）
+* **CI 強化**: NDJSON純度、7キー、UTC、turn整合、decision列挙の完全検証を verify_journal.sh に統合
+* **scheduler チェック**: doctor コマンドが launchd/systemd の状態を検出・報告
+* **SBI-001 実装**: review ステップ完了時に review_note.md を生成（各ターンの要旨と DECISION を記録）
+
+### 変更
+
+* **journal 正規化**: すべての decision フィールドが 3つの列挙値のいずれかを持つことを保証
 
 ---
 

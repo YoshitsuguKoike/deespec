@@ -1,0 +1,7 @@
+deliverables:
+  - ".artifacts/turn{turn}/review_note.md"
+acceptance:
+  - "ファイルが存在する"
+  - "末尾に '^DECISION: (OK|NEEDS_CHANGES)$' が1行ある"
+notes:
+  - "DECISION は 1 行のみ"

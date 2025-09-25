@@ -70,8 +70,17 @@ ls -1
 5. 【\[推奨] トラブルシューティング（詰まり解消の一行）】
 
    ```bash
-   # まずは自己診断
+   # まずは自己診断（人間向け）
    deespec doctor
+
+   # JSON形式で診断（自動化・監視向け）
+   deespec doctor --json | jq .
+   # exit code: 0=正常、2=警告（inactive/未設定）、1=重大（書込不可/agent不在）
+
+   # 5分自走の確認
+   cat health.json | jq -r '.ts'  # タイムスタンプが5分毎に前進
+   tail -n1 journal.ndjson | jq '.decision'  # PENDING/NEEDS_CHANGES/OK のいずれか
+
    # jq が未導入なら (macOS)
    brew install jq
    ```

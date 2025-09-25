@@ -110,7 +110,13 @@ func validateJournal(e JournalEntry) error {
 	if e.Step == "" {
 		return errors.New("step is empty")
 	}
-	// Additional validation can be added here
+	// Validate decision enum
+	switch e.Decision {
+	case "PENDING", "NEEDS_CHANGES", "OK":
+		// valid enum value
+	default:
+		return errors.New("invalid decision: must be PENDING, NEEDS_CHANGES, or OK")
+	}
 	return nil
 }
 

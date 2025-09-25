@@ -1,0 +1,7 @@
+tasks:
+  - id: SBI-001
+    title: "review_note.md の自動生成"
+    objective: "各ターンの要旨を記録し、末尾に DECISION を付与"
+    priority: 1
+    status: doing
+    spec: specs/sbi/SBI-001_review_note.yaml

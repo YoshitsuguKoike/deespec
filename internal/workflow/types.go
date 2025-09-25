@@ -1,5 +1,20 @@
 package workflow
 
+// AllowedAgents defines the allowed agent types for workflow steps
+var AllowedAgents = []string{"claude_cli", "system"}
+
+// allowedAgentsSet for quick lookup
+var allowedAgentsSet = map[string]struct{}{
+	"claude_cli": {},
+	"system":     {},
+}
+
+// IsAllowedAgent checks if an agent is in the allowed set
+func IsAllowedAgent(agent string) bool {
+	_, ok := allowedAgentsSet[agent]
+	return ok
+}
+
 // Decision represents the decision configuration for a workflow step
 type Decision struct {
 	Regex string `yaml:"regex"`

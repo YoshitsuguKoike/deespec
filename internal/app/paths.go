@@ -25,6 +25,7 @@ type Paths struct {
 }
 
 // ResolvePaths returns all paths based on DEE_HOME environment variable
+// All paths are resolved to absolute paths with symlinks evaluated
 func ResolvePaths() Paths {
 	// Get base home directory
 	home := os.Getenv("DEE_HOME")
@@ -32,18 +33,30 @@ func ResolvePaths() Paths {
 		home = ".deespec"
 	}
 
-	// Build all paths
+	// Resolve home to absolute path with symlinks
+	homeAbs, err := filepath.Abs(home)
+	if err != nil {
+		homeAbs = home // Fallback to original if error
+	}
+	homeAbs, err = filepath.EvalSymlinks(homeAbs)
+	if err != nil {
+		// If symlink evaluation fails (e.g., path doesn't exist yet),
+		// just use the absolute path
+		homeAbs, _ = filepath.Abs(home)
+	}
+
+	// Build all paths (now all absolute)
 	p := Paths{
-		Home:     home,
-		Etc:      filepath.Join(home, "etc"),
-		Prompts:  filepath.Join(home, "prompts"),
-		Var:      filepath.Join(home, "var"),
+		Home:     homeAbs,
+		Etc:      filepath.Join(homeAbs, "etc"),
+		Prompts:  filepath.Join(homeAbs, "prompts"),
+		Var:      filepath.Join(homeAbs, "var"),
 	}
 
 	// Derived paths
 	p.Policies = filepath.Join(p.Etc, "policies")
-	p.SpecsSBI = filepath.Join(home, "specs", "sbi")
-	p.SpecsPBI = filepath.Join(home, "specs", "pbi")
+	p.SpecsSBI = filepath.Join(homeAbs, "specs", "sbi")
+	p.SpecsPBI = filepath.Join(homeAbs, "specs", "pbi")
 	p.Artifacts = filepath.Join(p.Var, "artifacts")
 
 	// Key files

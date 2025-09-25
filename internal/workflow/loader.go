@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -25,9 +26,11 @@ func LoadWorkflow(ctx context.Context, wfPath string) (*Workflow, error) {
 		return nil, err
 	}
 
-	// Parse YAML
+	// Parse YAML with strict field checking
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true) // Fail on unknown fields
 	var wf Workflow
-	if err := yaml.Unmarshal(data, &wf); err != nil {
+	if err := dec.Decode(&wf); err != nil {
 		return nil, fmt.Errorf("workflow: parse: %w", err)
 	}
 
@@ -105,11 +108,8 @@ func validateWorkflow(wf *Workflow) error {
 		}
 
 		// Validate agent is supported
-		switch step.Agent {
-		case "claude_cli", "system":
-			// Supported agents
-		default:
-			return fmt.Errorf(`%s: unsupported agent "%s"`, idx, step.Agent)
+		if !IsAllowedAgent(step.Agent) {
+			return fmt.Errorf(`%s: unsupported agent "%s" (allowed=%v)`, idx, step.Agent, AllowedAgents)
 		}
 
 		// Validate prompt_path

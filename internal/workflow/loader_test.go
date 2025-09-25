@@ -99,6 +99,15 @@ steps:
 			wantErr: `workflow.steps[0]: unsupported agent "unsupported_agent"`,
 		},
 		{
+			name: "bash agent not supported",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: bash
+    prompt_path: prompts/system/plan.md`,
+			wantErr: `workflow.steps[0]: unsupported agent "bash" (allowed=`,
+		},
+		{
 			name: "duplicate step id",
 			yaml: `name: test
 steps:
@@ -187,6 +196,38 @@ steps:
     agent: system
     prompt_path: prompts/../../../etc/passwd`,
 			wantErr: `workflow.steps[0]: "prompt_path" must not contain ".."`,
+		},
+		{
+			name: "unknown field in workflow",
+			yaml: `name: test
+foo: bar
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md`,
+			wantErr: `workflow: parse:`,
+		},
+		{
+			name: "unknown field in step",
+			yaml: `name: test
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md
+    unknown_field: value`,
+			wantErr: `workflow: parse:`,
+		},
+		{
+			name: "workflow with vars field is valid",
+			yaml: `name: test
+vars:
+  project_name: myproject
+  language: en
+steps:
+  - id: plan
+    agent: system
+    prompt_path: prompts/system/plan.md`,
+			wantErr: "",
 		},
 	}
 

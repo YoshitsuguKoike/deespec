@@ -204,6 +204,13 @@ func runOnce() error {
 	}
 	st.Current = next
 
-	// 8) 保存（CAS + atomic）
+	// 8) health.json 更新（エラーに関わらず更新）
+	healthOk := errorMsg == ""
+	if err := app.WriteHealth("health.json", currentTurn, next, healthOk, errorMsg); err != nil {
+		// health.json書き込みエラーも無視（ワークフローは継続）
+		fmt.Fprintf(os.Stderr, "Warning: failed to write health.json: %v\n", err)
+	}
+
+	// 9) 保存（CAS + atomic）
 	return saveStateCAS("state.json", st, prevV)
 }

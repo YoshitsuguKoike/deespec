@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,6 +16,47 @@ type StatusOutput struct {
 	Step  string `json:"step"`
 	Ok    bool   `json:"ok"`
 	Error string `json:"error"`
+}
+
+// getLastJournalError reads the last line of journal.ndjson and returns the error field
+func getLastJournalError() (string, error) {
+	file, err := os.Open("journal.ndjson")
+	if err != nil {
+		// If journal doesn't exist, assume no error
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	defer file.Close()
+
+	var lastLine string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lastLine = scanner.Text()
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	if lastLine == "" {
+		// Empty journal, no error
+		return "", nil
+	}
+
+	// Parse the last journal entry
+	var entry map[string]interface{}
+	if err := json.Unmarshal([]byte(lastLine), &entry); err != nil {
+		return "", err
+	}
+
+	// Get the error field
+	if errorStr, ok := entry["error"].(string); ok {
+		return errorStr, nil
+	}
+
+	return "", nil
 }
 
 func newStatusCmd() *cobra.Command {
@@ -49,12 +91,19 @@ func newStatusCmd() *cobra.Command {
 					step = "unknown"
 				}
 
+				// Get the last journal error to determine ok status
+				lastError, err := getLastJournalError()
+				if err != nil {
+					// If we can't read the journal, report the issue but continue
+					lastError = fmt.Sprintf("journal read error: %v", err)
+				}
+
 				output := StatusOutput{
 					Ts:    time.Now().Format(time.RFC3339Nano),
 					Turn:  turn,
 					Step:  step,
-					Ok:    true,
-					Error: "",
+					Ok:    lastError == "",
+					Error: lastError,
 				}
 
 				b, err := json.Marshal(output)

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"github.com/YoshitsuguKoike/deespec/internal/app"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
+	"github.com/YoshitsuguKoike/deespec/internal/workflow"
 )
 
 // DoctorJSON represents the JSON output structure for doctor command
@@ -61,11 +63,22 @@ func newDoctorCmd() *cobra.Command {
 			}
 			fmt.Println("OK: write permission in var dir")
 
-			// Check workflow.yaml exists
+			// Check workflow.yaml exists and validate
 			if _, err := os.Stat(paths.Workflow); err != nil {
 				fmt.Printf("WARN: workflow.yaml not found at %s\n", paths.Workflow)
 			} else {
-				fmt.Printf("OK: workflow.yaml found at %s\n", paths.Workflow)
+				// Try to load and validate workflow
+				ctx := context.Background()
+				wfPath := paths.Workflow
+				// Check for test override
+				if envPath := os.Getenv("DEESPEC_WORKFLOW"); envPath != "" {
+					wfPath = envPath
+				}
+				if _, err := workflow.LoadWorkflow(ctx, wfPath); err != nil {
+					fmt.Printf("ERROR: workflow validation failed: %v\n", err)
+				} else {
+					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only)\n")
+				}
 			}
 
 			// Check state.json exists and validate schema

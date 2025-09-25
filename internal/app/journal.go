@@ -130,6 +130,6 @@ func NormalizeJournalEntryMap(entry map[string]interface{}) map[string]interface
 // AppendNormalizedJournal writes a normalized journal entry to the journal file
 // Deprecated: Use JournalWriter.Append instead for better control and validation
 func AppendNormalizedJournal(entry map[string]interface{}) error {
-	writer := NewJournalWriter("journal.ndjson")
+	writer := NewJournalWriter(".deespec/var/journal.ndjson")
 	return writer.AppendMap(entry)
 }

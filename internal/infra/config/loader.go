@@ -34,6 +34,6 @@ func Load() Config {
 	return Config{
 		AgentBin:     get("DEE_AGENT_BIN", "claude"),
 		Timeout:      toDur(get("DEE_TIMEOUT_SEC", "60"), 60*time.Second),
-		ArtifactsDir: get("DEE_ARTIFACTS_DIR", ".artifacts"),
+		ArtifactsDir: get("DEE_ARTIFACTS_DIR", ".deespec/var/artifacts"),
 	}
 }

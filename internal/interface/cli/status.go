@@ -66,7 +66,7 @@ func newStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show current workflow status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			st, err := loadState("state.json")
+			st, err := loadState(".deespec/var/state.json")
 			if err != nil {
 				if jsonOutput {
 					output := StatusOutput{

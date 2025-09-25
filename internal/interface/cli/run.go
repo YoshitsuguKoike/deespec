@@ -109,14 +109,14 @@ func runOnce() error {
 	startTime := time.Now()
 
 	// 1) ロック
-	release, err := fs.AcquireLock("state.lock")
+	release, err := fs.AcquireLock(".deespec/var/state.lock")
 	if err != nil {
 		return err
 	}
 	defer release()
 
 	// 2) 読み込み
-	st, err := loadState("state.json")
+	st, err := loadState(".deespec/var/state.json")
 	if err != nil {
 		return fmt.Errorf("read state: %w", err)
 	}
@@ -258,11 +258,11 @@ func runOnce() error {
 
 	// 8) health.json 更新（エラーに関わらず更新）
 	healthOk := errorMsg == ""
-	if err := app.WriteHealth("health.json", currentTurn, next, healthOk, errorMsg); err != nil {
+	if err := app.WriteHealth(".deespec/var/health.json", currentTurn, next, healthOk, errorMsg); err != nil {
 		// health.json書き込みエラーも無視（ワークフローは継続）
-		fmt.Fprintf(os.Stderr, "Warning: failed to write health.json: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Warning: failed to write .deespec/var/health.json: %v\n", err)
 	}
 
 	// 9) 保存（CAS + atomic）
-	return saveStateCAS("state.json", st, prevV)
+	return saveStateCAS(".deespec/var/state.json", st, prevV)
 }

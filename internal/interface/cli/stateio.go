@@ -31,7 +31,7 @@ func loadState(path string) (*State, error) {
 		return nil, err
 	}
 	if st.ArtifactsDir == "" {
-		st.ArtifactsDir = ".artifacts"
+		st.ArtifactsDir = ".deespec/var/artifacts"
 	}
 	return &st, nil
 }

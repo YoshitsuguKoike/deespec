@@ -97,21 +97,17 @@ else
     PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
     PATH_UPDATED=false
 
-    # Update .bashrc if exists
-    if [ -f "$HOME/.bashrc" ]; then
-        if ! grep -q "\$HOME/.local/bin" "$HOME/.bashrc"; then
-            info "Adding ~/.local/bin to PATH in .bashrc"
-            echo "" >> "$HOME/.bashrc"
-            echo "# Added by deespec installer" >> "$HOME/.bashrc"
-            echo "$PATH_LINE" >> "$HOME/.bashrc"
-            PATH_UPDATED=true
-        else
-            info "PATH already configured in .bashrc"
-        fi
-    fi
+    # Detect current shell
+    CURRENT_SHELL="$(basename "$SHELL")"
 
-    # Update .zshrc if exists
-    if [ -f "$HOME/.zshrc" ]; then
+    # Handle zsh (most common on modern macOS)
+    if [ "$CURRENT_SHELL" = "zsh" ]; then
+        # Create .zshrc if it doesn't exist
+        if [ ! -f "$HOME/.zshrc" ]; then
+            info "Creating ~/.zshrc"
+            touch "$HOME/.zshrc"
+        fi
+
         if ! grep -q "\$HOME/.local/bin" "$HOME/.zshrc"; then
             info "Adding ~/.local/bin to PATH in .zshrc"
             echo "" >> "$HOME/.zshrc"
@@ -121,6 +117,65 @@ else
         else
             info "PATH already configured in .zshrc"
         fi
+
+        # Also update .zprofile for macOS login shells
+        if [ "$(uname -s)" = "Darwin" ]; then
+            if [ ! -f "$HOME/.zprofile" ]; then
+                info "Creating ~/.zprofile for macOS"
+                touch "$HOME/.zprofile"
+            fi
+
+            if ! grep -q "\$HOME/.local/bin" "$HOME/.zprofile"; then
+                info "Adding ~/.local/bin to PATH in .zprofile (for macOS login shells)"
+                echo "" >> "$HOME/.zprofile"
+                echo "# Added by deespec installer" >> "$HOME/.zprofile"
+                echo "$PATH_LINE" >> "$HOME/.zprofile"
+                PATH_UPDATED=true
+            fi
+        fi
+
+    # Handle bash
+    elif [ "$CURRENT_SHELL" = "bash" ]; then
+        # Create .bashrc if it doesn't exist
+        if [ ! -f "$HOME/.bashrc" ]; then
+            info "Creating ~/.bashrc"
+            touch "$HOME/.bashrc"
+        fi
+
+        if ! grep -q "\$HOME/.local/bin" "$HOME/.bashrc"; then
+            info "Adding ~/.local/bin to PATH in .bashrc"
+            echo "" >> "$HOME/.bashrc"
+            echo "# Added by deespec installer" >> "$HOME/.bashrc"
+            echo "$PATH_LINE" >> "$HOME/.bashrc"
+            PATH_UPDATED=true
+        else
+            info "PATH already configured in .bashrc"
+        fi
+
+        # Also handle .bash_profile for macOS
+        if [ "$(uname -s)" = "Darwin" ] && [ ! -f "$HOME/.bash_profile" ]; then
+            info "Creating ~/.bash_profile for macOS"
+            echo "[ -r ~/.bashrc ] && . ~/.bashrc" > "$HOME/.bash_profile"
+        fi
+
+    # Fallback: update both if we can't determine the shell
+    else
+        warn "Could not determine shell type, updating both .bashrc and .zshrc"
+
+        for rc_file in ".bashrc" ".zshrc"; do
+            if [ ! -f "$HOME/$rc_file" ]; then
+                info "Creating ~/$rc_file"
+                touch "$HOME/$rc_file"
+            fi
+
+            if ! grep -q "\$HOME/.local/bin" "$HOME/$rc_file"; then
+                info "Adding ~/.local/bin to PATH in $rc_file"
+                echo "" >> "$HOME/$rc_file"
+                echo "# Added by deespec installer" >> "$HOME/$rc_file"
+                echo "$PATH_LINE" >> "$HOME/$rc_file"
+                PATH_UPDATED=true
+            fi
+        done
     fi
 
     # Update current session

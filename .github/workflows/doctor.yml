@@ -1,9 +1,11 @@
-name: Doctor Validation
+name: Doctor Integrated Validation
 
 on:
   pull_request:
     paths:
       - ".deespec/**"
+      - "internal/validator/**"
+      - "scripts/verify_doctor.sh"
 
 jobs:
   doctor:

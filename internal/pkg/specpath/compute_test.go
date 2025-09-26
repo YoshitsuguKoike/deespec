@@ -206,7 +206,7 @@ func TestSlugifyTitle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := slugifyTitle(tt.title, tt.cfg)
+			got := SlugifyTitle(tt.title, tt.cfg)
 			if got != tt.want {
 				t.Errorf("slugifyTitle() = %v, want %v", got, tt.want)
 			}

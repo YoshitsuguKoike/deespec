@@ -111,7 +111,6 @@ collision:
 }
 
 func TestDryRun_CollisionErrorMode_Fails(t *testing.T) {
-	t.Skip("Skipping due to policy loading issue in test environment")
 	// Create test workspace
 	cleanup := testutil.NewTestWorkspace(t)
 	t.Cleanup(cleanup)
@@ -131,9 +130,8 @@ func TestDryRun_CollisionErrorMode_Fails(t *testing.T) {
 	}
 	t.Logf("Created collision path: %s", existingPath)
 
-	// Create policy (empty policy uses defaults)
-	policyContent := ``
-	testutil.WriteTestPolicy(t, policyContent)
+	// Don't create a policy file - let defaults apply
+	// Creating an empty or minimal policy causes parse errors
 
 	// Input that would collide
 	input := `

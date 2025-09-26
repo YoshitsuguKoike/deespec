@@ -313,6 +313,11 @@ func ResolveRegisterConfig(cliCollisionMode string, policy *RegisterPolicy) (*Re
 	// Logging configuration
 	config.StderrLevel = strings.ToLower(policy.Logging.StderrLevelDefault)
 
+	// Ensure base directory is always set (critical for path resolution)
+	if strings.TrimSpace(config.PathBaseDir) == "" {
+		config.PathBaseDir = ".deespec/specs/sbi"
+	}
+
 	return config, nil
 }
 

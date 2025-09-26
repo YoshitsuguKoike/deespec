@@ -12,10 +12,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	"unicode/utf8"
 
+	"github.com/YoshitsuguKoike/deespec/internal/pkg/specpath"
 	"github.com/spf13/cobra"
-	"golang.org/x/text/unicode/norm"
 	"gopkg.in/yaml.v3"
 )
 
@@ -532,86 +531,16 @@ func validateSpecWithConfig(spec *RegisterSpec, config *ResolvedConfig) Validati
 }
 
 // slugifyTitleWithConfig converts a title to a safe slug using policy settings
+// This function delegates to the single source of truth in specpath package
 func slugifyTitleWithConfig(title string, config *ResolvedConfig) string {
-	// Apply NFKC normalization if enabled
-	if config.SlugNFKC {
-		title = norm.NFKC.String(title)
+	// Convert ResolvedConfig to specpath.ResolvedConfig
+	specCfg := specpath.ResolvedConfig{
+		SlugAllowChars: config.SlugAllow,
+		SlugMaxLength:  config.SlugMaxRunes,
 	}
 
-	// Convert to lowercase if enabled
-	if config.SlugLowercase {
-		title = strings.ToLower(title)
-	}
-
-	// Build allowed character set from policy
-	allowed := make(map[rune]bool)
-	// Parse the allow string as character ranges and literals
-	// e.g., "a-z0-9-" means a-z range, 0-9 range, and literal hyphen
-	allowStr := config.SlugAllow
-	for i := 0; i < len(allowStr); i++ {
-		if i+2 < len(allowStr) && allowStr[i+1] == '-' && allowStr[i+2] != '-' {
-			// This is a range like a-z or 0-9
-			start := allowStr[i]
-			end := allowStr[i+2]
-			for c := start; c <= end; c++ {
-				allowed[rune(c)] = true
-			}
-			i += 2 // Skip the range
-		} else {
-			// This is a literal character
-			allowed[rune(allowStr[i])] = true
-		}
-	}
-
-	// Build slug with only allowed characters
-	var b strings.Builder
-	var lastDash bool
-	for _, r := range title {
-		if allowed[r] {
-			b.WriteRune(r)
-			lastDash = false
-		} else {
-			// Replace non-allowed with dash
-			if !lastDash && b.Len() > 0 {
-				b.WriteByte('-')
-				lastDash = true
-			}
-		}
-	}
-
-	slug := b.String()
-	slug = strings.Trim(slug, "-")
-
-	// Use fallback if empty
-	if slug == "" {
-		slug = config.SlugFallback
-		if slug == "" {
-			slug = "spec"
-		}
-	}
-
-	// Check for Windows reserved names and add suffix if configured
-	if config.SlugWindowsReservedSuffix != "" && isWindowsReserved(slug) {
-		slug += config.SlugWindowsReservedSuffix
-	}
-
-	// Remove trailing dots and spaces if configured
-	if config.SlugTrimTrailingDotSpace {
-		slug = strings.TrimRight(slug, ". ")
-	}
-
-	// Length limit based on policy
-	maxRunes := config.SlugMaxRunes
-	if maxRunes == 0 {
-		maxRunes = MaxSlugLength
-	}
-	if utf8.RuneCountInString(slug) > maxRunes {
-		runes := []rune(slug)
-		slug = string(runes[:maxRunes])
-		slug = strings.Trim(slug, "-")
-	}
-
-	return slug
+	// Use the single source of truth for slug generation
+	return specpath.SlugifyTitle(title, specCfg)
 }
 
 // isWindowsReserved checks if a name is a Windows reserved name

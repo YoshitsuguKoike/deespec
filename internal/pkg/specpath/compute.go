@@ -31,7 +31,7 @@ func ComputeSpecPath(id, title string, cfg ResolvedConfig) (string, error) {
 	}
 
 	// Generate slug from title
-	slug := slugifyTitle(title, cfg)
+	slug := SlugifyTitle(title, cfg)
 
 	// Construct path: base_dir/ID_slug
 	specName := fmt.Sprintf("%s_%s", id, slug)
@@ -64,9 +64,10 @@ func ComputeSpecPath(id, title string, cfg ResolvedConfig) (string, error) {
 	return finalPath, nil
 }
 
-// slugifyTitle converts a title to a filesystem-safe slug
+// SlugifyTitle converts a title to a filesystem-safe slug
 // Following REG-003 rules: NFKC normalization, lowercase, allowed chars only
-func slugifyTitle(title string, cfg ResolvedConfig) string {
+// This is the single source of truth for slug generation
+func SlugifyTitle(title string, cfg ResolvedConfig) string {
 	// Apply NFKC normalization
 	normalized := norm.NFKC.String(title)
 

@@ -1,0 +1,42 @@
+name: Agents Validation
+on:
+  pull_request:
+    paths:
+      - ".deespec/etc/agents.yaml"
+      - ".deespec/etc/workflow.yaml"
+      - "internal/validator/agents/**"
+      - "internal/validator/workflow/**"
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Build deespec
+        run: go build -o deespec ./cmd/deespec
+      - name: Run workflow validation
+        run: ./deespec workflow verify --format=json > workflow.json
+      - name: Display validation result
+        run: cat workflow.json | jq .
+      - name: Check validation results
+        run: |
+          ERRS=$(jq '.summary.error' workflow.json)
+          SRC=$(jq -r '.agents_source // "unknown"' workflow.json)
+          echo "::notice::Agents source: $SRC"
+
+          # Display agent-related errors if any
+          if [ "$ERRS" -gt 0 ]; then
+            echo "Found $ERRS error(s) in workflow/agents validation"
+
+            # Extract and display agent-related errors
+            jq -r '.files[]? | . as $f | $f.issues[]? | select(.type=="error") | select(.field | contains("agent")) | "::error file=\($f.file)::[\(.field)] \(.message)"' workflow.json || true
+
+            # Display all errors for debugging
+            jq -r '.files[]? | . as $f | $f.issues[]? | select(.type=="error") | "[\($f.file)] \(.field): \(.message)"' workflow.json
+
+            exit 1
+          fi
+
+          echo "Validation passed with agents source: $SRC"

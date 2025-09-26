@@ -11,7 +11,21 @@ func TestValidator(t *testing.T) {
 	tmpDir := t.TempDir()
 	basePath := filepath.Join(tmpDir, ".deespec")
 
+	if err := os.MkdirAll(filepath.Join(basePath, "etc"), 0755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(basePath, "prompts", "system"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a valid agents.yaml for tests that need valid agents
+	agentsContent := `agents:
+  - claude_cli
+  - system
+  - gpt4
+  - sonnet`
+	agentsPath := filepath.Join(basePath, "etc", "agents.yaml")
+	if err := os.WriteFile(agentsPath, []byte(agentsContent), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -288,10 +302,113 @@ func TestSymlinkValidation(t *testing.T) {
 	}
 }
 
+func TestAgentsSourceBuiltin(t *testing.T) {
+	tmpDir := t.TempDir()
+	basePath := filepath.Join(tmpDir, ".deespec")
+
+	// No agents.yaml file - should use builtin
+	if err := os.MkdirAll(filepath.Join(basePath, "etc"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(basePath, "prompts", "system"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	promptPath := filepath.Join(basePath, "prompts", "system", "plan.md")
+	if err := os.WriteFile(promptPath, []byte("dummy"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	content := `steps:
+  - id: test
+    agent: claude_cli
+    prompt_path: prompts/system/plan.md`
+
+	workflowPath := filepath.Join(basePath, "etc", "workflow.yaml")
+	if err := os.WriteFile(workflowPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	validator := NewValidator(basePath)
+	result, err := validator.Validate(workflowPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check agents_source is "builtin"
+	if result.AgentsSource != "builtin" {
+		t.Errorf("expected agents_source 'builtin', got %q", result.AgentsSource)
+	}
+
+	// Should be valid with builtin agents
+	if result.Summary.Error != 0 {
+		t.Errorf("expected no errors with builtin agents, got %d", result.Summary.Error)
+		data, _ := json.MarshalIndent(result, "", "  ")
+		t.Logf("Result: %s", data)
+	}
+}
+
+func TestAgentsSourceFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	basePath := filepath.Join(tmpDir, ".deespec")
+
+	if err := os.MkdirAll(filepath.Join(basePath, "etc"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(basePath, "prompts", "system"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create custom agents.yaml
+	agentsContent := `agents:
+  - custom_agent
+  - my_agent`
+	agentsPath := filepath.Join(basePath, "etc", "agents.yaml")
+	if err := os.WriteFile(agentsPath, []byte(agentsContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	promptPath := filepath.Join(basePath, "prompts", "system", "plan.md")
+	if err := os.WriteFile(promptPath, []byte("dummy"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	content := `steps:
+  - id: test
+    agent: custom_agent
+    prompt_path: prompts/system/plan.md`
+
+	workflowPath := filepath.Join(basePath, "etc", "workflow.yaml")
+	if err := os.WriteFile(workflowPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	validator := NewValidator(basePath)
+	result, err := validator.Validate(workflowPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check agents_source is "file"
+	if result.AgentsSource != "file" {
+		t.Errorf("expected agents_source 'file', got %q", result.AgentsSource)
+	}
+
+	// Should be valid with custom agents
+	if result.Summary.Error != 0 {
+		t.Errorf("expected no errors with custom agents, got %d", result.Summary.Error)
+		data, _ := json.MarshalIndent(result, "", "  ")
+		t.Logf("Result: %s", data)
+	}
+}
+
 func TestJSONOutput(t *testing.T) {
 	tmpDir := t.TempDir()
 	basePath := filepath.Join(tmpDir, ".deespec")
 
+	if err := os.MkdirAll(filepath.Join(basePath, "etc"), 0755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(basePath, "prompts", "system"), 0755); err != nil {
 		t.Fatal(err)
 	}

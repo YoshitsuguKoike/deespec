@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/YoshitsuguKoike/deespec/internal/validator/agents"
 	"gopkg.in/yaml.v3"
 )
 
@@ -47,17 +48,11 @@ type Summary struct {
 }
 
 type ValidationResult struct {
-	Version     int          `json:"version"`
-	GeneratedAt string       `json:"generated_at"`
-	Files       []FileResult `json:"files"`
-	Summary     Summary      `json:"summary"`
-}
-
-var validAgents = map[string]bool{
-	"claude_cli": true,
-	"system":     true,
-	"gpt4":       true,
-	"sonnet":     true,
+	Version      int          `json:"version"`
+	GeneratedAt  string       `json:"generated_at"`
+	Files        []FileResult `json:"files"`
+	AgentsSource string       `json:"agents_source,omitempty"`
+	Summary      Summary      `json:"summary"`
 }
 
 type Validator struct {
@@ -74,6 +69,50 @@ func (v *Validator) Validate(path string) (*ValidationResult, error) {
 		GeneratedAt: time.Now().UTC().Format("2006-01-02T15:04:05.000000Z"),
 		Files:       []FileResult{},
 		Summary:     Summary{Files: 1},
+	}
+
+	// Load agents configuration
+	agentsPath := filepath.Join(v.basePath, "etc", "agents.yaml")
+	agentsResult, err := agents.LoadAgents(agentsPath)
+	if err != nil {
+		// Treat loader error as validation error
+		fileResult := FileResult{
+			File: filepath.Base(path),
+			Issues: []Issue{{
+				Type:    "error",
+				Field:   "/",
+				Message: fmt.Sprintf("cannot load agents: %v", err),
+			}},
+		}
+		result.Files = append(result.Files, fileResult)
+		result.Summary.Error++
+		return result, nil
+	}
+
+	// Set agents source in result
+	result.AgentsSource = agentsResult.Source
+
+	// Convert agents to map for validation
+	validAgents := agents.ToMap(agentsResult.Agents)
+
+	// Check for issues in agents.yaml
+	if len(agentsResult.Issues) > 0 {
+		fileResult := FileResult{
+			File: "agents.yaml",
+			Issues: []Issue{},
+		}
+		for _, issue := range agentsResult.Issues {
+			fileResult.Issues = append(fileResult.Issues, Issue{
+				Type:    issue.Type,
+				Field:   issue.Field,
+				Message: issue.Message,
+			})
+			if issue.Type == "error" {
+				result.Summary.Error++
+			}
+		}
+		result.Files = append(result.Files, fileResult)
+		// Continue with validation even if agents.yaml has issues
 	}
 
 	relPath, err := filepath.Rel(".", path)

@@ -119,7 +119,7 @@ func TestDryRun_CollisionErrorMode_Fails(t *testing.T) {
 	cfg := specpath.ResolvedConfig{
 		PathBaseDir:    ".deespec/specs/sbi",
 		SlugAllowChars: "a-z0-9-",
-		SlugMaxLength:  60,
+		SlugMaxRunes:  60,
 	}
 	existingPath, _ := specpath.ComputeSpecPath("TEST-COLL-001", "Test", cfg)
 	testutil.CreateSpecDirectory(t, existingPath)
@@ -205,7 +205,7 @@ func TestDryRun_CollisionSuffixMode_Succeeds(t *testing.T) {
 	cfg := specpath.ResolvedConfig{
 		PathBaseDir:    ".deespec/specs/sbi",
 		SlugAllowChars: "a-z0-9-",
-		SlugMaxLength:  60,
+		SlugMaxRunes:  60,
 	}
 	existingPath, _ := specpath.ComputeSpecPath("TEST-COLL-002", "Test", cfg)
 	testutil.CreateSpecDirectory(t, existingPath)

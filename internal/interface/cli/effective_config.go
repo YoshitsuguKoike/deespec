@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/YoshitsuguKoike/deespec/internal/buildinfo"
 	"gopkg.in/yaml.v3"
 )
 
@@ -179,15 +180,12 @@ func runPrintEffectiveConfig(cliCollisionMode, format string, compact, redactSec
 
 // buildEffectiveConfig converts ResolvedConfig to EffectiveConfig for output
 func buildEffectiveConfig(config *ResolvedConfig, policyFileFound bool, policyPath string) *EffectiveConfig {
-	// Get version (placeholder - in real implementation, this would come from build info)
-	version := "v0.1.12"
-
 	// Build metadata
 	meta := EffectiveConfigMeta{
 		PolicyFileFound: policyFileFound,
 		PolicyPath:      "",
 		SourcePriority:  []string{"cli", "policy", "defaults"},
-		Version:         version,
+		Version:         buildinfo.GetVersion(),
 		TsUTC:           time.Now().UTC().Format(time.RFC3339Nano),
 	}
 

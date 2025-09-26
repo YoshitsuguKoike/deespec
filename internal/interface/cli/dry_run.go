@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/YoshitsuguKoike/deespec/internal/buildinfo"
 	"gopkg.in/yaml.v3"
 )
 
@@ -266,7 +267,7 @@ func buildDryRunReport(
 	meta := DryRunMeta{
 		SchemaVersion:   1,
 		TsUTC:          now.Format(time.RFC3339Nano),
-		Version:        "v0.1.12", // Placeholder
+		Version:        buildinfo.GetVersion(),
 		PolicyFileFound: policyFileFound,
 		PolicyPath:     "",
 		PolicySHA256:   policySHA256,
@@ -359,7 +360,7 @@ func buildErrorReport(err error, message string, config *ResolvedConfig, policyF
 	meta := DryRunMeta{
 		SchemaVersion:   1,
 		TsUTC:          now.Format(time.RFC3339Nano),
-		Version:        "v0.1.12",
+		Version:        buildinfo.GetVersion(),
 		PolicyFileFound: policyFileFound,
 		PolicyPath:     "",
 		PolicySHA256:   policySHA256,

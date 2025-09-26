@@ -311,7 +311,12 @@ func ResolveRegisterConfig(cliCollisionMode string, policy *RegisterPolicy) (*Re
 	config.JournalRecordInputBytes = policy.Journal.RecordInputBytes
 
 	// Logging configuration
-	config.StderrLevel = strings.ToLower(policy.Logging.StderrLevelDefault)
+	// Check for CLI override via environment variable (set by --stderr-level flag)
+	if envLevel := os.Getenv("DEESPEC_STDERR_LEVEL"); envLevel != "" {
+		config.StderrLevel = strings.ToLower(envLevel)
+	} else {
+		config.StderrLevel = strings.ToLower(policy.Logging.StderrLevelDefault)
+	}
 
 	// Ensure base directory is always set (critical for path resolution)
 	if strings.TrimSpace(config.PathBaseDir) == "" {

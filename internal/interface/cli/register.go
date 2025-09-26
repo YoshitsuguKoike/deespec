@@ -77,12 +77,18 @@ func NewRegisterCommand() *cobra.Command {
 	var compact bool
 	var redactSecrets bool
 	var dryRun bool
+	var stderrLevel string
 
 	cmd := &cobra.Command{
 		Use:   "register",
 		Short: "Register a new SBI specification",
 		Long:  "Register a new SBI specification from stdin or file input",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Apply stderr level immediately if specified
+			if stderrLevel != "" {
+				// This will be used in log buffer and configuration
+				os.Setenv("DEESPEC_STDERR_LEVEL", stderrLevel)
+			}
 			// Handle print-effective-config first (no side effects)
 			if printEffectiveConfig {
 				return runPrintEffectiveConfig(onCollision, format, compact, redactSecrets)
@@ -103,6 +109,7 @@ func NewRegisterCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&compact, "compact", false, "Use compact format (single line JSON)")
 	cmd.Flags().BoolVar(&redactSecrets, "redact-secrets", true, "Redact sensitive values in output")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate registration without side effects")
+	cmd.Flags().StringVar(&stderrLevel, "stderr-level", "", "Set log level (off|error|warn|info|debug)")
 
 	return cmd
 }
@@ -533,10 +540,16 @@ func validateSpecWithConfig(spec *RegisterSpec, config *ResolvedConfig) Validati
 // slugifyTitleWithConfig converts a title to a safe slug using policy settings
 // This function delegates to the single source of truth in specpath package
 func slugifyTitleWithConfig(title string, config *ResolvedConfig) string {
-	// Convert ResolvedConfig to specpath.ResolvedConfig
+	// Convert ResolvedConfig to specpath.ResolvedConfig with all slug fields
 	specCfg := specpath.ResolvedConfig{
-		SlugAllowChars: config.SlugAllow,
-		SlugMaxLength:  config.SlugMaxRunes,
+		// Slug policy fields - complete propagation
+		SlugNFKC:                  config.SlugNFKC,
+		SlugLowercase:             config.SlugLowercase,
+		SlugAllowChars:            config.SlugAllow,
+		SlugMaxRunes:              config.SlugMaxRunes,
+		SlugFallback:              config.SlugFallback,
+		SlugWindowsReservedSuffix: config.SlugWindowsReservedSuffix,
+		SlugTrimTrailingDotSpace:  config.SlugTrimTrailingDotSpace,
 	}
 
 	// Use the single source of truth for slug generation

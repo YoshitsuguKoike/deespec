@@ -12,8 +12,17 @@ import (
 // ResolvedConfig represents the configuration for spec path computation
 type ResolvedConfig struct {
 	PathBaseDir       string
-	SlugAllowChars    string
-	SlugMaxLength     int
+
+	// Slug policy (complete propagation from register policy)
+	SlugNFKC                  bool   // Apply NFKC normalization
+	SlugLowercase             bool   // Convert to lowercase
+	SlugAllowChars            string // Allowed characters (e.g., "a-z0-9-")
+	SlugMaxRunes              int    // Maximum length in runes
+	SlugFallback              string // Fallback when slug is empty (e.g., "spec")
+	SlugWindowsReservedSuffix string // Suffix for Windows reserved names (e.g., "-x")
+	SlugTrimTrailingDotSpace  bool   // Remove trailing dots and spaces
+
+	// Collision handling
 	CollisionMode     string
 	SuffixLimit       int
 }
@@ -68,11 +77,15 @@ func ComputeSpecPath(id, title string, cfg ResolvedConfig) (string, error) {
 // Following REG-003 rules: NFKC normalization, lowercase, allowed chars only
 // This is the single source of truth for slug generation
 func SlugifyTitle(title string, cfg ResolvedConfig) string {
-	// Apply NFKC normalization
-	normalized := norm.NFKC.String(title)
+	// Apply NFKC normalization if enabled
+	if cfg.SlugNFKC {
+		title = norm.NFKC.String(title)
+	}
 
-	// Convert to lowercase
-	lower := strings.ToLower(normalized)
+	// Convert to lowercase if enabled
+	if cfg.SlugLowercase {
+		title = strings.ToLower(title)
+	}
 
 	// Build allowed character set
 	allowed := make(map[rune]bool)
@@ -102,7 +115,7 @@ func SlugifyTitle(title string, cfg ResolvedConfig) string {
 
 	// Filter characters
 	var result strings.Builder
-	for _, r := range lower {
+	for _, r := range title {
 		if allowed[r] {
 			result.WriteRune(r)
 		} else if r > 127 {
@@ -137,10 +150,15 @@ func SlugifyTitle(title string, cfg ResolvedConfig) string {
 	// Trim hyphens from start and end
 	slug = strings.Trim(slug, "-")
 
-	// Apply length limit (default 60 runes)
-	maxLen := cfg.SlugMaxLength
+	// Remove trailing dots and spaces if configured
+	if cfg.SlugTrimTrailingDotSpace {
+		slug = strings.TrimRight(slug, ". ")
+	}
+
+	// Apply length limit
+	maxLen := cfg.SlugMaxRunes
 	if maxLen == 0 {
-		maxLen = 60
+		maxLen = 60 // Default
 	}
 
 	if len([]rune(slug)) > maxLen {
@@ -150,22 +168,32 @@ func SlugifyTitle(title string, cfg ResolvedConfig) string {
 		slug = strings.TrimRight(slug, "-")
 	}
 
-	// Handle empty slug case
+	// Handle empty slug case - use fallback
 	if slug == "" {
-		slug = "untitled"
+		slug = cfg.SlugFallback
+		if slug == "" {
+			slug = "spec" // Ultimate fallback
+		}
 	}
 
-	// Check for reserved names
-	reserved := map[string]bool{
-		"con": true, "prn": true, "aux": true, "nul": true,
-		"com1": true, "com2": true, "com3": true, "com4": true,
-		"lpt1": true, "lpt2": true, "lpt3": true,
-	}
-	if reserved[slug] {
-		slug = slug + "-spec"
+	// Check for Windows reserved names and add suffix if configured
+	if cfg.SlugWindowsReservedSuffix != "" && isWindowsReserved(slug) {
+		slug = slug + cfg.SlugWindowsReservedSuffix
 	}
 
 	return slug
+}
+
+// isWindowsReserved checks if a name is a Windows reserved filename
+func isWindowsReserved(name string) bool {
+	reserved := map[string]bool{
+		"con": true, "prn": true, "aux": true, "nul": true,
+		"com1": true, "com2": true, "com3": true, "com4": true,
+		"com5": true, "com6": true, "com7": true, "com8": true, "com9": true,
+		"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true,
+		"lpt5": true, "lpt6": true, "lpt7": true, "lpt8": true, "lpt9": true,
+	}
+	return reserved[strings.ToLower(name)]
 }
 
 // isAccentedLatin checks if a rune is an accented Latin character

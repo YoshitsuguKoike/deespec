@@ -26,7 +26,7 @@ jobs:
           else
             echo "WARNING: journal.ndjson not created"
             # Create minimal valid journal for CI to continue
-            echo '{"ts":"2025-01-01T00:00:00Z","turn":0,"step":"init","decision":"","elapsed_ms":0,"error":"ci-test","artifacts":[]}' > journal.ndjson
+            echo '{"ts":"2025-01-01T00:00:00Z","turn":0,"step":"init","decision":"PENDING","elapsed_ms":0,"error":"ci-test","artifacts":[]}' > journal.ndjson
           fi
       - name: Verify NDJSON schema (robust)
         run: bash scripts/verify_journal.sh tmp/journal.ndjson

@@ -1,0 +1,9 @@
+id: "{assign_id}"   # 自動採番
+title: "[FB] {parent_id}"
+priority: {prio}
+deliverables:
+  - ".deespec/var/artifacts/turn{turn}/feedback.md"
+acceptance:
+  - "feedback.md に改善点と次アクションが箇条書きで記載されている"
+notes:
+  - "親={parent_id} 反復={feedback_count}/{max_feedback}"

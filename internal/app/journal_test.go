@@ -100,8 +100,8 @@ func TestNormalizeJournalEntryMap_FillsMissingKeys(t *testing.T) {
 	if normalized["step"] != "unknown" {
 		t.Error("step should default to 'unknown'")
 	}
-	if normalized["decision"] != "" {
-		t.Error("decision should default to empty string")
+	if normalized["decision"] != "PENDING" {
+		t.Error("decision should default to 'PENDING'")
 	}
 	if normalized["elapsed_ms"] != 0 {
 		t.Error("elapsed_ms should default to 0")

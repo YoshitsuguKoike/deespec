@@ -48,3 +48,4 @@ state.lock
 /.deespec/var/*
 !/.deespec/var/.keep
 
+tmp/

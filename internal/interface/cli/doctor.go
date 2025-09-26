@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,7 +12,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+	"github.com/YoshitsuguKoike/deespec/internal/app"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
+	"github.com/YoshitsuguKoike/deespec/internal/workflow"
 )
 
 // DoctorJSON represents the JSON output structure for doctor command
@@ -35,30 +39,199 @@ func newDoctorCmd() *cobra.Command {
 			if jsonOutput {
 				return runDoctorJSON()
 			}
+			paths := app.GetPaths()
 			cfg := config.Load()
 			fmt.Println("AgentBin:", cfg.AgentBin)
-			fmt.Println("ArtifactsDir:", cfg.ArtifactsDir)
+			fmt.Println("ArtifactsDir:", paths.Artifacts)  // Use paths instead of cfg
 			fmt.Println("Timeout:", cfg.Timeout)
+			fmt.Println("DeespecHome:", paths.Home)
 
 			if _, err := exec.LookPath(cfg.AgentBin); err != nil {
 				fmt.Printf("WARN: %s not found in PATH\n", cfg.AgentBin)
 			} else {
 				fmt.Printf("OK: %s found\n", cfg.AgentBin)
 			}
-			if err := os.MkdirAll(cfg.ArtifactsDir, 0o755); err != nil {
+			if err := os.MkdirAll(paths.Artifacts, 0o755); err != nil {
 				return fmt.Errorf("artifacts dir error: %w", err)
 			}
-			probeFile := filepath.Join(cfg.ArtifactsDir, ".probe")
+			probeFile := filepath.Join(paths.Var, ".probe")
 			if f, err := os.Create(probeFile); err != nil {
 				return fmt.Errorf("write check failed: %w", err)
 			} else {
 				f.Close()
 				os.Remove(probeFile) // Clean up probe file
 			}
-			fmt.Println("OK: write permission in artifacts dir")
+			fmt.Println("OK: write permission in var dir")
+
+			// Check workflow.yaml exists and validate
+			if _, err := os.Stat(paths.Workflow); err != nil {
+				fmt.Printf("WARN: workflow.yaml not found at %s\n", paths.Workflow)
+			} else {
+				// Try to load and validate workflow
+				ctx := context.Background()
+				wfPath := paths.Workflow
+				// Check for test override
+				if envPath := os.Getenv("DEESPEC_WORKFLOW"); envPath != "" {
+					wfPath = envPath
+				}
+				wf, err := workflow.LoadWorkflow(ctx, wfPath)
+				if err != nil {
+					fmt.Printf("ERROR: workflow validation failed: %v\n", err)
+				} else {
+					// Display with supported agents and placeholders
+					// Format agents list
+					agentsList := fmt.Sprintf("%q", workflow.AllowedAgents[0])
+					for i := 1; i < len(workflow.AllowedAgents); i++ {
+						agentsList += fmt.Sprintf(",%q", workflow.AllowedAgents[i])
+					}
+					// Format placeholders list
+					placeholdersList := fmt.Sprintf("%q", workflow.Allowed[0])
+					for i := 1; i < len(workflow.Allowed); i++ {
+						placeholdersList += fmt.Sprintf(",%q", workflow.Allowed[i])
+					}
+					// Get prompt size limit
+					sizeLimit := wf.Constraints.MaxPromptKB
+					if sizeLimit <= 0 {
+						sizeLimit = workflow.DefaultMaxPromptKB
+					}
+					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only; agents=[%s]; placeholders=[%s]; prompt_size_limit=%dKB)\n", agentsList, placeholdersList, sizeLimit)
+
+					// Check for decision.regex on review step
+					for _, step := range wf.Steps {
+						if step.ID == "review" && step.CompiledDecision != nil {
+							pattern := ""
+							if step.Decision != nil {
+								pattern = step.Decision.Regex
+							}
+							if pattern == "" {
+								pattern = workflow.DefaultDecisionRegex
+							}
+							fmt.Printf("OK: decision.regex compiled for review (pattern='%s')\n", pattern)
+							break
+						}
+					}
+
+					// Check if prompt files exist and are readable
+					allPromptsOK := true
+					for _, step := range wf.Steps {
+						if _, err := os.Stat(step.ResolvedPromptPath); err != nil {
+							fmt.Printf("ERROR: prompt_path not found/readable: %s (%v)\n", step.ResolvedPromptPath, err)
+							allPromptsOK = false
+						}
+					}
+					if allPromptsOK && len(wf.Steps) > 0 {
+						fmt.Printf("OK: All prompt files found and accessible\n")
+					}
+				}
+			}
+
+			// Check state.json exists and validate schema
+			stateInfo := ""
+			if err := checkStateJSON(paths.State); err != nil {
+				if os.IsNotExist(err) {
+					fmt.Printf("INFO: state.json not found at %s (run 'deespec init' first)\n", paths.State)
+				} else if strings.Contains(err.Error(), "WARN:") {
+					fmt.Printf("%v\n", err)
+				} else {
+					fmt.Printf("ERROR: state.json validation failed: %v\n", err)
+				}
+			} else {
+				fmt.Printf("OK: state.json found and valid at %s\n", paths.State)
+				// Load state for summary display
+				if data, err := os.ReadFile(paths.State); err == nil {
+					var state map[string]interface{}
+					if json.Unmarshal(data, &state) == nil {
+						step := state["step"]
+						turn := state["turn"]
+						stateInfo = fmt.Sprintf("State: step=%v turn=%v", step, turn)
+					}
+				}
+			}
+
+			// Check health.json schema
+			if err := checkHealthJSON(paths.Health); err != nil {
+				if os.IsNotExist(err) {
+					fmt.Printf("INFO: health.json not found at %s\n", paths.Health)
+				} else if strings.Contains(err.Error(), "WARN:") {
+					fmt.Printf("%v\n", err)
+				} else {
+					fmt.Printf("ERROR: health.json validation failed: %v\n", err)
+				}
+			} else {
+				fmt.Printf("OK: health.json found and valid\n")
+			}
+
+			// Check journal (INFO if not exists, not ERROR)
+			if _, err := os.Stat(paths.Journal); err != nil {
+				fmt.Printf("INFO: journal.ndjson not found (first run not executed yet)\n")
+			} else {
+				// Validate NDJSON format
+				if err := checkJournalNDJSON(paths.Journal); err != nil {
+					fmt.Printf("WARN: journal.ndjson format issue: %v\n", err)
+				} else {
+					fmt.Printf("OK: journal.ndjson found and valid at %s\n", paths.Journal)
+				}
+			}
+
+			// Check review_policy.yaml exists
+			policyPath := filepath.Join(paths.Policies, "review_policy.yaml")
+			if _, err := os.Stat(policyPath); err != nil {
+				fmt.Printf("INFO: review_policy.yaml not found at %s\n", policyPath)
+			} else {
+				fmt.Printf("OK: review_policy.yaml found at %s\n", policyPath)
+			}
+
+			// Check specs directories
+			if err := checkWritable(paths.SpecsSBI); err != nil {
+				fmt.Printf("WARN: specs/sbi directory not writable: %v\n", err)
+			} else {
+				fmt.Printf("OK: specs/sbi directory is writable\n")
+			}
+
+			if err := checkWritable(paths.SpecsPBI); err != nil {
+				fmt.Printf("WARN: specs/pbi directory not writable: %v\n", err)
+			} else {
+				fmt.Printf("OK: specs/pbi directory is writable\n")
+			}
+
+			// Check optional templates (SBI-INIT-006 finalization)
+			templatesDir := filepath.Join(paths.Home, "templates")
+			if _, err := os.Stat(filepath.Join(templatesDir, "spec_feedback.yaml")); err != nil {
+				fmt.Printf("INFO: spec_feedback.yaml not found (will use built-in template)\n")
+			} else {
+				fmt.Printf("OK: spec_feedback.yaml template found\n")
+			}
+
+			// Check takeover template (SBI-INIT-007 addition)
+			if _, err := os.Stat(filepath.Join(templatesDir, "spec_takeover.yaml")); err != nil {
+				fmt.Printf("INFO: spec_takeover.yaml not found (will use built-in template)\n")
+			} else {
+				fmt.Printf("OK: spec_takeover.yaml template found\n")
+			}
+
+			// Check SBI meta template schema
+			if err := checkSBIMetaTemplate(filepath.Join(templatesDir, "spec_sbi_meta.yaml")); err != nil {
+				if os.IsNotExist(err) {
+					fmt.Printf("INFO: spec_sbi_meta.yaml not found (will use built-in template)\n")
+				} else {
+					fmt.Printf("WARN: spec_sbi_meta.yaml template issue: %v\n", err)
+				}
+			} else {
+				fmt.Printf("OK: spec_sbi_meta.yaml template schema valid\n")
+			}
+
+			// Check .gitignore for deespec block
+			checkGitignore()
 
 			// Check for scheduler (launchd/systemd)
 			checkScheduler()
+
+			// Print summary information
+			fmt.Println("\n--- Summary ---")
+			if stateInfo != "" {
+				fmt.Println(stateInfo)
+			}
+			fmt.Println("Logic: ok = (last journal.error == \"\")")
 
 			return nil
 		},
@@ -66,6 +239,22 @@ func newDoctorCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	return cmd
+}
+
+func checkGitignore() {
+	gitignorePath := ".gitignore"
+	if data, err := os.ReadFile(gitignorePath); err == nil {
+		content := string(data)
+		if strings.Contains(content, "# >>> deespec v1") {
+			fmt.Println("INFO: .gitignore deespec block present (v1)")
+		} else {
+			fmt.Println("INFO: .gitignore deespec block not found (recommended)")
+		}
+	} else if os.IsNotExist(err) {
+		fmt.Println("INFO: .gitignore not found (will be created by 'deespec init')")
+	} else {
+		fmt.Printf("WARN: Cannot read .gitignore: %v\n", err)
+	}
 }
 
 func checkScheduler() {
@@ -114,6 +303,29 @@ func checkScheduler() {
 	}
 }
 
+func checkWritable(dir string) error {
+	if _, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			// Try to create the directory
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return fmt.Errorf("cannot create directory: %w", err)
+			}
+		} else {
+			return fmt.Errorf("cannot access directory: %w", err)
+		}
+	}
+
+	// Test write permission
+	testFile := filepath.Join(dir, ".write_test")
+	if f, err := os.Create(testFile); err != nil {
+		return fmt.Errorf("not writable: %w", err)
+	} else {
+		f.Close()
+		os.Remove(testFile)
+	}
+	return nil
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
 }
@@ -129,6 +341,7 @@ func containsHelper(s, substr string) bool {
 
 func runDoctorJSON() error {
 	cfg := config.Load()
+	paths := app.GetPaths()
 	result := DoctorJSON{
 		Runner:     "none",
 		Active:     false,
@@ -140,13 +353,17 @@ func runDoctorJSON() error {
 	// Check working directory
 	if wd, err := os.Getwd(); err == nil {
 		result.WorkingDir = wd
-		// Check write permission
-		probeFile := filepath.Join(wd, ".probe")
-		if f, err := os.Create(probeFile); err != nil {
-			result.Errors = append(result.Errors, "working_dir not writable")
+		// Check write permission in var directory
+		if err := os.MkdirAll(paths.Var, 0755); err == nil {
+			probeFile := filepath.Join(paths.Var, ".probe")
+			if f, err := os.Create(probeFile); err != nil {
+				result.Errors = append(result.Errors, "var_dir not writable")
+			} else {
+				f.Close()
+				os.Remove(probeFile)
+			}
 		} else {
-			f.Close()
-			os.Remove(probeFile)
+			result.Errors = append(result.Errors, "cannot create var directory")
 		}
 	}
 
@@ -250,4 +467,145 @@ func checkSystemdJSON(result *DoctorJSON) {
 			result.StartIntervalSec = 300
 		}
 	}
+}
+
+// checkStateJSON validates the state.json schema
+func checkStateJSON(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	var state map[string]interface{}
+	if err := json.Unmarshal(data, &state); err != nil {
+		return fmt.Errorf("invalid JSON format: %w", err)
+	}
+
+	// Check required fields
+	if _, ok := state["version"].(float64); !ok {
+		return fmt.Errorf("missing or invalid 'version' field (must be number)")
+	}
+
+	// Check for step field (v1 uses step, not current)
+	if _, hasStep := state["step"].(string); !hasStep {
+		if _, hasCurrent := state["current"]; hasCurrent {
+			return fmt.Errorf(".deespec/var/state.json uses old 'current' field - should use 'step' (e.g., \"plan\")")
+		}
+		return fmt.Errorf("missing 'step' field (e.g., \"plan\")")
+	}
+
+	// Validate step value (WARN level for invalid values)
+	step := state["step"].(string)
+	validSteps := map[string]bool{
+		"plan": true, "implement": true, "test": true, "review": true, "done": true,
+	}
+	if !validSteps[step] {
+		// Return a special error type to indicate warning level
+		return fmt.Errorf("WARN: .deespec/var/state.json has invalid step '%s' (expected: plan|implement|test|review|done)", step)
+	}
+
+	if _, ok := state["turn"].(float64); !ok {
+		return fmt.Errorf("missing or invalid 'turn' field (must be number)")
+	}
+
+	return nil
+}
+
+// checkHealthJSON validates the health.json schema
+func checkHealthJSON(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	var health map[string]interface{}
+	if err := json.Unmarshal(data, &health); err != nil {
+		return fmt.Errorf("invalid JSON format: %w", err)
+	}
+
+	// Check required fields
+	requiredFields := []string{"ts", "turn", "step", "ok", "error"}
+	for _, field := range requiredFields {
+		if _, ok := health[field]; !ok {
+			return fmt.Errorf("missing required field '%s'", field)
+		}
+	}
+
+	// Validate types
+	tsStr, ok := health["ts"].(string)
+	if !ok {
+		return fmt.Errorf("'ts' must be a string")
+	}
+
+	// Check timestamp format (should be RFC3339-ish with Z ending)
+	if !strings.HasSuffix(tsStr, "Z") {
+		return fmt.Errorf("WARN: health.ts should be in UTC (RFC3339Nano format ending with 'Z')")
+	}
+	// Check for nanosecond precision
+	if !strings.Contains(tsStr, ".") && !strings.Contains(tsStr, "T") {
+		return fmt.Errorf("WARN: health.ts should use RFC3339Nano precision")
+	}
+
+	if _, ok := health["turn"].(float64); !ok {
+		return fmt.Errorf("'turn' must be a number")
+	}
+	if _, ok := health["step"].(string); !ok {
+		return fmt.Errorf("'step' must be a string")
+	}
+	if _, ok := health["ok"].(bool); !ok {
+		return fmt.Errorf("'ok' must be a boolean")
+	}
+	if _, ok := health["error"].(string); !ok {
+		return fmt.Errorf("'error' must be a string")
+	}
+
+	return nil
+}
+
+// checkJournalNDJSON validates NDJSON format
+func checkJournalNDJSON(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	if len(data) == 0 {
+		return nil // Empty journal is valid
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		if line == "" {
+			continue // Skip empty lines
+		}
+		var entry map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			return fmt.Errorf("invalid JSON at line %d: %w", i+1, err)
+		}
+	}
+
+	return nil
+}
+
+// checkSBIMetaTemplate validates the SBI meta.yaml template schema
+func checkSBIMetaTemplate(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	var meta map[string]interface{}
+	if err := yaml.Unmarshal(data, &meta); err != nil {
+		return fmt.Errorf("invalid YAML format: %w", err)
+	}
+
+	// Check required fields for SBI meta template
+	requiredFields := []string{"id", "title", "priority", "status", "pbi_id"}
+	for _, field := range requiredFields {
+		if _, ok := meta[field]; !ok {
+			return fmt.Errorf("missing required field '%s'", field)
+		}
+	}
+
+	return nil
 }

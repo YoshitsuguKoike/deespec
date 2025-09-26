@@ -77,6 +77,7 @@ func NewRegisterCommand() *cobra.Command {
 	var format string
 	var compact bool
 	var redactSecrets bool
+	var dryRun bool
 
 	cmd := &cobra.Command{
 		Use:   "register",
@@ -86,6 +87,10 @@ func NewRegisterCommand() *cobra.Command {
 			// Handle print-effective-config first (no side effects)
 			if printEffectiveConfig {
 				return runPrintEffectiveConfig(onCollision, format, compact, redactSecrets)
+			}
+			// Handle dry-run mode
+			if dryRun {
+				return runDryRun(stdinFlag, fileFlag, onCollision, format, compact)
 			}
 			return runRegisterWithFlags(cmd, args, stdinFlag, fileFlag, onCollision)
 		},
@@ -98,6 +103,7 @@ func NewRegisterCommand() *cobra.Command {
 	cmd.Flags().StringVar(&format, "format", "json", "Output format for effective config (json|yaml)")
 	cmd.Flags().BoolVar(&compact, "compact", false, "Use compact format (single line JSON)")
 	cmd.Flags().BoolVar(&redactSecrets, "redact-secrets", true, "Redact sensitive values in output")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate registration without side effects")
 
 	return cmd
 }

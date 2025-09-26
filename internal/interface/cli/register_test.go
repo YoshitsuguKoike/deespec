@@ -246,7 +246,7 @@ title: No Labels Test`,
 
 			// Run command directly with flags
 			cmd := NewRegisterCommand()
-			_ = runRegisterWithFlags(cmd, []string{}, false, tmpFile)
+			_ = runRegisterWithFlags(cmd, []string{}, false, tmpFile, CollisionError)
 
 			w.Close()
 			errW.Close()
@@ -426,7 +426,7 @@ data: ` + strings.Repeat("a", MaxInputSize)
 	os.Stdout = w
 
 	cmd := NewRegisterCommand()
-	_ = runRegisterWithFlags(cmd, []string{}, false, tmpFile)
+	_ = runRegisterWithFlags(cmd, []string{}, false, tmpFile, CollisionError)
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -450,7 +450,7 @@ data: ` + strings.Repeat("a", MaxInputSize)
 	}
 }
 
-func TestSlugify(t *testing.T) {
+func TestBuildSpecPath(t *testing.T) {
 	tests := []struct {
 		id       string
 		title    string
@@ -474,7 +474,7 @@ func TestSlugify(t *testing.T) {
 		{
 			id:       "SBI-TEST-004",
 			title:    "Title_With_Underscores",
-			expected: ".deespec/specs/sbi/SBI-TEST-004_titlewithunderscores",
+			expected: ".deespec/specs/sbi/SBI-TEST-004_title-with-underscores",
 		},
 		{
 			id:       "SBI-TEST-005",
@@ -485,7 +485,10 @@ func TestSlugify(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
-			result := calculateSpecPath(tt.id, tt.title)
+			result, err := buildSafeSpecPath(tt.id, tt.title)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if result != tt.expected {
 				t.Errorf("expected %s, got %s", tt.expected, result)
 			}

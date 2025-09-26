@@ -12,8 +12,10 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/text/unicode/norm"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,7 +25,26 @@ const (
 	MaxTitleLength = 200
 	MaxLabelCount  = 32
 	MaxInputSize   = 64 * 1024 // 64KB
+	MaxPathBytes   = 240       // Max path length in bytes
+	MaxSlugLength  = 60        // Max slug length in runes
 )
+
+// Collision handling modes
+const (
+	CollisionError   = "error"
+	CollisionSuffix  = "suffix"
+	CollisionReplace = "replace"
+)
+
+// Windows reserved names (case-insensitive)
+var windowsReservedNames = map[string]bool{
+	"con": true, "prn": true, "aux": true, "nul": true,
+	"com1": true, "com2": true, "com3": true, "com4": true,
+	"com5": true, "com6": true, "com7": true, "com8": true,
+	"com9": true, "lpt1": true, "lpt2": true, "lpt3": true,
+	"lpt4": true, "lpt5": true, "lpt6": true, "lpt7": true,
+	"lpt8": true, "lpt9": true,
+}
 
 // RegisterSpec represents the input specification for registration
 type RegisterSpec struct {
@@ -51,25 +72,27 @@ type ValidationResult struct {
 func NewRegisterCommand() *cobra.Command {
 	var stdinFlag bool
 	var fileFlag string
+	var onCollision string
 
 	cmd := &cobra.Command{
 		Use:   "register",
 		Short: "Register a new SBI specification",
 		Long:  "Register a new SBI specification from stdin or file input",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runRegisterWithFlags(cmd, args, stdinFlag, fileFlag)
+			return runRegisterWithFlags(cmd, args, stdinFlag, fileFlag, onCollision)
 		},
 	}
 
 	cmd.Flags().BoolVar(&stdinFlag, "stdin", false, "Read input from stdin")
 	cmd.Flags().StringVar(&fileFlag, "file", "", "Read input from file")
+	cmd.Flags().StringVar(&onCollision, "on-collision", CollisionError, "How to handle path collisions (error|suffix|replace)")
 
 	return cmd
 }
 
 var exitFunc = os.Exit
 
-func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fileFlag string) error {
+func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fileFlag string, onCollision string) error {
 	// Initialize stderr logger
 	stderrLog := log.New(os.Stderr, "", 0)
 
@@ -150,25 +173,80 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 		return nil
 	}
 
-	// Calculate spec path
-	specPath := calculateSpecPath(spec.ID, spec.Title)
+	// Validate collision mode
+	if onCollision != CollisionError && onCollision != CollisionSuffix && onCollision != CollisionReplace {
+		result := RegisterResult{
+			OK:       false,
+			ID:       spec.ID,
+			SpecPath: "",
+			Warnings: []string{},
+			Error:    fmt.Sprintf("invalid --on-collision value: %s (must be error|suffix|replace)", onCollision),
+		}
+		stderrLog.Printf("ERROR: invalid collision mode: %s\n", onCollision)
+		printJSONLine(result)
+		exitFunc(1)
+		return nil
+	}
+
+	// Calculate and validate spec path
+	specPath, err := buildSafeSpecPath(spec.ID, spec.Title)
+	if err != nil {
+		result := RegisterResult{
+			OK:       false,
+			ID:       spec.ID,
+			SpecPath: "",
+			Warnings: []string{},
+			Error:    fmt.Sprintf("failed to build spec path: %v", err),
+		}
+		stderrLog.Printf("ERROR: %v\n", err)
+		printJSONLine(result)
+		exitFunc(1)
+		return nil
+	}
+
+	// Resolve collision
+	finalPath, collisionWarning, err := resolveCollision(specPath, onCollision)
+	if err != nil {
+		result := RegisterResult{
+			OK:       false,
+			ID:       spec.ID,
+			SpecPath: "",
+			Warnings: []string{},
+			Error:    err.Error(),
+		}
+		stderrLog.Printf("ERROR: %v\n", err)
+		printJSONLine(result)
+		exitFunc(1)
+		return nil
+	}
+
+	// Add collision warning if any
+	if collisionWarning != "" {
+		validationResult.Warnings = append(validationResult.Warnings, collisionWarning)
+		stderrLog.Printf("WARN: %s\n", collisionWarning)
+	}
 
 	// Log warnings to stderr
 	for _, warning := range validationResult.Warnings {
-		stderrLog.Printf("WARN: %s\n", warning)
+		if warning != collisionWarning { // Don't log twice
+			stderrLog.Printf("WARN: %s\n", warning)
+		}
 	}
+
+	// Log success info
+	stderrLog.Printf("INFO: spec_path resolved: %s\n", finalPath)
 
 	// Success result
 	result := RegisterResult{
 		OK:       true,
 		ID:       spec.ID,
-		SpecPath: specPath,
+		SpecPath: finalPath,
 		Warnings: validationResult.Warnings,
 	}
 	printJSONLine(result)
 
-	// Append to journal
-	if err := appendToJournal(spec.ID, true, validationResult.Warnings); err != nil {
+	// Append to journal with spec_path
+	if err := appendToJournalWithPath(spec.ID, true, validationResult.Warnings, finalPath); err != nil {
 		stderrLog.Printf("WARN: failed to append to journal: %v\n", err)
 	}
 
@@ -338,17 +416,219 @@ func validateSpecEnhanced(spec *RegisterSpec) ValidationResult {
 	return result
 }
 
-func calculateSpecPath(id, title string) string {
-	// Slugify title: lowercase and replace spaces with hyphens
-	slug := strings.ToLower(title)
-	slug = strings.ReplaceAll(slug, " ", "-")
-	// Remove non-alphanumeric characters except hyphens
-	slug = regexp.MustCompile(`[^a-z0-9-]+`).ReplaceAllString(slug, "")
-	// Remove leading/trailing hyphens and collapse multiple hyphens
-	slug = regexp.MustCompile(`^-+|-+$`).ReplaceAllString(slug, "")
-	slug = regexp.MustCompile(`-+`).ReplaceAllString(slug, "-")
+// slugifyTitle converts a title to a safe slug following strict rules
+func slugifyTitle(title string) string {
+	// NFKC normalization
+	title = norm.NFKC.String(title)
+	title = strings.ToLower(title)
 
-	return fmt.Sprintf(".deespec/specs/sbi/%s_%s", id, slug)
+	// Build slug with only allowed characters
+	var b strings.Builder
+	var lastDash bool
+	for _, r := range title {
+		switch {
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
+			lastDash = false
+		default:
+			// Replace any other character with dash
+			if !lastDash && b.Len() > 0 {
+				b.WriteByte('-')
+				lastDash = true
+			}
+		}
+	}
+
+	slug := b.String()
+	slug = strings.Trim(slug, "-")
+
+	// Default if empty
+	if slug == "" {
+		slug = "spec"
+	}
+
+	// Check for Windows reserved names
+	if isWindowsReserved(slug) {
+		slug += "-x"
+	}
+
+	// Remove trailing dots and spaces (Windows compatibility)
+	slug = strings.TrimRight(slug, ". ")
+
+	// Length limit (60 runes)
+	if utf8.RuneCountInString(slug) > MaxSlugLength {
+		runes := []rune(slug)
+		slug = string(runes[:MaxSlugLength])
+		slug = strings.Trim(slug, "-")
+	}
+
+	return slug
+}
+
+// isWindowsReserved checks if a name is a Windows reserved name
+func isWindowsReserved(name string) bool {
+	lower := strings.ToLower(name)
+	return windowsReservedNames[lower]
+}
+
+// buildSafeSpecPath builds and validates a safe spec path
+func buildSafeSpecPath(id, title string) (string, error) {
+	slug := slugifyTitle(title)
+	dirName := fmt.Sprintf("%s_%s", id, slug)
+
+	// Clean the directory name
+	dirName = filepath.Clean(dirName)
+
+	// Check for dangerous patterns
+	if dirName == "." || dirName == ".." || strings.Contains(dirName, "..") {
+		return "", fmt.Errorf("path traversal detected in directory name")
+	}
+
+	// Check for path separators (should not exist after slugification)
+	if strings.ContainsAny(dirName, "/\\") {
+		return "", fmt.Errorf("path separator detected in directory name")
+	}
+
+	// Build the full path
+	basePath := ".deespec/specs/sbi"
+	fullPath := filepath.Join(basePath, dirName)
+
+	// Validate path length
+	if len([]byte(fullPath)) > MaxPathBytes {
+		// Try to shorten the slug
+		maxSlugBytes := MaxPathBytes - len([]byte(basePath)) - len([]byte(id)) - 2 // -2 for "_/"
+		if maxSlugBytes < 10 {
+			return "", fmt.Errorf("path would exceed maximum length of %d bytes", MaxPathBytes)
+		}
+		// Truncate slug to fit
+		for len([]byte(slug)) > maxSlugBytes && len(slug) > 1 {
+			runes := []rune(slug)
+			slug = string(runes[:len(runes)-1])
+		}
+		slug = strings.Trim(slug, "-")
+		dirName = fmt.Sprintf("%s_%s", id, slug)
+		fullPath = filepath.Join(basePath, dirName)
+	}
+
+	// Additional safety check: ensure path is within base directory
+	if !isPathSafe(basePath, fullPath) {
+		return "", fmt.Errorf("path traversal detected")
+	}
+
+	return fullPath, nil
+}
+
+// isPathSafe checks if a path is safely within the base directory
+func isPathSafe(base, path string) bool {
+	// Clean both paths
+	base = filepath.Clean(base)
+	path = filepath.Clean(path)
+
+	// Get absolute paths
+	absBase, err := filepath.Abs(base)
+	if err != nil {
+		return false
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+
+	// Check if path is within base
+	rel, err := filepath.Rel(absBase, absPath)
+	if err != nil {
+		return false
+	}
+
+	// Check for .. in relative path
+	if strings.Contains(rel, "..") {
+		return false
+	}
+
+	return true
+}
+
+// checkForSymlinks checks if any component of the path is a symlink
+func checkForSymlinks(path string) error {
+	path = filepath.Clean(path)
+	parts := strings.Split(path, string(filepath.Separator))
+
+	current := ""
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		if current == "" {
+			current = part
+		} else {
+			current = filepath.Join(current, part)
+		}
+
+		info, err := os.Lstat(current)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Path doesn't exist yet, that's OK
+				return nil
+			}
+			return err
+		}
+
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("symlink detected in path: %s", current)
+		}
+	}
+
+	return nil
+}
+
+// resolveCollision handles path collisions according to the specified mode
+func resolveCollision(path string, mode string) (string, string, error) {
+	// First check for symlinks in the base path
+	if err := checkForSymlinks(filepath.Dir(path)); err != nil {
+		return "", "", err
+	}
+
+	switch mode {
+	case CollisionError:
+		if _, err := os.Stat(path); err == nil {
+			return "", "", fmt.Errorf("path already exists: %s", path)
+		}
+		return path, "", nil
+
+	case CollisionSuffix:
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return path, "", nil
+		}
+
+		// Try with suffixes _2 through _99
+		for i := 2; i <= 99; i++ {
+			newPath := fmt.Sprintf("%s_%d", path, i)
+			if _, err := os.Stat(newPath); os.IsNotExist(err) {
+				warning := fmt.Sprintf("collision resolved with suffix: _%d", i)
+				return newPath, warning, nil
+			}
+		}
+		return "", "", fmt.Errorf("exhausted suffix attempts (tried _2 through _99)")
+
+	case CollisionReplace:
+		if _, err := os.Stat(path); err == nil {
+			// For replace mode, we trust the path was already validated by buildSafeSpecPath
+			// Just verify it contains our expected base path
+			if !strings.Contains(path, "specs/sbi/") {
+				return "", "", fmt.Errorf("refusing to remove path outside specs/sbi: %s", path)
+			}
+
+			// Remove the existing directory
+			if err := os.RemoveAll(path); err != nil {
+				return "", "", fmt.Errorf("failed to remove existing path: %v", err)
+			}
+			return path, "replaced existing directory", nil
+		}
+		return path, "", nil
+
+	default:
+		return "", "", fmt.Errorf("invalid collision mode: %s", mode)
+	}
 }
 
 func printJSONLine(result RegisterResult) {
@@ -357,8 +637,8 @@ func printJSONLine(result RegisterResult) {
 	os.Stdout.Write([]byte("\n"))
 }
 
-// appendToJournal appends a registration event to the journal
-func appendToJournal(id string, ok bool, warnings []string) error {
+// appendToJournalWithPath appends a registration event to the journal with spec_path
+func appendToJournalWithPath(id string, ok bool, warnings []string, specPath string) error {
 	// Create journal directory if it doesn't exist
 	journalDir := ".deespec/var"
 	if err := os.MkdirAll(journalDir, 0755); err != nil {
@@ -394,10 +674,11 @@ func appendToJournal(id string, ok bool, warnings []string) error {
 		"error":      "",
 		"artifacts": []map[string]interface{}{
 			{
-				"type":     "register",
-				"id":       id,
-				"ok":       ok,
-				"warnings": warnings,
+				"type":      "register",
+				"id":        id,
+				"ok":        ok,
+				"warnings":  warnings,
+				"spec_path": specPath,
 			},
 		},
 	}

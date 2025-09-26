@@ -35,7 +35,7 @@ func buildPlanPrompt(st *State) string {
 }
 
 func buildImplementPrompt(st *State) string {
-	return "計画に基づき、実装の差分案を要点と一緒に提示せよ。\n"
+	return "計画に基づき、実装の差分案を要点と一緒に提示せよ。\n最後に「## Implementation Note」セクションを追加し、実装の要点を簡潔にまとめよ。\n"
 }
 
 func buildTestPrompt(st *State) string {
@@ -43,7 +43,7 @@ func buildTestPrompt(st *State) string {
 }
 
 func buildReviewPrompt(st *State) string {
-	return "以下をレビューし、最後に 'DECISION: OK' もしくは 'DECISION: NEEDS_CHANGES' を1行で出力せよ。\n- 計画/差分/テスト（要約可）\n"
+	return "以下をレビューし、最後に 'DECISION: OK' もしくは 'DECISION: NEEDS_CHANGES' を1行で出力せよ。\n- 計画/差分/テスト（要約可）\n\n最後に「## Review Note」セクションを追加し、レビューの要点と判断理由を記載せよ。\n"
 }
 
 func newRunCmd() *cobra.Command {
@@ -62,48 +62,6 @@ func newRunCmd() *cobra.Command {
 	return cmd
 }
 
-// generateReviewNote creates a review_note.md file for SBI-001
-func generateReviewNote(output string, turn int, decision string, turnDir string) (string, error) {
-	// TODO(human) - implement review note generation
-	// Extract summary from agent output and create review note with DECISION
-
-	// Create a brief summary of the review
-	lines := strings.Split(output, "\n")
-	summary := "## Review Summary\n\n"
-
-	// Take first few non-empty lines as summary (up to 5 lines)
-	lineCount := 0
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" && lineCount < 5 {
-			summary += "- " + trimmed + "\n"
-			lineCount++
-		}
-	}
-
-	// Add turn information
-	summary += fmt.Sprintf("\n## Turn Information\n\n")
-	summary += fmt.Sprintf("- Turn: %d\n", turn)
-	summary += fmt.Sprintf("- Timestamp: %s\n", time.Now().UTC().Format(time.RFC3339))
-
-	// Determine DECISION based on the decision parameter
-	finalDecision := "NEEDS_CHANGES"
-	if decision == "OK" || strings.Contains(strings.ToUpper(output), "APPROVED") ||
-	   strings.Contains(strings.ToUpper(output), "LOOKS GOOD") {
-		finalDecision = "OK"
-	}
-
-	// Add DECISION as the last line
-	summary += fmt.Sprintf("\nDECISION: %s", finalDecision)
-
-	// Write the review note
-	noteFile := filepath.Join(turnDir, "review_note.md")
-	if err := os.WriteFile(noteFile, []byte(summary), 0o644); err != nil {
-		return "", err
-	}
-
-	return noteFile, nil
-}
 
 func runOnce() error {
 	startTime := time.Now()
@@ -155,6 +113,11 @@ func runOnce() error {
 			errorMsg = err.Error()
 		} else {
 			output = result
+			// Extract and append implementation note to rolling file
+			noteBody := ExtractNoteBody(result, "implement")
+			if noteErr := AppendNote("implement", "PENDING", noteBody, st.Turn, time.Now()); noteErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to append impl_note: %v\n", noteErr)
+			}
 		}
 		next = nextStep("implement", "OK")
 
@@ -179,6 +142,11 @@ func runOnce() error {
 		} else {
 			output = result
 			decision = parseDecision(result)
+			// Extract and append review note to rolling file
+			noteBody := ExtractNoteBody(result, "review")
+			if noteErr := AppendNote("review", decision, noteBody, st.Turn, time.Now()); noteErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to append review_note: %v\n", noteErr)
+			}
 		}
 		next = nextStep("review", decision)
 
@@ -218,13 +186,23 @@ func runOnce() error {
 	}
 	st.LastArtifacts[stepName] = outFile
 
-	// 6) review_note.md生成（SBI-001: reviewステップ完了時）
-	artifacts := []string{outFile}
+	// 6) Build artifacts list with rolling note paths
+	artifacts := []interface{}{outFile}
+
+	// Add rolling note path for implement step
+	if st.Current == "implement" {
+		artifacts = append(artifacts, map[string]interface{}{
+			"type": "impl_note_rollup",
+			"path": ".deespec/var/artifacts/impl_note.md",
+		})
+	}
+
+	// Add rolling note path for review step
 	if st.Current == "review" {
-		// TODO(human) - implement generateReviewNote function
-		if noteFile, err := generateReviewNote(output, currentTurn, decision, turnDir); err == nil && noteFile != "" {
-			artifacts = append(artifacts, noteFile)
-		}
+		artifacts = append(artifacts, map[string]interface{}{
+			"type": "review_note_rollup",
+			"path": ".deespec/var/artifacts/review_note.md",
+		})
 	}
 
 	// 7) ジャーナル追記（currentTurnを使用）

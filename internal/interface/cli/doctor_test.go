@@ -407,6 +407,164 @@ steps:
 	}
 }
 
+// TestDoctorPlaceholderValidation tests placeholder validation (SBI-DR-003)
+func TestDoctorPlaceholderValidation(t *testing.T) {
+	tests := []struct {
+		name             string
+		content          string
+		stepID           string
+		expectErrors     []string
+		expectWarnings   []string
+	}{
+		{
+			name:    "valid placeholders only",
+			content: "Hello {project_name}, task {task_id} on turn {turn} in {language}",
+			stepID:  "test",
+			expectErrors: nil,
+			expectWarnings: nil,
+		},
+		{
+			name:    "empty placeholder",
+			content: "Hello {}, this is invalid",
+			stepID:  "test",
+			expectErrors: []string{"contains empty placeholder {} at line"},
+			expectWarnings: nil,
+		},
+		{
+			name:    "unknown placeholder",
+			content: "Hello {foo}, this is unknown",
+			stepID:  "test",
+			expectErrors: []string{"unknown placeholder {foo} at line"},
+			expectWarnings: nil,
+		},
+		{
+			name:    "placeholder in fenced code block (ignored)",
+			content: "```\n{foo} should be ignored\n```\nValid: {turn}",
+			stepID:  "test",
+			expectErrors: nil,
+			expectWarnings: nil,
+		},
+		{
+			name:    "placeholder in inline code (ignored)",
+			content: "Use `{foo}` in your template. Valid: {turn}",
+			stepID:  "test",
+			expectErrors: nil,
+			expectWarnings: nil,
+		},
+		{
+			name:    "escaped placeholder (ignored)",
+			content: "Literal \\{foo\\} should be ignored. Valid: {turn}",
+			stepID:  "test",
+			expectErrors: nil,
+			expectWarnings: nil,
+		},
+		{
+			name:    "mustache template (warning)",
+			content: "Hello {{name}}, this is mustache style",
+			stepID:  "test",
+			expectErrors: nil,
+			expectWarnings: []string{"contains non-standard {{name}} at line"},
+		},
+		{
+			name:    "invalid identifier",
+			content: "Hello {foo-bar}, this has invalid characters",
+			stepID:  "test",
+			expectErrors: []string{"invalid placeholder {foo-bar} at line"},
+			expectWarnings: nil,
+		},
+		{
+			name:    "whitespace placeholder",
+			content: "Hello {   }, this is empty with spaces",
+			stepID:  "test",
+			expectErrors: []string{"contains empty placeholder {} at line"},
+			expectWarnings: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errors, warnings := validatePlaceholders(tt.content, tt.stepID)
+
+			// Check errors
+			for _, expectedError := range tt.expectErrors {
+				found := false
+				for _, err := range errors {
+					if strings.Contains(err, expectedError) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected error containing %q, but got errors: %v", expectedError, errors)
+				}
+			}
+
+			// Check warnings
+			for _, expectedWarning := range tt.expectWarnings {
+				found := false
+				for _, warn := range warnings {
+					if strings.Contains(warn, expectedWarning) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected warning containing %q, but got warnings: %v", expectedWarning, warnings)
+				}
+			}
+
+			// Check no unexpected errors
+			if len(tt.expectErrors) == 0 && len(errors) > 0 {
+				t.Errorf("Expected no errors, but got: %v", errors)
+			}
+
+			// Check no unexpected warnings
+			if len(tt.expectWarnings) == 0 && len(warnings) > 0 {
+				t.Errorf("Expected no warnings, but got: %v", warnings)
+			}
+		})
+	}
+}
+
+// TestDoctorRemoveCodeBlocks tests the code block removal functionality
+func TestDoctorRemoveCodeBlocks(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "remove fenced code block",
+			input:    "Before\n```go\n{code}\n```\nAfter",
+			expected: "Before\n\nAfter",
+		},
+		{
+			name:     "remove inline code",
+			input:    "Use `{placeholder}` in templates",
+			expected: "Use  in templates",
+		},
+		{
+			name:     "remove escaped braces",
+			input:    "Literal \\{foo\\} and \\{bar\\}",
+			expected: "Literal foo and bar",
+		},
+		{
+			name:     "mixed content",
+			input:    "```\n{ignore}\n```\nValid: {turn}\n`{also_ignore}`",
+			expected: "\nValid: {turn}\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := removeCodeBlocks(tt.input)
+			if result != tt.expected {
+				t.Errorf("removeCodeBlocks(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
 // TestDoctorPromptValidationIntegration tests the actual doctor command
 func TestDoctorPromptValidationIntegration(t *testing.T) {
 	t.Skip("Integration test skipped - os.Exit() behavior is difficult to test in unit tests")

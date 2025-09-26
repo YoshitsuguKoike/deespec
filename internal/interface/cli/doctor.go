@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -180,9 +181,22 @@ func newDoctorCmd() *cobra.Command {
 							promptWarnings++
 						}
 
+						// Check for undefined/unknown placeholders (SBI-DR-003)
+						placeholderErrors, placeholderWarnings := validatePlaceholders(string(content), step.ID)
+						for _, err := range placeholderErrors {
+							fmt.Fprintln(os.Stderr, err)
+							promptErrors++
+						}
+						for _, warn := range placeholderWarnings {
+							fmt.Println(warn)
+							promptWarnings++
+						}
+
 						// Report OK for this step's prompt with details
-						fmt.Printf("OK: prompt_path (%s) size=%dKB utf8=valid lf=ok\n", step.ID, fileSizeKB)
-						promptOK++
+						if len(placeholderErrors) == 0 {
+							fmt.Printf("OK: prompt_path (%s) size=%dKB utf8=valid lf=ok placeholders=valid\n", step.ID, fileSizeKB)
+							promptOK++
+						}
 					}
 
 					// Print summary (SBI-DR-002)
@@ -412,6 +426,99 @@ func containsHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// validatePlaceholders checks for undefined or unknown placeholders in prompt content (SBI-DR-003)
+func validatePlaceholders(content string, stepID string) (errors []string, warnings []string) {
+	// Allowed placeholders from workflow.Allowed
+	allowed := map[string]bool{
+		"turn":         true,
+		"task_id":      true,
+		"project_name": true,
+		"language":     true,
+	}
+
+	// Remove code blocks and inline code to avoid false positives
+	processedContent := removeCodeBlocks(content)
+
+	// Find all placeholders using regex
+	doubleRe := regexp.MustCompile(`\{\{([^{}]+)\}\}`)
+
+	// Check for mustache-style templates (warning only) and remove them
+	doubleMatches := doubleRe.FindAllStringSubmatchIndex(processedContent, -1)
+	for _, match := range doubleMatches {
+		line := countLines(content[:match[0]]) + 1
+		warnings = append(warnings, fmt.Sprintf("WARN: prompt_path (%s) contains non-standard {{%s}} at line %d",
+			stepID, processedContent[match[2]:match[3]], line))
+	}
+
+	// Remove double brace placeholders before checking single braces
+	processedContent = doubleRe.ReplaceAllString(processedContent, "")
+
+	// Now check single brace placeholders
+	placeholderRe := regexp.MustCompile(`\{([^{}]*)\}`)
+	matches := placeholderRe.FindAllStringSubmatchIndex(processedContent, -1)
+	for _, match := range matches {
+		placeholder := strings.TrimSpace(processedContent[match[2]:match[3]])
+		line := countLines(content[:match[0]]) + 1
+
+		// Check for empty placeholder
+		if placeholder == "" {
+			errors = append(errors, fmt.Sprintf("ERROR: prompt_path (%s) contains empty placeholder {} at line %d",
+				stepID, line))
+			continue
+		}
+
+		// Check if placeholder is in allowed list
+		if !allowed[placeholder] {
+			// Check if it's a valid identifier (alphanumeric and underscore)
+			if isValidIdentifier(placeholder) {
+				errors = append(errors, fmt.Sprintf("ERROR: prompt_path (%s) unknown placeholder {%s} at line %d",
+					stepID, placeholder, line))
+			} else {
+				errors = append(errors, fmt.Sprintf("ERROR: prompt_path (%s) invalid placeholder {%s} at line %d",
+					stepID, placeholder, line))
+			}
+		}
+	}
+
+	return errors, warnings
+}
+
+// removeCodeBlocks removes fenced code blocks and inline code to prevent false positives
+func removeCodeBlocks(content string) string {
+	// Remove fenced code blocks (```...```)
+	fencedRe := regexp.MustCompile("(?s)```[^`]*```")
+	content = fencedRe.ReplaceAllString(content, "")
+
+	// Remove inline code (`...`)
+	inlineRe := regexp.MustCompile("`[^`]+`")
+	content = inlineRe.ReplaceAllString(content, "")
+
+	// Remove escaped braces \{ and \}
+	content = strings.ReplaceAll(content, `\{`, "")
+	content = strings.ReplaceAll(content, `\}`, "")
+
+	return content
+}
+
+// countLines counts the number of lines (newlines) in a string
+func countLines(s string) int {
+	return strings.Count(s, "\n")
+}
+
+// isValidIdentifier checks if a string is a valid identifier (alphanumeric and underscore)
+func isValidIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') || r == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 func runDoctorJSON() error {

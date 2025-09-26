@@ -83,6 +83,52 @@ func runOnce() error {
 	}
 	prevV := st.Version
 
+	// 3) WIP判定とピック/再開
+	if st.CurrentTaskID == "" {
+		// No WIP - try to pick next task
+		cfg := PickConfig{
+			JournalPath: paths.Journal,
+		}
+
+		picked, reason, err := PickNextTask(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to pick task: %w", err)
+		}
+
+		if picked == nil {
+			fmt.Fprintf(os.Stderr, "INFO: %s\n", reason)
+			// No task to pick - just update health and exit
+			if err := app.WriteHealth(paths.Health, st.Turn, st.Current, true, ""); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to write %s: %v\n", paths.Health, err)
+			}
+			return nil
+		}
+
+		// Record pick in journal
+		if err := RecordPickInJournal(picked, st.Turn, paths.Journal); err != nil {
+			return fmt.Errorf("failed to record pick: %w", err)
+		}
+
+		// Update state for new task
+		st.CurrentTaskID = picked.ID
+		st.Current = "implement" // Start with implement after plan
+		st.Inputs = map[string]string{
+			"todo": fmt.Sprintf("Implement task %s: %s", picked.ID, picked.Title),
+		}
+
+		fmt.Fprintf(os.Stderr, "INFO: picked task %s: %s\n", picked.ID, reason)
+	} else {
+		// WIP exists - try to resume
+		resumed, reason, err := ResumeIfInProgress(st, paths.Journal)
+		if err != nil {
+			return fmt.Errorf("failed to resume: %w", err)
+		}
+
+		if resumed {
+			fmt.Fprintf(os.Stderr, "INFO: %s\n", reason)
+		}
+	}
+
 	// 設定読み込みとエージェント作成
 	cfg := config.Load()
 	agent := claudecli.Runner{Bin: cfg.AgentBin, Timeout: cfg.Timeout}
@@ -236,6 +282,11 @@ func runOnce() error {
 		st.Turn++
 	}
 	st.Current = next
+
+	// Clear WIP when task is done
+	if next == "done" {
+		st.CurrentTaskID = ""
+	}
 
 	// 8) health.json 更新（エラーに関わらず更新）
 	healthOk := errorMsg == ""

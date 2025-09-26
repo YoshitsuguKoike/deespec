@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -112,16 +114,25 @@ func newDoctorCmd() *cobra.Command {
 						}
 					}
 
-					// Check if prompt files exist and are readable (SBI-DR-001)
+					// Check if prompt files exist, are readable, and pass validation (SBI-DR-001, SBI-DR-002)
 					promptErrors := 0
+					promptWarnings := 0
+					promptOK := 0
+
+					// Get max prompt size limit
+					maxPromptKB := wf.Constraints.MaxPromptKB
+					if maxPromptKB <= 0 {
+						maxPromptKB = workflow.DefaultMaxPromptKB
+					}
+
 					for _, step := range wf.Steps {
 						// Check existence
 						fileInfo, err := os.Stat(step.ResolvedPromptPath)
 						if err != nil {
 							if os.IsNotExist(err) {
-								fmt.Printf("ERROR: prompt_path not found: %s\n", step.ResolvedPromptPath)
+								fmt.Fprintf(os.Stderr, "ERROR: prompt_path not found: %s\n", step.ResolvedPromptPath)
 							} else {
-								fmt.Printf("ERROR: prompt_path not accessible: %s (%v)\n", step.ResolvedPromptPath, err)
+								fmt.Fprintf(os.Stderr, "ERROR: prompt_path not accessible: %s (%v)\n", step.ResolvedPromptPath, err)
 							}
 							promptErrors++
 							continue
@@ -129,23 +140,54 @@ func newDoctorCmd() *cobra.Command {
 
 						// Check it's a regular file
 						if !fileInfo.Mode().IsRegular() {
-							fmt.Printf("ERROR: prompt_path not a regular file: %s\n", step.ResolvedPromptPath)
+							fmt.Fprintf(os.Stderr, "ERROR: prompt_path not a regular file: %s\n", step.ResolvedPromptPath)
 							promptErrors++
 							continue
 						}
 
-						// Check readability by attempting to read
-						file, err := os.Open(step.ResolvedPromptPath)
+						// Check size (SBI-DR-002)
+						fileSizeKB := (fileInfo.Size() + 1023) / 1024
+						if fileSizeKB > int64(maxPromptKB) {
+							fmt.Fprintf(os.Stderr, "ERROR: prompt_path (%s) exceeds max_prompt_kb=%d (found %d)\n", step.ID, maxPromptKB, fileSizeKB)
+							promptErrors++
+							continue
+						}
+
+						// Read file content for UTF-8 and format checks
+						content, err := os.ReadFile(step.ResolvedPromptPath)
 						if err != nil {
-							fmt.Printf("ERROR: prompt_path not readable: %s (%v)\n", step.ResolvedPromptPath, err)
+							fmt.Fprintf(os.Stderr, "ERROR: prompt_path not readable: %s (%v)\n", step.ResolvedPromptPath, err)
 							promptErrors++
 							continue
 						}
-						file.Close()
 
-						// Report OK for this step's prompt
-						fmt.Printf("OK: prompt_path (%s) readable\n", step.ID)
+						// Check UTF-8 validity (SBI-DR-002)
+						if !utf8.Valid(content) {
+							fmt.Fprintf(os.Stderr, "ERROR: prompt_path (%s) invalid UTF-8 encoding\n", step.ID)
+							promptErrors++
+							continue
+						}
+
+						// Check for BOM (SBI-DR-002)
+						if len(content) >= 3 && bytes.HasPrefix(content, []byte{0xEF, 0xBB, 0xBF}) {
+							fmt.Printf("WARN: prompt_path (%s) contains UTF-8 BOM\n", step.ID)
+							promptWarnings++
+						}
+
+						// Check for CRLF (SBI-DR-002)
+						if bytes.Contains(content, []byte("\r\n")) {
+							fmt.Printf("WARN: prompt_path (%s) contains CRLF; prefer LF\n", step.ID)
+							promptWarnings++
+						}
+
+						// Report OK for this step's prompt with details
+						fmt.Printf("OK: prompt_path (%s) size=%dKB utf8=valid lf=ok\n", step.ID, fileSizeKB)
+						promptOK++
 					}
+
+					// Print summary (SBI-DR-002)
+					totalSteps := len(wf.Steps)
+					fmt.Printf("SUMMARY: steps=%d ok=%d warn=%d error=%d\n", totalSteps, promptOK, promptWarnings, promptErrors)
 
 					// Set exit code based on errors
 					if promptErrors > 0 {

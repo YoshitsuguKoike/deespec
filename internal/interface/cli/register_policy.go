@@ -338,6 +338,10 @@ func (c *ResolvedConfig) ShouldLog(level string) bool {
 }
 
 // GetPolicyPath returns the default policy file path
-func GetPolicyPath() string {
+var GetPolicyPath = func() string {
+	// Allow override via environment variable for testing
+	if envPath := os.Getenv("DEESPEC_POLICY_PATH"); envPath != "" {
+		return envPath
+	}
 	return filepath.Join(".deespec", "etc", "policies", "register_policy.yaml")
 }

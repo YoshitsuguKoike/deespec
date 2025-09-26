@@ -73,12 +73,20 @@ func NewRegisterCommand() *cobra.Command {
 	var stdinFlag bool
 	var fileFlag string
 	var onCollision string
+	var printEffectiveConfig bool
+	var format string
+	var compact bool
+	var redactSecrets bool
 
 	cmd := &cobra.Command{
 		Use:   "register",
 		Short: "Register a new SBI specification",
 		Long:  "Register a new SBI specification from stdin or file input",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Handle print-effective-config first (no side effects)
+			if printEffectiveConfig {
+				return runPrintEffectiveConfig(onCollision, format, compact, redactSecrets)
+			}
 			return runRegisterWithFlags(cmd, args, stdinFlag, fileFlag, onCollision)
 		},
 	}
@@ -86,6 +94,10 @@ func NewRegisterCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&stdinFlag, "stdin", false, "Read input from stdin")
 	cmd.Flags().StringVar(&fileFlag, "file", "", "Read input from file")
 	cmd.Flags().StringVar(&onCollision, "on-collision", CollisionError, "How to handle path collisions (error|suffix|replace)")
+	cmd.Flags().BoolVar(&printEffectiveConfig, "print-effective-config", false, "Print the effective configuration and exit")
+	cmd.Flags().StringVar(&format, "format", "json", "Output format for effective config (json|yaml)")
+	cmd.Flags().BoolVar(&compact, "compact", false, "Use compact format (single line JSON)")
+	cmd.Flags().BoolVar(&redactSecrets, "redact-secrets", true, "Redact sensitive values in output")
 
 	return cmd
 }

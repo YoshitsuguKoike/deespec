@@ -13,5 +13,7 @@ func NewRoot() *cobra.Command {
 	cmd.AddCommand(newRunCmd())
 	cmd.AddCommand(newDoctorCmd())
 	cmd.AddCommand(newJournalCmd())
+	cmd.AddCommand(newStateCmd())
+	cmd.AddCommand(newHealthCmd())
 	return cmd
 }

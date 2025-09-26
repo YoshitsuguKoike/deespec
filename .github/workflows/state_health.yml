@@ -1,0 +1,34 @@
+name: State & Health Validation
+
+on:
+  pull_request:
+    paths:
+      - ".deespec/var/state.json"
+      - ".deespec/var/health.json"
+      - "internal/validator/state/**"
+      - "internal/validator/health/**"
+      - "internal/validator/common/**"
+      - "scripts/verify_state_health.sh"
+      - ".github/workflows/state_health.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Build deespec
+        run: go build -o deespec ./cmd/deespec
+      - name: Run state and health validation
+        run: bash scripts/verify_state_health.sh
+      - name: Upload validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: state-health-validators
+          path: |
+            state.json
+            health.json

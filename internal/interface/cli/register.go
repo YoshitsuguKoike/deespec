@@ -93,7 +93,40 @@ func NewRegisterCommand() *cobra.Command {
 var exitFunc = os.Exit
 
 func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fileFlag string, onCollision string) error {
-	// Initialize stderr logger
+	// Load policy
+	policy, err := LoadRegisterPolicy(GetPolicyPath())
+	if err != nil {
+		// Policy file error is fatal
+		result := RegisterResult{
+			OK:       false,
+			ID:       "",
+			SpecPath: "",
+			Warnings: []string{},
+			Error:    fmt.Sprintf("failed to load policy: %v", err),
+		}
+		fmt.Fprintf(os.Stderr, "ERROR: failed to load policy: %v\n", err)
+		printJSONLine(result)
+		exitFunc(1)
+		return nil
+	}
+
+	// Resolve configuration with precedence
+	config, err := ResolveRegisterConfig(onCollision, policy)
+	if err != nil {
+		result := RegisterResult{
+			OK:       false,
+			ID:       "",
+			SpecPath: "",
+			Warnings: []string{},
+			Error:    fmt.Sprintf("failed to resolve config: %v", err),
+		}
+		fmt.Fprintf(os.Stderr, "ERROR: failed to resolve config: %v\n", err)
+		printJSONLine(result)
+		exitFunc(1)
+		return nil
+	}
+
+	// Initialize stderr logger with level control
 	stderrLog := log.New(os.Stderr, "", 0)
 
 	// Check exclusive flags
@@ -105,7 +138,9 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 			Warnings: []string{},
 			Error:    "cannot specify both --stdin and --file",
 		}
-		stderrLog.Println("ERROR: cannot specify both --stdin and --file")
+		if config.ShouldLog("error") {
+			stderrLog.Println("ERROR: cannot specify both --stdin and --file")
+		}
 		printJSONLine(result)
 		exitFunc(1)
 		return nil
@@ -119,14 +154,23 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 			Warnings: []string{},
 			Error:    "must specify either --stdin or --file",
 		}
-		stderrLog.Println("ERROR: must specify either --stdin or --file")
+		if config.ShouldLog("error") {
+			stderrLog.Println("ERROR: must specify either --stdin or --file")
+		}
 		printJSONLine(result)
 		exitFunc(1)
 		return nil
 	}
 
-	// Read input
-	input, err := readInput(stdinFlag, fileFlag)
+	// Track input source for journal
+	if stdinFlag {
+		config.InputSource = "stdin"
+	} else {
+		config.InputSource = "file"
+	}
+
+	// Read input with policy-based size limit
+	input, err := readInputWithConfig(stdinFlag, fileFlag, config)
 	if err != nil {
 		result := RegisterResult{
 			OK:       false,
@@ -135,7 +179,9 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 			Warnings: []string{},
 			Error:    fmt.Sprintf("failed to read input: %v", err),
 		}
-		stderrLog.Printf("ERROR: failed to read input: %v\n", err)
+		if config.ShouldLog("error") {
+			stderrLog.Printf("ERROR: failed to read input: %v\n", err)
+		}
 		printJSONLine(result)
 		exitFunc(1)
 		return nil
@@ -151,14 +197,16 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 			Warnings: []string{},
 			Error:    fmt.Sprintf("invalid input: %v", err),
 		}
-		stderrLog.Printf("ERROR: invalid input: %v\n", err)
+		if config.ShouldLog("error") {
+			stderrLog.Printf("ERROR: invalid input: %v\n", err)
+		}
 		printJSONLine(result)
 		exitFunc(1)
 		return nil
 	}
 
-	// Validate specification with enhanced validation
-	validationResult := validateSpecEnhanced(&spec)
+	// Validate specification with policy-based validation
+	validationResult := validateSpecWithConfig(&spec, config)
 	if validationResult.Err != nil {
 		result := RegisterResult{
 			OK:       false,
@@ -167,29 +215,18 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 			Warnings: []string{},
 			Error:    validationResult.Err.Error(),
 		}
-		stderrLog.Printf("ERROR: %v\n", validationResult.Err)
-		printJSONLine(result)
-		exitFunc(1)
-		return nil
-	}
-
-	// Validate collision mode
-	if onCollision != CollisionError && onCollision != CollisionSuffix && onCollision != CollisionReplace {
-		result := RegisterResult{
-			OK:       false,
-			ID:       spec.ID,
-			SpecPath: "",
-			Warnings: []string{},
-			Error:    fmt.Sprintf("invalid --on-collision value: %s (must be error|suffix|replace)", onCollision),
+		if config.ShouldLog("error") {
+			stderrLog.Printf("ERROR: %v\n", validationResult.Err)
 		}
-		stderrLog.Printf("ERROR: invalid collision mode: %s\n", onCollision)
 		printJSONLine(result)
 		exitFunc(1)
 		return nil
 	}
 
-	// Calculate and validate spec path
-	specPath, err := buildSafeSpecPath(spec.ID, spec.Title)
+	// Collision mode is already validated in config resolution
+
+	// Calculate and validate spec path with config
+	specPath, err := buildSafeSpecPathWithConfig(spec.ID, spec.Title, config)
 	if err != nil {
 		result := RegisterResult{
 			OK:       false,
@@ -198,14 +235,16 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 			Warnings: []string{},
 			Error:    fmt.Sprintf("failed to build spec path: %v", err),
 		}
-		stderrLog.Printf("ERROR: %v\n", err)
+		if config.ShouldLog("error") {
+			stderrLog.Printf("ERROR: %v\n", err)
+		}
 		printJSONLine(result)
 		exitFunc(1)
 		return nil
 	}
 
-	// Resolve collision
-	finalPath, collisionWarning, err := resolveCollision(specPath, onCollision)
+	// Resolve collision using config mode
+	finalPath, collisionWarning, err := resolveCollisionWithConfig(specPath, config)
 	if err != nil {
 		result := RegisterResult{
 			OK:       false,
@@ -214,7 +253,9 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 			Warnings: []string{},
 			Error:    err.Error(),
 		}
-		stderrLog.Printf("ERROR: %v\n", err)
+		if config.ShouldLog("error") {
+			stderrLog.Printf("ERROR: %v\n", err)
+		}
 		printJSONLine(result)
 		exitFunc(1)
 		return nil
@@ -223,18 +264,22 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 	// Add collision warning if any
 	if collisionWarning != "" {
 		validationResult.Warnings = append(validationResult.Warnings, collisionWarning)
-		stderrLog.Printf("WARN: %s\n", collisionWarning)
+		if config.ShouldLog("warn") {
+			stderrLog.Printf("WARN: %s\n", collisionWarning)
+		}
 	}
 
-	// Log warnings to stderr
+	// Log warnings to stderr (respecting log level)
 	for _, warning := range validationResult.Warnings {
-		if warning != collisionWarning { // Don't log twice
+		if warning != collisionWarning && config.ShouldLog("warn") { // Don't log twice
 			stderrLog.Printf("WARN: %s\n", warning)
 		}
 	}
 
-	// Log success info
-	stderrLog.Printf("INFO: spec_path resolved: %s\n", finalPath)
+	// Log success info (respecting log level)
+	if config.ShouldLog("info") {
+		stderrLog.Printf("INFO: spec_path resolved: %s\n", finalPath)
+	}
 
 	// Success result
 	result := RegisterResult{
@@ -245,9 +290,11 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 	}
 	printJSONLine(result)
 
-	// Append to journal with spec_path
-	if err := appendToJournalWithPath(spec.ID, true, validationResult.Warnings, finalPath); err != nil {
-		stderrLog.Printf("WARN: failed to append to journal: %v\n", err)
+	// Append to journal with spec_path and optional metadata
+	if err := appendToJournalWithConfig(&spec, &result, config); err != nil {
+		if config.ShouldLog("warn") {
+			stderrLog.Printf("WARN: failed to append to journal: %v\n", err)
+		}
 	}
 
 	return nil
@@ -256,28 +303,39 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 // isTestMode allows overriding path validation for tests
 var isTestMode = false
 
-func readInput(useStdin bool, filePath string) ([]byte, error) {
+// readInputWithConfig reads input with policy-based validation
+func readInputWithConfig(stdinFlag bool, fileFlag string, config *ResolvedConfig) ([]byte, error) {
 	var input []byte
 	var err error
 
-	if useStdin {
-		input, err = io.ReadAll(io.LimitReader(os.Stdin, MaxInputSize+1))
+	if stdinFlag {
+		config.InputSource = "stdin"
+		maxSize := config.InputMaxBytes
+		if maxSize == 0 {
+			maxSize = MaxInputSize
+		}
+		input, err = io.ReadAll(io.LimitReader(os.Stdin, int64(maxSize)+1))
 		if err != nil {
 			return nil, err
 		}
 	} else {
+		config.InputSource = "file"
 		// Check for dangerous paths (skip in test mode)
-		if !isTestMode && (strings.Contains(filePath, "..") || (filepath.IsAbs(filePath) && !strings.Contains(filePath, "/tmp/"))) {
+		if !isTestMode && (strings.Contains(fileFlag, "..") || (filepath.IsAbs(fileFlag) && !strings.Contains(fileFlag, "/tmp/"))) {
 			return nil, fmt.Errorf("invalid file path: paths with '..' or absolute paths outside /tmp are not allowed")
 		}
 
-		file, err := os.Open(filePath)
+		file, err := os.Open(fileFlag)
 		if err != nil {
 			return nil, err
 		}
 		defer file.Close()
 
-		input, err = io.ReadAll(io.LimitReader(file, MaxInputSize+1))
+		maxSize := config.InputMaxBytes
+		if maxSize == 0 {
+			maxSize = MaxInputSize
+		}
+		input, err = io.ReadAll(io.LimitReader(file, int64(maxSize)+1))
 		if err != nil {
 			return nil, err
 		}
@@ -287,8 +345,14 @@ func readInput(useStdin bool, filePath string) ([]byte, error) {
 		return nil, fmt.Errorf("empty input")
 	}
 
-	if len(input) > MaxInputSize {
-		return nil, fmt.Errorf("input size exceeds limit of %d bytes", MaxInputSize)
+	config.InputBytes = len(input)
+
+	maxSize := config.InputMaxBytes
+	if maxSize == 0 {
+		maxSize = MaxInputSize
+	}
+	if len(input) > maxSize {
+		return nil, fmt.Errorf("input size exceeds limit of %d bytes", maxSize)
 	}
 
 	return input, nil
@@ -388,50 +452,108 @@ func validateLabels(labels []string) (warnings []string, err error) {
 	return warnings, nil
 }
 
-func validateSpecEnhanced(spec *RegisterSpec) ValidationResult {
+// validateSpecWithConfig validates spec using policy configuration
+func validateSpecWithConfig(spec *RegisterSpec, config *ResolvedConfig) ValidationResult {
 	result := ValidationResult{
 		Warnings: []string{},
 	}
 
 	// Validate ID
-	if err := validateID(spec.ID); err != nil {
-		result.Err = err
+	if spec.ID == "" {
+		result.Err = fmt.Errorf("id is required")
+		return result
+	}
+	if config.IDPattern != nil && !config.IDPattern.MatchString(spec.ID) {
+		result.Err = fmt.Errorf("invalid id format: must match %s", config.IDPattern.String())
+		return result
+	}
+	if config.IDMaxLen > 0 && len(spec.ID) > config.IDMaxLen {
+		result.Err = fmt.Errorf("id length exceeds maximum of %d characters", config.IDMaxLen)
 		return result
 	}
 
 	// Validate Title
-	if err := validateTitle(spec.Title); err != nil {
-		result.Err = err
+	if spec.Title == "" && config.TitleDenyEmpty {
+		result.Err = fmt.Errorf("title is required and cannot be empty")
 		return result
+	}
+	if config.TitleMaxLen > 0 && len(spec.Title) > config.TitleMaxLen {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("title truncated from %d to %d characters", len(spec.Title), config.TitleMaxLen))
+		spec.Title = spec.Title[:config.TitleMaxLen]
 	}
 
 	// Validate Labels
-	warnings, err := validateLabels(spec.Labels)
-	if err != nil {
-		result.Err = err
-		return result
+	if spec.Labels != nil {
+		// Check count limit
+		if config.LabelsMaxCount > 0 && len(spec.Labels) > config.LabelsMaxCount {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("labels count exceeds %d (%d)", config.LabelsMaxCount, len(spec.Labels)))
+			spec.Labels = spec.Labels[:config.LabelsMaxCount]
+		}
+
+		// Validate and deduplicate labels
+		labelMap := make(map[string]bool)
+		var validLabels []string
+		for _, label := range spec.Labels {
+			if config.LabelsPattern != nil && !config.LabelsPattern.MatchString(label) {
+				result.Warnings = append(result.Warnings, fmt.Sprintf("invalid label removed: %s (must match %s)", label, config.LabelsPattern.String()))
+				continue
+			}
+			if labelMap[label] {
+				if config.LabelsWarnOnDuplicates {
+					result.Warnings = append(result.Warnings, fmt.Sprintf("duplicate label removed: %s", label))
+				}
+				continue
+			}
+			labelMap[label] = true
+			validLabels = append(validLabels, label)
+		}
+		spec.Labels = validLabels
 	}
-	result.Warnings = append(result.Warnings, warnings...)
 
 	return result
 }
 
-// slugifyTitle converts a title to a safe slug following strict rules
-func slugifyTitle(title string) string {
-	// NFKC normalization
-	title = norm.NFKC.String(title)
-	title = strings.ToLower(title)
+// slugifyTitleWithConfig converts a title to a safe slug using policy settings
+func slugifyTitleWithConfig(title string, config *ResolvedConfig) string {
+	// Apply NFKC normalization if enabled
+	if config.SlugNFKC {
+		title = norm.NFKC.String(title)
+	}
+
+	// Convert to lowercase if enabled
+	if config.SlugLowercase {
+		title = strings.ToLower(title)
+	}
+
+	// Build allowed character set from policy
+	allowed := make(map[rune]bool)
+	// Parse the allow string as character ranges and literals
+	// e.g., "a-z0-9-" means a-z range, 0-9 range, and literal hyphen
+	allowStr := config.SlugAllow
+	for i := 0; i < len(allowStr); i++ {
+		if i+2 < len(allowStr) && allowStr[i+1] == '-' && allowStr[i+2] != '-' {
+			// This is a range like a-z or 0-9
+			start := allowStr[i]
+			end := allowStr[i+2]
+			for c := start; c <= end; c++ {
+				allowed[rune(c)] = true
+			}
+			i += 2 // Skip the range
+		} else {
+			// This is a literal character
+			allowed[rune(allowStr[i])] = true
+		}
+	}
 
 	// Build slug with only allowed characters
 	var b strings.Builder
 	var lastDash bool
 	for _, r := range title {
-		switch {
-		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+		if allowed[r] {
 			b.WriteRune(r)
 			lastDash = false
-		default:
-			// Replace any other character with dash
+		} else {
+			// Replace non-allowed with dash
 			if !lastDash && b.Len() > 0 {
 				b.WriteByte('-')
 				lastDash = true
@@ -442,23 +564,32 @@ func slugifyTitle(title string) string {
 	slug := b.String()
 	slug = strings.Trim(slug, "-")
 
-	// Default if empty
+	// Use fallback if empty
 	if slug == "" {
-		slug = "spec"
+		slug = config.SlugFallback
+		if slug == "" {
+			slug = "spec"
+		}
 	}
 
-	// Check for Windows reserved names
-	if isWindowsReserved(slug) {
-		slug += "-x"
+	// Check for Windows reserved names and add suffix if configured
+	if config.SlugWindowsReservedSuffix != "" && isWindowsReserved(slug) {
+		slug += config.SlugWindowsReservedSuffix
 	}
 
-	// Remove trailing dots and spaces (Windows compatibility)
-	slug = strings.TrimRight(slug, ". ")
+	// Remove trailing dots and spaces if configured
+	if config.SlugTrimTrailingDotSpace {
+		slug = strings.TrimRight(slug, ". ")
+	}
 
-	// Length limit (60 runes)
-	if utf8.RuneCountInString(slug) > MaxSlugLength {
+	// Length limit based on policy
+	maxRunes := config.SlugMaxRunes
+	if maxRunes == 0 {
+		maxRunes = MaxSlugLength
+	}
+	if utf8.RuneCountInString(slug) > maxRunes {
 		runes := []rune(slug)
-		slug = string(runes[:MaxSlugLength])
+		slug = string(runes[:maxRunes])
 		slug = strings.Trim(slug, "-")
 	}
 
@@ -471,9 +602,9 @@ func isWindowsReserved(name string) bool {
 	return windowsReservedNames[lower]
 }
 
-// buildSafeSpecPath builds and validates a safe spec path
-func buildSafeSpecPath(id, title string) (string, error) {
-	slug := slugifyTitle(title)
+// buildSafeSpecPathWithConfig builds and validates a safe spec path using policy
+func buildSafeSpecPathWithConfig(id, title string, config *ResolvedConfig) (string, error) {
+	slug := slugifyTitleWithConfig(title, config)
 	dirName := fmt.Sprintf("%s_%s", id, slug)
 
 	// Clean the directory name
@@ -489,16 +620,20 @@ func buildSafeSpecPath(id, title string) (string, error) {
 		return "", fmt.Errorf("path separator detected in directory name")
 	}
 
-	// Build the full path
-	basePath := ".deespec/specs/sbi"
+	// Build the full path using base directory from policy
+	basePath := config.PathBaseDir
 	fullPath := filepath.Join(basePath, dirName)
 
 	// Validate path length
-	if len([]byte(fullPath)) > MaxPathBytes {
+	maxBytes := config.PathMaxBytes
+	if maxBytes == 0 {
+		maxBytes = MaxPathBytes
+	}
+	if len([]byte(fullPath)) > maxBytes {
 		// Try to shorten the slug
-		maxSlugBytes := MaxPathBytes - len([]byte(basePath)) - len([]byte(id)) - 2 // -2 for "_/"
+		maxSlugBytes := maxBytes - len([]byte(basePath)) - len([]byte(id)) - 2 // -2 for "_/"
 		if maxSlugBytes < 10 {
-			return "", fmt.Errorf("path would exceed maximum length of %d bytes", MaxPathBytes)
+			return "", fmt.Errorf("path would exceed maximum length of %d bytes", maxBytes)
 		}
 		// Truncate slug to fit
 		for len([]byte(slug)) > maxSlugBytes && len(slug) > 1 {
@@ -510,9 +645,16 @@ func buildSafeSpecPath(id, title string) (string, error) {
 		fullPath = filepath.Join(basePath, dirName)
 	}
 
-	// Additional safety check: ensure path is within base directory
-	if !isPathSafe(basePath, fullPath) {
+	// Additional safety checks based on policy
+	if config.PathEnforceContainment && !isPathSafe(basePath, fullPath) {
 		return "", fmt.Errorf("path traversal detected")
+	}
+
+	// Check for symlinks if policy requires
+	if config.PathDenySymlinkComponents {
+		if err := checkForSymlinks(filepath.Dir(fullPath)); err != nil {
+			return "", err
+		}
 	}
 
 	return fullPath, nil
@@ -581,14 +723,16 @@ func checkForSymlinks(path string) error {
 	return nil
 }
 
-// resolveCollision handles path collisions according to the specified mode
-func resolveCollision(path string, mode string) (string, string, error) {
-	// First check for symlinks in the base path
-	if err := checkForSymlinks(filepath.Dir(path)); err != nil {
-		return "", "", err
+// resolveCollisionWithConfig handles path collisions according to policy configuration
+func resolveCollisionWithConfig(path string, config *ResolvedConfig) (string, string, error) {
+	// First check for symlinks if policy requires
+	if config.PathDenySymlinkComponents {
+		if err := checkForSymlinks(filepath.Dir(path)); err != nil {
+			return "", "", err
+		}
 	}
 
-	switch mode {
+	switch config.CollisionMode {
 	case CollisionError:
 		if _, err := os.Stat(path); err == nil {
 			return "", "", fmt.Errorf("path already exists: %s", path)
@@ -600,22 +744,25 @@ func resolveCollision(path string, mode string) (string, string, error) {
 			return path, "", nil
 		}
 
-		// Try with suffixes _2 through _99
-		for i := 2; i <= 99; i++ {
+		// Try with suffixes up to the configured limit
+		limit := config.SuffixLimit
+		if limit == 0 {
+			limit = 99
+		}
+		for i := 2; i <= limit; i++ {
 			newPath := fmt.Sprintf("%s_%d", path, i)
 			if _, err := os.Stat(newPath); os.IsNotExist(err) {
 				warning := fmt.Sprintf("collision resolved with suffix: _%d", i)
 				return newPath, warning, nil
 			}
 		}
-		return "", "", fmt.Errorf("exhausted suffix attempts (tried _2 through _99)")
+		return "", "", fmt.Errorf("exhausted suffix attempts (tried _2 through _%d)", limit)
 
 	case CollisionReplace:
 		if _, err := os.Stat(path); err == nil {
-			// For replace mode, we trust the path was already validated by buildSafeSpecPath
-			// Just verify it contains our expected base path
-			if !strings.Contains(path, "specs/sbi/") {
-				return "", "", fmt.Errorf("refusing to remove path outside specs/sbi: %s", path)
+			// For replace mode, verify it contains our expected base path from policy
+			if !strings.Contains(path, config.PathBaseDir) {
+				return "", "", fmt.Errorf("refusing to remove path outside %s: %s", config.PathBaseDir, path)
 			}
 
 			// Remove the existing directory
@@ -627,7 +774,7 @@ func resolveCollision(path string, mode string) (string, string, error) {
 		return path, "", nil
 
 	default:
-		return "", "", fmt.Errorf("invalid collision mode: %s", mode)
+		return "", "", fmt.Errorf("invalid collision mode: %s", config.CollisionMode)
 	}
 }
 
@@ -637,8 +784,8 @@ func printJSONLine(result RegisterResult) {
 	os.Stdout.Write([]byte("\n"))
 }
 
-// appendToJournalWithPath appends a registration event to the journal with spec_path
-func appendToJournalWithPath(id string, ok bool, warnings []string, specPath string) error {
+// appendToJournalWithConfig appends a registration event to the journal with policy settings
+func appendToJournalWithConfig(spec *RegisterSpec, result *RegisterResult, config *ResolvedConfig) error {
 	// Create journal directory if it doesn't exist
 	journalDir := ".deespec/var"
 	if err := os.MkdirAll(journalDir, 0755); err != nil {
@@ -675,12 +822,22 @@ func appendToJournalWithPath(id string, ok bool, warnings []string, specPath str
 		"artifacts": []map[string]interface{}{
 			{
 				"type":      "register",
-				"id":        id,
-				"ok":        ok,
-				"warnings":  warnings,
-				"spec_path": specPath,
+				"id":        spec.ID,
+				"title":     spec.Title,
+				"labels":    spec.Labels,
+				"ok":        result.OK,
+				"warnings":  result.Warnings,
+				"spec_path": result.SpecPath,
 			},
 		},
+	}
+
+	// Add optional fields based on policy
+	if config.JournalRecordSource {
+		entry["input_source"] = config.InputSource
+	}
+	if config.JournalRecordInputBytes {
+		entry["input_bytes"] = config.InputBytes
 	}
 
 	// Marshal to JSON

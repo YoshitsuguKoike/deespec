@@ -485,7 +485,9 @@ func TestBuildSpecPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
-			result, err := buildSafeSpecPath(tt.id, tt.title)
+			config := GetDefaultPolicy()
+			resolvedConfig, _ := ResolveRegisterConfig("", config)
+			result, err := buildSafeSpecPathWithConfig(tt.id, tt.title, resolvedConfig)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

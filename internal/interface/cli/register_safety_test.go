@@ -48,7 +48,9 @@ func TestSlugifyTitle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := slugifyTitle(tt.title)
+			config := GetDefaultPolicy()
+			resolvedConfig, _ := ResolveRegisterConfig("", config)
+			result := slugifyTitleWithConfig(tt.title, resolvedConfig)
 			if result != tt.expected {
 				t.Errorf("slugifyTitle(%q) = %q; want %q", tt.title, result, tt.expected)
 			}
@@ -145,7 +147,9 @@ func TestBuildSafeSpecPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path, err := buildSafeSpecPath(tt.id, tt.title)
+			config := GetDefaultPolicy()
+			resolvedConfig, _ := ResolveRegisterConfig("", config)
+			path, err := buildSafeSpecPathWithConfig(tt.id, tt.title, resolvedConfig)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildSafeSpecPath() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -324,7 +328,10 @@ func TestResolveCollision(t *testing.T) {
 				os.MkdirAll(existingPath, 0755)
 			}
 
-			resultPath, warning, err := resolveCollision(tt.path, tt.mode)
+			config := GetDefaultPolicy()
+			config.Collision.DefaultMode = tt.mode
+			resolvedConfig, _ := ResolveRegisterConfig("", config)
+			resultPath, warning, err := resolveCollisionWithConfig(tt.path, resolvedConfig)
 			if (err != nil) != tt.expectErr {
 				t.Errorf("resolveCollision() error = %v, expectErr %v", err, tt.expectErr)
 				return
@@ -352,7 +359,10 @@ func TestCollisionSuffixExhaustion(t *testing.T) {
 	}
 
 	// Should find _11
-	resultPath, warning, err := resolveCollision(basePath, CollisionSuffix)
+	config := GetDefaultPolicy()
+	config.Collision.DefaultMode = CollisionSuffix
+	resolvedConfig, _ := ResolveRegisterConfig("", config)
+	resultPath, warning, err := resolveCollisionWithConfig(basePath, resolvedConfig)
 	if err != nil {
 		t.Fatalf("resolveCollision() unexpected error: %v", err)
 	}

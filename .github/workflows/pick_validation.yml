@@ -1,0 +1,56 @@
+name: Pick/Resume Validation (SBI-PICK-003)
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.deespec/var/journal.ndjson'
+      - '.deespec/var/health.json'
+      - '.deespec/var/state.json'
+      - '.deespec/var/lock'
+      - 'internal/interface/cli/picker*.go'
+      - 'internal/interface/cli/run*.go'
+      - 'scripts/verify_pick*.sh'
+      - 'scripts/verify_journal_pick.sh'
+      - 'scripts/verify_health_lock.sh'
+      - '.github/workflows/pick_validation.yml'
+
+jobs:
+  validate-pick-resume:
+    runs-on: ubuntu-latest
+    name: SBI-PICK-003 Validation
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Run Journal Pick/Resume Validation
+        run: |
+          echo "Running SBI-PICK-003 Journal validation..."
+          bash scripts/verify_journal_pick.sh
+        continue-on-error: false
+
+      - name: Run Health.json and Lock Validation
+        run: |
+          echo "Running SBI-PICK-003 Health/Lock validation..."
+          bash scripts/verify_health_lock.sh
+        continue-on-error: false
+
+      - name: Run Complete Pick Validation Suite
+        run: |
+          echo "Running complete SBI-PICK-003 validation suite..."
+          bash scripts/verify_pick.sh
+        continue-on-error: false
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "========================================="
+          echo "SBI-PICK-003 Validation Complete"
+          echo "========================================="
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ All pick/resume validations passed!"
+          else
+            echo "❌ Pick/resume validation failed. Please check the errors above."
+          fi

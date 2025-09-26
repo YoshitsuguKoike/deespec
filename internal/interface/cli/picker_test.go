@@ -577,6 +577,157 @@ func TestSyncStateWithJournal_SBI_PICK_002_Matrix(t *testing.T) {
 	}
 }
 
+func TestDependencyChecking(t *testing.T) {
+	// Create temp directory for test
+	tmpDir := t.TempDir()
+	originalDir, _ := os.Getwd()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(originalDir)
+
+	// Create test tasks with dependencies
+	// Task B has no dependencies
+	createTestTaskWithDeps(t, "SBI-B", "Task B", 1, 1, []string{})
+	// Task A depends on B
+	createTestTaskWithDeps(t, "SBI-A", "Task A", 1, 1, []string{"SBI-B"})
+	// Task C depends on unknown task
+	createTestTaskWithDeps(t, "SBI-C", "Task C", 1, 1, []string{"SBI-UNKNOWN"})
+
+	cfg := PickConfig{
+		SpecsDir:    ".deespec/specs/sbi",
+		JournalPath: ".deespec/var/journal.ndjson",
+	}
+
+	// First pick should get B (no dependencies)
+	picked, _, err := PickNextTask(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if picked == nil || picked.ID != "SBI-B" {
+		t.Errorf("Expected to pick SBI-B first, got %v", picked)
+	}
+
+	// Mark B as done
+	createJournal(t, []map[string]interface{}{
+		{
+			"ts":         "2025-09-26T10:00:00Z",
+			"turn":       1,
+			"step":       "done",
+			"decision":   "OK",
+			"elapsed_ms": 1000,
+			"error":      "",
+			"artifacts": []map[string]interface{}{
+				{"type": "pick", "task_id": "SBI-B", "id": "SBI-B"},
+			},
+		},
+	})
+
+	// Now A should be pickable
+	picked, _, err = PickNextTask(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if picked == nil || picked.ID != "SBI-A" {
+		t.Errorf("Expected to pick SBI-A after B done, got %v", picked)
+	}
+
+	// C should never be pickable (unknown dependency)
+	// Create fresh journal with A also done
+	createJournal(t, []map[string]interface{}{
+		{
+			"ts":         "2025-09-26T10:00:00Z",
+			"turn":       1,
+			"step":       "done",
+			"decision":   "OK",
+			"elapsed_ms": 1000,
+			"error":      "",
+			"artifacts": []map[string]interface{}{
+				{"type": "pick", "task_id": "SBI-B", "id": "SBI-B"},
+			},
+		},
+		{
+			"ts":         "2025-09-26T10:01:00Z",
+			"turn":       2,
+			"step":       "done",
+			"decision":   "OK",
+			"elapsed_ms": 1000,
+			"error":      "",
+			"artifacts": []map[string]interface{}{
+				{"type": "pick", "task_id": "SBI-A", "id": "SBI-A"},
+			},
+		},
+	})
+
+	picked, reason, err := PickNextTask(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if picked != nil {
+		t.Errorf("Should not pick any task (C has unknown dep), but picked %v", picked)
+	}
+	if reason != "no ready tasks" {
+		t.Errorf("Expected 'no ready tasks', got %s", reason)
+	}
+}
+
+func TestCyclicDependencies(t *testing.T) {
+	// Test circular dependency detection
+	tasks := []*Task{
+		{ID: "A", DependsOn: []string{"B"}},
+		{ID: "B", DependsOn: []string{"C"}},
+		{ID: "C", DependsOn: []string{"A"}}, // Creates cycle A->B->C->A
+		{ID: "D", DependsOn: []string{}},    // Independent task
+	}
+
+	inCycle := detectCycles(tasks)
+
+	// A, B, and C should be in cycle
+	if !inCycle["A"] {
+		t.Error("Expected A to be in cycle")
+	}
+	if !inCycle["B"] {
+		t.Error("Expected B to be in cycle")
+	}
+	if !inCycle["C"] {
+		t.Error("Expected C to be in cycle")
+	}
+	// D should not be in cycle
+	if inCycle["D"] {
+		t.Error("Expected D not to be in cycle")
+	}
+}
+
+// Helper function to create task with dependencies
+func createTestTaskWithDeps(t *testing.T, id, title string, priority, por int, deps []string) {
+	t.Helper()
+
+	taskDir := filepath.Join(".deespec", "specs", "sbi", fmt.Sprintf("%s_%s", id, strings.ToLower(strings.ReplaceAll(title, " ", "-"))))
+	if err := os.MkdirAll(taskDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	meta := TaskMeta{
+		ID:        id,
+		Title:     title,
+		Priority:  priority,
+		POR:       por,
+		DependsOn: deps,
+		Phase:     "Implementation",
+		Role:      "developer",
+	}
+
+	data, err := yaml.Marshal(meta)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	metaPath := filepath.Join(taskDir, "meta.yaml")
+	if err := os.WriteFile(metaPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestTurnConsistency_SBI_PICK_002(t *testing.T) {
 	// Create temp directory for test
 	tmpDir := t.TempDir()

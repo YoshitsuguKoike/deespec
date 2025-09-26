@@ -159,6 +159,9 @@ func filterReadyTasks(tasks []*Task, journalPath string) []*Task {
 	// Load completed tasks from journal
 	completedTasks := getCompletedTasksFromJournal(journalPath)
 
+	// Detect circular dependencies
+	inCycle := detectCycles(tasks)
+
 	var ready []*Task
 	for _, task := range tasks {
 		// Skip if already completed
@@ -166,8 +169,20 @@ func filterReadyTasks(tasks []*Task, journalPath string) []*Task {
 			continue
 		}
 
+		// Skip if task is in a dependency cycle
+		if inCycle[task.ID] {
+			fmt.Fprintf(os.Stderr, "WARN: Task %s is part of a circular dependency, skipping\n", task.ID)
+			continue
+		}
+
 		// Check dependencies
 		if !areDepenciesMet(task, completedTasks) {
+			// Check for unknown dependencies
+			for _, depID := range task.DependsOn {
+				if !taskExists(tasks, depID) && !completedTasks[depID] {
+					fmt.Fprintf(os.Stderr, "WARN: Task %s depends on unknown task %s, skipping\n", task.ID, depID)
+				}
+			}
 			continue
 		}
 
@@ -175,6 +190,16 @@ func filterReadyTasks(tasks []*Task, journalPath string) []*Task {
 	}
 
 	return ready
+}
+
+// taskExists checks if a task ID exists in the task list
+func taskExists(tasks []*Task, id string) bool {
+	for _, t := range tasks {
+		if t.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // getCompletedTasksFromJournal reads the journal to find completed tasks
@@ -231,6 +256,54 @@ func areDepenciesMet(task *Task, completedTasks map[string]bool) bool {
 		}
 	}
 	return true
+}
+
+// detectCycles detects circular dependencies in the task graph
+func detectCycles(tasks []*Task) map[string]bool {
+	taskMap := make(map[string]*Task)
+	for _, t := range tasks {
+		taskMap[t.ID] = t
+	}
+
+	inCycle := make(map[string]bool)
+	visited := make(map[string]bool)
+	visiting := make(map[string]bool)
+
+	var dfs func(taskID string) bool
+	dfs = func(taskID string) bool {
+		if visiting[taskID] {
+			// Found a cycle
+			return true
+		}
+		if visited[taskID] {
+			// Already processed
+			return false
+		}
+
+		visiting[taskID] = true
+		task, exists := taskMap[taskID]
+		if exists {
+			for _, depID := range task.DependsOn {
+				if dfs(depID) {
+					inCycle[taskID] = true
+					return true
+				}
+			}
+		}
+		visiting[taskID] = false
+		visited[taskID] = true
+		return false
+	}
+
+	for _, task := range tasks {
+		if !visited[task.ID] {
+			if dfs(task.ID) {
+				fmt.Fprintf(os.Stderr, "WARN: Circular dependency detected involving task %s\n", task.ID)
+			}
+		}
+	}
+
+	return inCycle
 }
 
 // sortTasksByPriority sorts tasks according to the specified order

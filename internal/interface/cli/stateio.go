@@ -10,14 +10,15 @@ import (
 )
 
 type State struct {
-	Version       int               `json:"version"`
-	Current       string            `json:"current"`
-	Turn          int               `json:"turn"`
-	CurrentTaskID string            `json:"current_task_id"` // WIP task ID (empty = no WIP)
-	Inputs        map[string]string `json:"inputs"`
-	LastArtifacts map[string]string `json:"last_artifacts"`
-	ArtifactsDir  string            `json:"artifacts_dir"`
-	Meta          struct {
+	Version        int               `json:"version"`
+	Current        string            `json:"current"`
+	Turn           int               `json:"turn"`
+	CurrentTaskID  string            `json:"current_task_id"`  // WIP task ID (empty = no WIP)
+	LeaseExpiresAt string            `json:"lease_expires_at"` // UTC RFC3339Nano (empty when no WIP)
+	Inputs         map[string]string `json:"inputs"`
+	LastArtifacts  map[string]string `json:"last_artifacts"`
+	ArtifactsDir   string            `json:"artifacts_dir"`
+	Meta           struct {
 		UpdatedAt string `json:"updated_at"`
 	} `json:"meta"`
 }

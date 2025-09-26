@@ -114,6 +114,20 @@ func runOnce() error {
 	currentTurn := st.Turn + 1
 	st.Turn = currentTurn
 
+	// 3.5) Lease management - check for expired lease
+	if st.CurrentTaskID != "" && LeaseExpired(st) {
+		fmt.Fprintf(os.Stderr, "INFO: Lease expired for task %s, taking over\n", st.CurrentTaskID)
+		// Lease expired, we can take over the task
+		// The task will be resumed in the next section
+	}
+
+	// Renew or set lease for current process
+	if st.CurrentTaskID != "" {
+		if RenewLease(st, DefaultLeaseTTL) {
+			fmt.Fprintf(os.Stderr, "INFO: Renewed lease for task %s until %s\n", st.CurrentTaskID, st.LeaseExpiresAt)
+		}
+	}
+
 	// 3) WIP判定とピック/再開
 	if st.CurrentTaskID == "" {
 		// No WIP - try to pick next task
@@ -149,7 +163,9 @@ func runOnce() error {
 			"todo": fmt.Sprintf("Implement task %s: %s", picked.ID, picked.Title),
 		}
 
-		fmt.Fprintf(os.Stderr, "INFO: picked task %s: %s\n", picked.ID, reason)
+		// Set lease for new task
+		RenewLease(st, DefaultLeaseTTL)
+		fmt.Fprintf(os.Stderr, "INFO: picked task %s: %s (lease until %s)\n", picked.ID, reason, st.LeaseExpiresAt)
 	} else {
 		// WIP exists - try to resume
 		resumed, reason, err := ResumeIfInProgress(st, paths.Journal)
@@ -318,9 +334,11 @@ func runOnce() error {
 	}
 	st.Current = next
 
-	// Clear WIP when task is done
+	// Clear WIP and lease when task is done
 	if next == "done" {
 		st.CurrentTaskID = ""
+		ClearLease(st)
+		fmt.Fprintf(os.Stderr, "INFO: Task completed, WIP and lease cleared\n")
 	}
 
 	// 8) health.json 更新（エラーに関わらず更新）

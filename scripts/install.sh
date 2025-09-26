@@ -90,11 +90,12 @@ else
     # Fallback to ~/.local/bin
     DEST="${HOME}/.local/bin/${BIN}"
     mkdir -p "${HOME}/.local/bin"
-    info "Installing to ~/.local/bin (requires adding to PATH)..."
+    info "Installing to ~/.local/bin..."
     mv "${TMP}/${BIN}" "${DEST}"
 
     # Update PATH in shell rc files
     PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
+    PATH_UPDATED=false
 
     # Update .bashrc if exists
     if [ -f "$HOME/.bashrc" ]; then
@@ -103,6 +104,9 @@ else
             echo "" >> "$HOME/.bashrc"
             echo "# Added by deespec installer" >> "$HOME/.bashrc"
             echo "$PATH_LINE" >> "$HOME/.bashrc"
+            PATH_UPDATED=true
+        else
+            info "PATH already configured in .bashrc"
         fi
     fi
 
@@ -113,11 +117,19 @@ else
             echo "" >> "$HOME/.zshrc"
             echo "# Added by deespec installer" >> "$HOME/.zshrc"
             echo "$PATH_LINE" >> "$HOME/.zshrc"
+            PATH_UPDATED=true
+        else
+            info "PATH already configured in .zshrc"
         fi
     fi
 
     # Update current session
     export PATH="$HOME/.local/bin:$PATH"
+
+    # Inform user about PATH updates
+    if [ "$PATH_UPDATED" = true ]; then
+        info "✅ PATH has been automatically configured in your shell config files"
+    fi
 fi
 
 echo ""
@@ -132,6 +144,28 @@ if command -v "${BIN}" &> /dev/null; then
 else
     warn "${BIN} is installed but not in PATH yet."
     echo ""
-    echo "Please restart your terminal or run:"
-    echo "  source ~/.bashrc  # or source ~/.zshrc"
+
+    # Detect current shell and provide specific instructions
+    CURRENT_SHELL="$(basename "$SHELL")"
+    echo "To use ${BIN} immediately, run one of these commands:"
+    echo ""
+
+    case "$CURRENT_SHELL" in
+        zsh)
+            echo "  source ~/.zshrc"
+            ;;
+        bash)
+            echo "  source ~/.bashrc"
+            ;;
+        *)
+            echo "  source ~/.bashrc  # for bash"
+            echo "  source ~/.zshrc   # for zsh"
+            ;;
+    esac
+
+    echo ""
+    echo "Or simply open a new terminal window."
+    echo ""
+    echo "After that, you can run:"
+    echo "  ${BIN} init"
 fi

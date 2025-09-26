@@ -206,6 +206,91 @@ else
 fi
 
 # ===========================================
+# 5. Validate FB-SBI draft artifacts (SBI-PICK-004_1)
+# ===========================================
+echo ""
+echo "Checking FB-SBI draft artifacts..."
+
+FB_DRAFT_ERRORS=0
+
+# Check journal for fb_sbi_draft entries
+if [ -f "$JOURNAL_FILE" ]; then
+    FB_DRAFTS=$(jq -r '
+        select(.artifacts != null) |
+        .artifacts[] |
+        select(.type == "fb_sbi_draft")
+    ' "$JOURNAL_FILE" 2>/dev/null || true)
+
+    if [ -n "$FB_DRAFTS" ]; then
+        echo "Found FB-SBI draft entries in journal"
+
+        # Validate required fields
+        echo "$FB_DRAFTS" | jq -r '.' | while read -r draft; do
+            # Check required fields
+            MISSING_FIELDS=""
+            for field in target_task_id reason_code title summary created_at; do
+                if ! echo "$draft" | jq -e ".$field" >/dev/null 2>&1; then
+                    MISSING_FIELDS="$MISSING_FIELDS $field"
+                fi
+            done
+
+            if [ -n "$MISSING_FIELDS" ]; then
+                add_error "FB draft missing required fields:$MISSING_FIELDS"
+                FB_DRAFT_ERRORS=$((FB_DRAFT_ERRORS + 1))
+            fi
+
+            # Validate reason_code enumeration
+            REASON=$(echo "$draft" | jq -r '.reason_code' 2>/dev/null || echo "")
+            case "$REASON" in
+                DEP_UNRESOLVED|DEP_CYCLE|META_MISSING|PATH_INVALID|PROMPT_ERROR|TIME_FORMAT|JOURNAL_GUARD)
+                    ;;
+                *)
+                    add_error "Invalid FB draft reason_code: $REASON"
+                    FB_DRAFT_ERRORS=$((FB_DRAFT_ERRORS + 1))
+                    ;;
+            esac
+
+            # Validate created_at timestamp format
+            CREATED_AT=$(echo "$draft" | jq -r '.created_at' 2>/dev/null || echo "")
+            if [ -n "$CREATED_AT" ]; then
+                if ! echo "$CREATED_AT" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?Z$'; then
+                    add_error "Invalid FB draft created_at format: $CREATED_AT"
+                    FB_DRAFT_ERRORS=$((FB_DRAFT_ERRORS + 1))
+                fi
+            fi
+        done
+
+        if [ $FB_DRAFT_ERRORS -eq 0 ]; then
+            echo "✓ All FB-SBI draft artifacts are valid"
+        fi
+    else
+        echo "ℹ No FB-SBI draft artifacts found"
+    fi
+fi
+
+# Check for FB draft files in artifacts directory
+FB_DRAFT_DIR=".deespec/var/artifacts/fb_sbi"
+if [ -d "$FB_DRAFT_DIR" ]; then
+    echo ""
+    echo "Checking FB draft files in $FB_DRAFT_DIR..."
+
+    find "$FB_DRAFT_DIR" -name "draft.yaml" -type f | while read draft_file; do
+        # Validate YAML syntax
+        if ! yq eval '.' "$draft_file" >/dev/null 2>&1; then
+            add_error "Invalid YAML in $draft_file"
+        else
+            # Check required fields in draft.yaml
+            for field in title labels por priority relates_to reason_code details; do
+                if [ -z "$(yq eval ".$field" "$draft_file" 2>/dev/null)" ]; then
+                    add_error "$draft_file missing required field: $field"
+                fi
+            done
+            echo "✓ Valid draft.yaml: $draft_file"
+        fi
+    done
+fi
+
+# ===========================================
 # Summary
 # ===========================================
 echo ""

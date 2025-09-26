@@ -48,6 +48,7 @@ func buildReviewPrompt(st *State) string {
 
 func newRunCmd() *cobra.Command {
 	var once bool
+	var autoFB bool
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Run workflow",
@@ -55,15 +56,20 @@ func newRunCmd() *cobra.Command {
 			if !once {
 				return fmt.Errorf("use --once for now (single-step mode)")
 			}
-			return runOnce()
+			// Check environment variable for auto-fb
+			if os.Getenv("DEE_AUTO_FB") == "true" {
+				autoFB = true
+			}
+			return runOnce(autoFB)
 		},
 	}
 	cmd.Flags().BoolVar(&once, "once", false, "Advance exactly one step")
+	cmd.Flags().BoolVar(&autoFB, "auto-fb", false, "Automatically register FB-SBI drafts")
 	return cmd
 }
 
 
-func runOnce() error {
+func runOnce(autoFB bool) error {
 	startTime := time.Now()
 
 	// Get paths
@@ -139,6 +145,13 @@ func runOnce() error {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: failed to pick task: %v\n", err)
 			return fmt.Errorf("failed to pick task: %w", err)
+		}
+
+		// Handle auto-fb if enabled and FB drafts were created
+		if autoFB {
+			if err := HandleAutoFBRegistration(paths.Journal, currentTurn); err != nil {
+				fmt.Fprintf(os.Stderr, "WARN: Failed to auto-register FB drafts: %v\n", err)
+			}
 		}
 
 		if picked == nil {

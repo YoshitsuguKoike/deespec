@@ -22,6 +22,7 @@ type Task struct {
 	DependsOn  []string               `json:"depends_on"` // Task dependencies
 	Meta       map[string]interface{} `json:"meta"`      // Metadata from meta.yaml
 	Status     string                 `json:"status"`    // Current status from journal
+	PromptPath string                 `json:"prompt_path"`  // Path to prompt file
 }
 
 // TaskMeta represents the structure of meta.yaml in task directories
@@ -62,6 +63,14 @@ func PickNextTask(cfg PickConfig) (*Task, string, error) {
 		return nil, "no tasks found", nil
 	}
 
+	// Build pick context for incomplete detection
+	completedTasks := getCompletedTasksFromJournal(cfg.JournalPath)
+	pickCtx := &PickContext{
+		JournalPath:    cfg.JournalPath,
+		CompletedTasks: completedTasks,
+		AllTasks:       tasks,
+	}
+
 	// Filter to ready tasks (not completed, dependencies met)
 	readyTasks := filterReadyTasks(tasks, cfg.JournalPath)
 
@@ -74,6 +83,33 @@ func PickNextTask(cfg PickConfig) (*Task, string, error) {
 
 	// Pick the first one
 	picked := readyTasks[0]
+
+	// Detect incomplete instructions before picking
+	drafts, err := DetectIncomplete(picked, pickCtx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "WARN: Failed to detect incomplete for %s: %v\n", picked.ID, err)
+	}
+
+	// Process detected incomplete instructions
+	for _, draft := range drafts {
+		fmt.Fprintf(os.Stderr, "INFO: Detected incomplete instruction for %s: %s\n",
+			draft.TargetTaskID, draft.ReasonCode)
+
+		// Persist FB draft
+		artifactsDir := ".deespec/var/artifacts"
+		draftPath, err := PersistFBDraft(draft, artifactsDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: Failed to persist FB draft: %v\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "INFO: FB draft saved to %s\n", draftPath)
+
+			// Record in journal (use turn 0 for pick phase)
+			if err := RecordFBDraftInJournal(draft, cfg.JournalPath, 0); err != nil {
+				fmt.Fprintf(os.Stderr, "WARN: Failed to record FB draft in journal: %v\n", err)
+			}
+		}
+	}
+
 	reason := fmt.Sprintf("picked by %s (POR=%d, priority=%d)",
 		strings.Join(cfg.OrderBy, ","), picked.POR, picked.Priority)
 
@@ -349,6 +385,51 @@ func ResumeIfInProgress(st *State, journalPath string) (bool, string, error) {
 
 	if changed {
 		*st = *newState
+	}
+
+	// Build context for incomplete detection during resume
+	tasks, _ := loadAllTasks(".deespec/specs/sbi")
+	completedTasks := getCompletedTasksFromJournal(journalPath)
+	pickCtx := &PickContext{
+		JournalPath:    journalPath,
+		CompletedTasks: completedTasks,
+		AllTasks:       tasks,
+	}
+
+	// Find the current task
+	var currentTask *Task
+	for _, t := range tasks {
+		if t.ID == st.CurrentTaskID {
+			currentTask = t
+			break
+		}
+	}
+
+	if currentTask != nil {
+		// Detect incomplete instructions during resume
+		drafts, err := DetectIncomplete(currentTask, pickCtx)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: Failed to detect incomplete during resume: %v\n", err)
+		}
+
+		for _, draft := range drafts {
+			fmt.Fprintf(os.Stderr, "INFO: Detected incomplete during resume for %s: %s\n",
+				draft.TargetTaskID, draft.ReasonCode)
+
+			// Persist FB draft
+			artifactsDir := ".deespec/var/artifacts"
+			draftPath, err := PersistFBDraft(draft, artifactsDir)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "WARN: Failed to persist FB draft: %v\n", err)
+			} else {
+				fmt.Fprintf(os.Stderr, "INFO: FB draft saved to %s\n", draftPath)
+
+				// Record in journal
+				if err := RecordFBDraftInJournal(draft, journalPath, st.Turn); err != nil {
+					fmt.Fprintf(os.Stderr, "WARN: Failed to record FB draft in journal: %v\n", err)
+				}
+			}
+		}
 	}
 
 	reason := fmt.Sprintf("resuming task %s at step %s", st.CurrentTaskID, st.Current)

@@ -1,0 +1,6 @@
+steps:
+  - id: plan
+    agent: claude_cli
+    prompt_path: prompts/system/plan.md
+    extra_field: should_not_be_here
+    another_field: also_invalid

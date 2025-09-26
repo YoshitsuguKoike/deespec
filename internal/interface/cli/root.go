@@ -15,5 +15,6 @@ func NewRoot() *cobra.Command {
 	cmd.AddCommand(newJournalCmd())
 	cmd.AddCommand(newStateCmd())
 	cmd.AddCommand(newHealthCmd())
+	cmd.AddCommand(workflowCmd)
 	return cmd
 }

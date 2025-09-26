@@ -1,0 +1,17 @@
+name: Workflow Schema Validation
+on:
+  pull_request:
+    paths:
+      - ".deespec/etc/workflow.yaml"
+      - "internal/validator/workflow/**"
+      - "scripts/verify_workflow.sh"
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - run: go build -o deespec ./cmd/deespec
+      - run: bash scripts/verify_workflow.sh

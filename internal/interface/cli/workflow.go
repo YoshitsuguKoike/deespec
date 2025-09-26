@@ -1,0 +1,73 @@
+package cli
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"github.com/YoshitsuguKoike/deespec/internal/validator/workflow"
+	"github.com/spf13/cobra"
+)
+
+var workflowCmd = &cobra.Command{
+	Use:   "workflow",
+	Short: "Workflow-related commands",
+	Long:  "Commands for managing and validating workflow configurations",
+}
+
+var workflowVerifyCmd = &cobra.Command{
+	Use:   "verify",
+	Short: "Verify workflow.yaml structure",
+	Long:  "Validate the structure and schema of workflow.yaml files",
+	RunE:  runWorkflowVerify,
+}
+
+var (
+	workflowPath   string
+	workflowFormat string
+)
+
+func init() {
+	workflowVerifyCmd.Flags().StringVar(&workflowPath, "path", ".deespec/etc/workflow.yaml", "Path to workflow.yaml file")
+	workflowVerifyCmd.Flags().StringVar(&workflowFormat, "format", "text", "Output format (text or json)")
+	workflowCmd.AddCommand(workflowVerifyCmd)
+}
+
+func runWorkflowVerify(cmd *cobra.Command, args []string) error {
+	basePath := ".deespec"
+	validator := workflow.NewValidator(basePath)
+	result, err := validator.Validate(workflowPath)
+	if err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	if workflowFormat == "json" {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(result); err != nil {
+			return fmt.Errorf("failed to encode JSON: %w", err)
+		}
+	} else {
+		for _, file := range result.Files {
+			if len(file.Issues) == 0 {
+				fmt.Printf("OK: %s valid\n", file.File)
+			} else {
+				for _, issue := range file.Issues {
+					if issue.Type == "error" {
+						fmt.Fprintf(os.Stderr, "ERROR: %s%s %s\n", file.File, issue.Field, issue.Message)
+					} else if issue.Type == "warning" {
+						fmt.Printf("WARN: %s%s %s\n", file.File, issue.Field, issue.Message)
+					}
+				}
+			}
+		}
+
+		fmt.Printf("SUMMARY: files=%d ok=%d warn=%d error=%d\n",
+			result.Summary.Files, result.Summary.OK, result.Summary.Warn, result.Summary.Error)
+	}
+
+	if result.Summary.Error > 0 {
+		os.Exit(1)
+	}
+	return nil
+}

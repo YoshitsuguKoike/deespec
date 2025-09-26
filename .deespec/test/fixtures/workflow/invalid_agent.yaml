@@ -1,0 +1,7 @@
+steps:
+  - id: plan
+    agent: nonexistent_agent
+    prompt_path: prompts/system/plan.md
+  - id: test
+    agent: another_bad_agent
+    prompt_path: prompts/system/test.md

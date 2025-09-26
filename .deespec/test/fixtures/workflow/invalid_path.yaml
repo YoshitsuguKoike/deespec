@@ -1,0 +1,10 @@
+steps:
+  - id: absolute
+    agent: claude_cli
+    prompt_path: /etc/passwd
+  - id: parent_ref
+    agent: system
+    prompt_path: ../../secret.txt
+  - id: complex_parent
+    agent: gpt4
+    prompt_path: prompts/../../../etc/shadow

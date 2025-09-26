@@ -1,0 +1,32 @@
+name: Journal Schema Validation
+
+on:
+  pull_request:
+    paths:
+      - ".deespec/var/journal.ndjson"
+      - ".github/workflows/journal.yml"
+      - "cmd/**"
+      - "internal/**"
+      - "scripts/verify_journal.sh"
+
+jobs:
+  journal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Build deespec
+        run: go build -o deespec ./cmd/deespec
+      - name: Run journal validation
+        run: bash scripts/verify_journal.sh
+      - name: Upload validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deespec-validators
+          path: |
+            journal.json
+            doctor.json

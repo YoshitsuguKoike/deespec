@@ -16,5 +16,6 @@ func NewRoot() *cobra.Command {
 	cmd.AddCommand(newStateCmd())
 	cmd.AddCommand(newHealthCmd())
 	cmd.AddCommand(workflowCmd)
+	cmd.AddCommand(NewSBICommand())
 	return cmd
 }

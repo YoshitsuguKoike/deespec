@@ -41,6 +41,7 @@ func newDoctorCmd() *cobra.Command {
 			}
 			paths := app.GetPaths()
 			cfg := config.Load()
+			exitCode := 0  // Track errors for exit code
 			fmt.Println("AgentBin:", cfg.AgentBin)
 			fmt.Println("ArtifactsDir:", paths.Artifacts)  // Use paths instead of cfg
 			fmt.Println("Timeout:", cfg.Timeout)
@@ -111,16 +112,44 @@ func newDoctorCmd() *cobra.Command {
 						}
 					}
 
-					// Check if prompt files exist and are readable
-					allPromptsOK := true
+					// Check if prompt files exist and are readable (SBI-DR-001)
+					promptErrors := 0
 					for _, step := range wf.Steps {
-						if _, err := os.Stat(step.ResolvedPromptPath); err != nil {
-							fmt.Printf("ERROR: prompt_path not found/readable: %s (%v)\n", step.ResolvedPromptPath, err)
-							allPromptsOK = false
+						// Check existence
+						fileInfo, err := os.Stat(step.ResolvedPromptPath)
+						if err != nil {
+							if os.IsNotExist(err) {
+								fmt.Printf("ERROR: prompt_path not found: %s\n", step.ResolvedPromptPath)
+							} else {
+								fmt.Printf("ERROR: prompt_path not accessible: %s (%v)\n", step.ResolvedPromptPath, err)
+							}
+							promptErrors++
+							continue
 						}
+
+						// Check it's a regular file
+						if !fileInfo.Mode().IsRegular() {
+							fmt.Printf("ERROR: prompt_path not a regular file: %s\n", step.ResolvedPromptPath)
+							promptErrors++
+							continue
+						}
+
+						// Check readability by attempting to read
+						file, err := os.Open(step.ResolvedPromptPath)
+						if err != nil {
+							fmt.Printf("ERROR: prompt_path not readable: %s (%v)\n", step.ResolvedPromptPath, err)
+							promptErrors++
+							continue
+						}
+						file.Close()
+
+						// Report OK for this step's prompt
+						fmt.Printf("OK: prompt_path (%s) readable\n", step.ID)
 					}
-					if allPromptsOK && len(wf.Steps) > 0 {
-						fmt.Printf("OK: All prompt files found and accessible\n")
+
+					// Set exit code based on errors
+					if promptErrors > 0 {
+						exitCode = 1
 					}
 				}
 			}
@@ -233,6 +262,10 @@ func newDoctorCmd() *cobra.Command {
 			}
 			fmt.Println("Logic: ok = (last journal.error == \"\")")
 
+			// Exit with appropriate code
+			if exitCode != 0 {
+				os.Exit(exitCode)
+			}
 			return nil
 		},
 	}

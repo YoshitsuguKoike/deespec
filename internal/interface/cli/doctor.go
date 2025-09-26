@@ -32,8 +32,34 @@ type DoctorJSON struct {
 	Errors           []string `json:"errors"`
 }
 
+// DoctorValidationJSON represents the JSON output structure for --format=json
+type DoctorValidationJSON struct {
+	Steps   []DoctorStepJSON `json:"steps"`
+	Summary DoctorSummaryJSON `json:"summary"`
+}
+
+type DoctorStepJSON struct {
+	ID     string           `json:"id"`
+	Path   string           `json:"path"`
+	Issues []DoctorIssueJSON `json:"issues"`
+}
+
+type DoctorIssueJSON struct {
+	Type    string `json:"type"`    // "ok", "warn", "error"
+	Line    int    `json:"line,omitempty"`
+	Message string `json:"message"`
+}
+
+type DoctorSummaryJSON struct {
+	Steps int `json:"steps"`
+	OK    int `json:"ok"`
+	Warn  int `json:"warn"`
+	Error int `json:"error"`
+}
+
 func newDoctorCmd() *cobra.Command {
 	var jsonOutput bool
+	var format string
 
 	cmd := &cobra.Command{
 		Use:   "doctor",
@@ -41,6 +67,9 @@ func newDoctorCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if jsonOutput {
 				return runDoctorJSON()
+			}
+			if format == "json" {
+				return runDoctorValidationJSON()
 			}
 			paths := app.GetPaths()
 			cfg := config.Load()
@@ -327,6 +356,7 @@ func newDoctorCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	cmd.Flags().StringVar(&format, "format", "", "Output format (json for CI integration)")
 	return cmd
 }
 
@@ -485,6 +515,75 @@ func validatePlaceholders(content string, stepID string) (errors []string, warni
 	return errors, warnings
 }
 
+// validatePlaceholdersJSON checks for undefined or unknown placeholders and returns JSON format issues
+func validatePlaceholdersJSON(content string, stepID string) (errors []DoctorIssueJSON, warnings []DoctorIssueJSON) {
+	// Allowed placeholders from workflow.Allowed
+	allowed := map[string]bool{
+		"turn":         true,
+		"task_id":      true,
+		"project_name": true,
+		"language":     true,
+	}
+
+	// Remove code blocks and inline code to avoid false positives
+	processedContent := removeCodeBlocks(content)
+
+	// Find all placeholders using regex
+	doubleRe := regexp.MustCompile(`\{\{([^{}]+)\}\}`)
+
+	// Check for mustache-style templates (warning only) and remove them
+	doubleMatches := doubleRe.FindAllStringSubmatchIndex(processedContent, -1)
+	for _, match := range doubleMatches {
+		line := countLines(content[:match[0]]) + 1
+		warnings = append(warnings, DoctorIssueJSON{
+			Type:    "warn",
+			Line:    line,
+			Message: fmt.Sprintf("contains non-standard {{%s}}", processedContent[match[2]:match[3]]),
+		})
+	}
+
+	// Remove double brace placeholders before checking single braces
+	processedContent = doubleRe.ReplaceAllString(processedContent, "")
+
+	// Now check single brace placeholders
+	placeholderRe := regexp.MustCompile(`\{([^{}]*)\}`)
+	matches := placeholderRe.FindAllStringSubmatchIndex(processedContent, -1)
+	for _, match := range matches {
+		placeholder := strings.TrimSpace(processedContent[match[2]:match[3]])
+		line := countLines(content[:match[0]]) + 1
+
+		// Check for empty placeholder
+		if placeholder == "" {
+			errors = append(errors, DoctorIssueJSON{
+				Type:    "error",
+				Line:    line,
+				Message: "empty placeholder {}",
+			})
+			continue
+		}
+
+		// Check if placeholder is in allowed list
+		if !allowed[placeholder] {
+			// Check if it's a valid identifier (alphanumeric and underscore)
+			if isValidIdentifier(placeholder) {
+				errors = append(errors, DoctorIssueJSON{
+					Type:    "error",
+					Line:    line,
+					Message: fmt.Sprintf("unknown placeholder {%s}", placeholder),
+				})
+			} else {
+				errors = append(errors, DoctorIssueJSON{
+					Type:    "error",
+					Line:    line,
+					Message: fmt.Sprintf("invalid placeholder {%s}", placeholder),
+				})
+			}
+		}
+	}
+
+	return errors, warnings
+}
+
 // removeCodeBlocks removes fenced code blocks and inline code to prevent false positives
 func removeCodeBlocks(content string) string {
 	// Remove fenced code blocks (```...```)
@@ -586,6 +685,191 @@ func runDoctorJSON() error {
 	}
 
 	os.Exit(exitCode)
+	return nil
+}
+
+func runDoctorValidationJSON() error {
+	paths := app.GetPaths()
+
+	// Check workflow.yaml exists and validate
+	if _, err := os.Stat(paths.Workflow); err != nil {
+		// If workflow not found, return error
+		result := DoctorValidationJSON{
+			Steps: []DoctorStepJSON{},
+			Summary: DoctorSummaryJSON{Steps: 0, OK: 0, Warn: 0, Error: 1},
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		enc.Encode(result)
+		os.Exit(1)
+		return nil
+	}
+
+	// Load and validate workflow
+	ctx := context.Background()
+	wfPath := paths.Workflow
+	if envPath := os.Getenv("DEESPEC_WORKFLOW"); envPath != "" {
+		wfPath = envPath
+	}
+
+	wf, err := workflow.LoadWorkflow(ctx, wfPath)
+	if err != nil {
+		// Workflow loading failed
+		result := DoctorValidationJSON{
+			Steps: []DoctorStepJSON{},
+			Summary: DoctorSummaryJSON{Steps: 0, OK: 0, Warn: 0, Error: 1},
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		enc.Encode(result)
+		os.Exit(1)
+		return nil
+	}
+
+	// Process each step's prompt validation
+	var steps []DoctorStepJSON
+	totalWarnings := 0
+	totalErrors := 0
+	totalOK := 0
+
+	// Get max prompt size limit
+	maxPromptKB := wf.Constraints.MaxPromptKB
+	if maxPromptKB <= 0 {
+		maxPromptKB = workflow.DefaultMaxPromptKB
+	}
+
+	for _, step := range wf.Steps {
+		stepResult := DoctorStepJSON{
+			ID:     step.ID,
+			Path:   step.ResolvedPromptPath,
+			Issues: []DoctorIssueJSON{},
+		}
+
+		stepHasError := false
+
+		// Check existence
+		fileInfo, err := os.Stat(step.ResolvedPromptPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+					Type:    "error",
+					Message: "prompt_path not found",
+				})
+			} else {
+				stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+					Type:    "error",
+					Message: fmt.Sprintf("prompt_path not accessible (%v)", err),
+				})
+			}
+			stepHasError = true
+			totalErrors++
+		} else if !fileInfo.Mode().IsRegular() {
+			stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+				Type:    "error",
+				Message: "prompt_path not a regular file",
+			})
+			stepHasError = true
+			totalErrors++
+		} else {
+			// File exists and is regular, continue validation
+
+			// Check size
+			fileSizeKB := (fileInfo.Size() + 1023) / 1024
+			if fileSizeKB > int64(maxPromptKB) {
+				stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+					Type:    "error",
+					Message: fmt.Sprintf("exceeds max_prompt_kb=%d (found %d)", maxPromptKB, fileSizeKB),
+				})
+				stepHasError = true
+				totalErrors++
+			}
+
+			// Read file content for UTF-8 and format checks
+			content, err := os.ReadFile(step.ResolvedPromptPath)
+			if err != nil {
+				stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+					Type:    "error",
+					Message: fmt.Sprintf("not readable (%v)", err),
+				})
+				stepHasError = true
+				totalErrors++
+			} else {
+				// Check UTF-8 validity
+				if !utf8.Valid(content) {
+					stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+						Type:    "error",
+						Message: "invalid UTF-8 encoding",
+					})
+					stepHasError = true
+					totalErrors++
+				}
+
+				// Check for BOM (warning)
+				if len(content) >= 3 && bytes.HasPrefix(content, []byte{0xEF, 0xBB, 0xBF}) {
+					stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+						Type:    "warn",
+						Message: "contains UTF-8 BOM",
+					})
+					totalWarnings++
+				}
+
+				// Check for CRLF (warning)
+				if bytes.Contains(content, []byte("\r\n")) {
+					stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+						Type:    "warn",
+						Message: "contains CRLF",
+					})
+					totalWarnings++
+				}
+
+				// Check placeholders
+				placeholderErrors, placeholderWarnings := validatePlaceholdersJSON(string(content), step.ID)
+				for _, issue := range placeholderErrors {
+					stepResult.Issues = append(stepResult.Issues, issue)
+					stepHasError = true
+					totalErrors++
+				}
+				for _, issue := range placeholderWarnings {
+					stepResult.Issues = append(stepResult.Issues, issue)
+					totalWarnings++
+				}
+			}
+		}
+
+		// Add OK status if no errors for this step
+		if !stepHasError {
+			stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+				Type:    "ok",
+				Message: fmt.Sprintf("size=%dKB utf8=valid lf=ok placeholders=valid", (fileInfo.Size()+1023)/1024),
+			})
+			totalOK++
+		}
+
+		steps = append(steps, stepResult)
+	}
+
+	// Create result
+	result := DoctorValidationJSON{
+		Steps: steps,
+		Summary: DoctorSummaryJSON{
+			Steps: len(wf.Steps),
+			OK:    totalOK,
+			Warn:  totalWarnings,
+			Error: totalErrors,
+		},
+	}
+
+	// Output JSON
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(result); err != nil {
+		return err
+	}
+
+	// Exit with appropriate code
+	if totalErrors > 0 {
+		os.Exit(1)
+	}
 	return nil
 }
 

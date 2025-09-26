@@ -1,0 +1,20 @@
+name: Doctor Validation
+
+on:
+  pull_request:
+    paths:
+      - ".deespec/**"
+
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Build deespec
+        run: go build -o deespec ./cmd/deespec
+      - name: Run doctor validation
+        run: bash scripts/verify_doctor.sh

@@ -69,19 +69,50 @@ func runOnce() error {
 	// Get paths
 	paths := app.GetPaths()
 
-	// 1) ロック
-	release, err := fs.AcquireLock(paths.StateLock)
+	// 1) 排他ロック（WIP=1 enforcement）
+	releaseFsLock, err := fs.AcquireLock(paths.StateLock)
 	if err != nil {
 		return err
 	}
-	defer release()
+	defer releaseFsLock()
+
+	// 1.2) Run-level lock (parallel execution guard)
+	runLockPath := paths.Var + "/runlock"
+	releaseRunLock, acquired, err := AcquireLock(runLockPath, 10*time.Minute)
+	if err != nil {
+		return fmt.Errorf("failed to acquire run lock: %w", err)
+	}
+
+	if !acquired {
+		// Another instance is running - this is normal, not an error
+		fmt.Fprintf(os.Stderr, "INFO: another instance active\n")
+
+		// Update health even on no-op
+		if err := app.WriteHealth(paths.Health, 0, "plan", true, ""); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to write %s: %v\n", paths.Health, err)
+		}
+
+		return nil // Exit 0 - not an error condition
+	}
+	defer func() {
+		if releaseRunLock != nil {
+			if err := releaseRunLock(); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to release run lock: %v\n", err)
+			}
+		}
+	}()
 
 	// 2) 読み込み
 	st, err := loadState(paths.State)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: failed to read state: %v\n", err)
 		return fmt.Errorf("read state: %w", err)
 	}
 	prevV := st.Version
+
+	// 3) Turn management: 1 run = 1 turn
+	currentTurn := st.Turn + 1
+	st.Turn = currentTurn
 
 	// 3) WIP判定とピック/再開
 	if st.CurrentTaskID == "" {
@@ -92,20 +123,22 @@ func runOnce() error {
 
 		picked, reason, err := PickNextTask(cfg)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: failed to pick task: %v\n", err)
 			return fmt.Errorf("failed to pick task: %w", err)
 		}
 
 		if picked == nil {
 			fmt.Fprintf(os.Stderr, "INFO: %s\n", reason)
-			// No task to pick - just update health and exit
-			if err := app.WriteHealth(paths.Health, st.Turn, st.Current, true, ""); err != nil {
+			// No task to pick - update health and exit
+			if err := app.WriteHealth(paths.Health, currentTurn, "plan", true, ""); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: failed to write %s: %v\n", paths.Health, err)
 			}
 			return nil
 		}
 
 		// Record pick in journal
-		if err := RecordPickInJournal(picked, st.Turn, paths.Journal); err != nil {
+		if err := RecordPickInJournal(picked, currentTurn, paths.Journal); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: failed to record pick: %v\n", err)
 			return fmt.Errorf("failed to record pick: %w", err)
 		}
 
@@ -121,6 +154,7 @@ func runOnce() error {
 		// WIP exists - try to resume
 		resumed, reason, err := ResumeIfInProgress(st, paths.Journal)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: failed to resume: %v\n", err)
 			return fmt.Errorf("failed to resume: %w", err)
 		}
 
@@ -205,8 +239,8 @@ func runOnce() error {
 		next = "plan"
 	}
 
-	// 4) 現在のターンを固定（これが成果物とジャーナルで使用される）
-	currentTurn := st.Turn
+	// All journal records in this run will use the same turn number
+	// (this is now set at the beginning of the run)
 
 	// 5) 成果物出力
 	turnDir := filepath.Join(st.ArtifactsDir, fmt.Sprintf("turn%d", currentTurn))
@@ -224,6 +258,7 @@ func runOnce() error {
 
 	outFile := filepath.Join(turnDir, fmt.Sprintf("%s.md", stepName))
 	if err := os.WriteFile(outFile, []byte(output), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: failed to write artifact: %v\n", err)
 		return fmt.Errorf("write artifact: %w", err)
 	}
 
@@ -256,7 +291,7 @@ func runOnce() error {
 
 	journalRec := map[string]interface{}{
 		"ts":         time.Now().UTC().Format(time.RFC3339Nano),
-		"turn":       currentTurn,  // 固定されたターン番号を使用
+		"turn":       currentTurn,  // All entries in this run use same turn
 		"step":       next,         // 次のステップを記録
 		"decision":   "",
 		"elapsed_ms": elapsedMs,
@@ -296,5 +331,10 @@ func runOnce() error {
 	}
 
 	// 9) 保存（CAS + atomic）
-	return saveStateCAS(paths.State, st, prevV)
+	if err := saveStateCAS(paths.State, st, prevV); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: failed to save state: %v\n", err)
+		return err
+	}
+
+	return nil
 }

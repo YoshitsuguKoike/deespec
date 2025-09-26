@@ -282,30 +282,61 @@ func ResumeIfInProgress(st *State, journalPath string) (bool, string, error) {
 	return true, reason, nil
 }
 
-// SyncStateWithJournal synchronizes state with the journal
+// SyncStateWithJournal synchronizes state with the journal according to the state-journal sync matrix
 func SyncStateWithJournal(st *State, lastEntry map[string]interface{}) (bool, *State, error) {
 	if lastEntry == nil {
 		// No journal entry, state is authoritative
 		return false, st, nil
 	}
 
-	// Check if journal and state are in sync
+	// Extract journal step and decision
 	journalStep, _ := lastEntry["step"].(string)
-	journalTurn := int(lastEntry["turn"].(float64))
+	journalDecision, _ := lastEntry["decision"].(string)
 
-	if st.Current == journalStep && st.Turn == journalTurn {
-		// Already in sync
-		return false, st, nil
+	// Apply state-journal sync matrix
+	newState := *st
+	changed := false
+
+	switch journalStep {
+	case "plan":
+		if journalDecision == "PENDING" {
+			// Pick completed, ready for implement
+			newState.Current = "implement"
+			changed = true
+		}
+	case "implement":
+		if journalDecision == "PENDING" {
+			// Implement step needs to be retried (idempotent)
+			newState.Current = "implement"
+			changed = true
+		}
+	case "test":
+		if journalDecision == "PENDING" {
+			// Test step needs to be retried (idempotent)
+			newState.Current = "test"
+			changed = true
+		}
+	case "review":
+		if journalDecision == "NEEDS_CHANGES" {
+			// Back to implement due to review feedback
+			newState.Current = "implement"
+			changed = true
+		} else if journalDecision == "OK" {
+			// Review approved, ready for done
+			newState.Current = "done"
+			changed = true
+		}
+	case "done":
+		if journalDecision == "OK" {
+			// Task completed, clear WIP and reset to plan
+			newState.Current = "plan"
+			newState.CurrentTaskID = ""
+			changed = true
+		}
 	}
 
-	// Journal is the source of truth - update state to match
-	newState := *st
-	newState.Current = journalStep
-	newState.Turn = journalTurn
-
-	// If journal shows done, clear the current task
-	if journalStep == "done" {
-		newState.CurrentTaskID = ""
+	if !changed {
+		return false, st, nil
 	}
 
 	return true, &newState, nil
@@ -350,6 +381,27 @@ func RecordPickInJournal(task *Task, turn int, journalPath string) error {
 		journalPath = ".deespec/var/journal.ndjson"
 	}
 
+	// Create artifact with required fields according to SBI-PICK-002
+	artifact := map[string]interface{}{
+		"type":      "pick",
+		"task_id":   task.ID,     // Primary key (required)
+		"id":        task.ID,     // Backward compatibility
+		"spec_path": task.SpecPath,
+	}
+
+	// Add priority fields (null if not set)
+	if task.POR > 0 {
+		artifact["por"] = task.POR
+	} else {
+		artifact["por"] = nil
+	}
+
+	if task.Priority > 0 {
+		artifact["priority"] = task.Priority
+	} else {
+		artifact["priority"] = nil
+	}
+
 	entry := map[string]interface{}{
 		"ts":         time.Now().UTC().Format(time.RFC3339Nano),
 		"turn":       turn,
@@ -357,13 +409,7 @@ func RecordPickInJournal(task *Task, turn int, journalPath string) error {
 		"decision":   "PENDING",
 		"elapsed_ms": 0,
 		"error":      "",
-		"artifacts": []map[string]interface{}{
-			{
-				"type":      "pick",
-				"id":        task.ID,
-				"spec_path": task.SpecPath,
-			},
-		},
+		"artifacts":  []map[string]interface{}{artifact},
 	}
 
 	// Serialize to JSON

@@ -1,5 +1,29 @@
 # Step 9 Implementation Report: Fsync Audit System + Step 7 Feedback
 
+## Step 8 Feedback Addressed
+
+### Commit Idempotency (冪等性) ✓
+**Location**: `internal/infra/fs/txn/transaction.go:182-190`
+- status.commit存在時は完全にno-opで安全終了
+- 前方回復の二重実行に完全対応
+- メトリクスログで`txn.commit.idempotent=true`を出力
+
+### Journal Durability (耐久性) ✓
+**Location**: `internal/interface/cli/register_tx.go:94-134`
+- O_APPEND → fsync(file) → fsync(parent dir)の順序でCommit内で確実に実行
+- withJournal callback内で完全な耐久性保証を実装
+- status.commit作成前に必ずjournal追記が完了
+
+### EXDEV Early Detection (早期検知) ✓
+**Location**: `internal/infra/fs/txn/transaction.go:83-101`
+- StageFile時点で同一デバイスチェック実装済み
+- テストファイルによるrename可否の事前確認
+- cross-device検出時は即座にエラー返却
+
+---
+
+# Step 9 Implementation Report: Fsync Audit System + Step 7 Feedback
+
 ## Overview
 Implemented a comprehensive fsync audit system that tracks and verifies data durability guarantees throughout the transaction system. Additionally, addressed all Step 7 feedback points to ensure robust transaction handling.
 

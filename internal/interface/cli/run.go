@@ -332,13 +332,7 @@ func runOnce(autoFB bool) error {
 		journalRec["decision"] = decision
 	}
 
-	// 正規化してから書き込み
-	if err := app.AppendNormalizedJournal(journalRec); err != nil {
-		// ジャーナル書き込みエラーは無視（ワークフローは継続）
-		fmt.Fprintf(os.Stderr, "Warning: failed to write journal: %v\n", err)
-	}
-
-	// 7) ターンとステップの更新（ジャーナル記録後）
+	// 7) ターンとステップの更新（ジャーナル記録前に状態を更新）
 	if st.Current == "review" && next == "implement" {
 		// ブーメラン時はturn据え置き
 	} else if st.Current != "done" && next != st.Current {
@@ -360,10 +354,27 @@ func runOnce(autoFB bool) error {
 		fmt.Fprintf(os.Stderr, "Warning: failed to write %s: %v\n", paths.Health, err)
 	}
 
-	// 9) 保存（CAS + atomic）
-	if err := saveStateCAS(paths.State, st, prevV); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: failed to save state: %v\n", err)
-		return err
+	// 9) State and Journal atomic save with TX
+	if UseTXForStateJournal() {
+		// TX mode: atomic update of state.json and journal
+		if err := SaveStateAndJournalTX(st, journalRec, paths, prevV); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: failed to save state and journal (TX): %v\n", err)
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "DEBUG: state.json and journal saved atomically via TX\n")
+	} else {
+		// Legacy mode: separate updates (for compatibility)
+		// First append journal
+		if err := app.AppendNormalizedJournal(journalRec); err != nil {
+			// ジャーナル書き込みエラーは無視（ワークフローは継続）
+			fmt.Fprintf(os.Stderr, "Warning: failed to write journal: %v\n", err)
+		}
+
+		// Then save state
+		if err := saveStateCAS(paths.State, st, prevV); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: failed to save state: %v\n", err)
+			return err
+		}
 	}
 
 	return nil

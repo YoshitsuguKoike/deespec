@@ -19,6 +19,46 @@ ls -1
 # => workflow.yaml, state.json, .artifacts/
 ```
 
+## Startup Sequence (Important)
+
+**Transaction Recovery**: DeeSpec performs automatic transaction recovery at startup. This must happen **before acquiring any locks** to ensure data consistency.
+
+The startup sequence is automatically handled by:
+1. `RunStartupRecovery()` - Transaction recovery (before locks)
+2. Lock acquisition for exclusive operation
+3. Normal workflow execution
+
+### Development/Testing
+
+**Fsync Audit Mode**: For testing data durability guarantees:
+```bash
+# Enable fsync audit mode (build tag)
+go test -tags fsync_audit ./...
+
+# Or via environment variable
+DEESPEC_FSYNC_AUDIT=1 go test ./...
+```
+
+This tracks all fsync operations to verify proper data persistence.
+
+**Build Tags Reference:**
+- `fsync_audit`: Enable fsync monitoring and detailed audit logging
+- Default (no tags): Production optimized build
+
+**Common Development Commands:**
+```bash
+# Run all tests with coverage
+make test-coverage
+
+# Run tests with fsync audit
+go test -tags fsync_audit ./...
+
+# Run coverage check
+make coverage-check
+
+# Generate HTML coverage report
+make coverage-html
+```
 
 ---
 

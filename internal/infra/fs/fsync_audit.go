@@ -43,7 +43,7 @@ func FsyncFile(file *os.File) error {
 		audit.filePaths = append(audit.filePaths, file.Name())
 		audit.mu.Unlock()
 
-		fmt.Fprintf(os.Stderr, "AUDIT: fsync.file path=%s count=%d\n",
+		fmt.Fprintf(os.Stderr, "AUDIT: File fsync completed fsync.file.path=%s fsync.file.count=%d\n",
 			file.Name(), atomic.LoadInt64(&audit.fileCount))
 	}
 
@@ -60,7 +60,7 @@ func FsyncDir(path string) error {
 		audit.dirPaths = append(audit.dirPaths, path)
 		audit.mu.Unlock()
 
-		fmt.Fprintf(os.Stderr, "AUDIT: fsync.dir path=%s count=%d\n",
+		fmt.Fprintf(os.Stderr, "AUDIT: Directory fsync completed fsync.dir.path=%s fsync.dir.count=%d\n",
 			path, atomic.LoadInt64(&audit.dirCount))
 	}
 
@@ -111,13 +111,13 @@ func ResetFsyncStats() {
 	audit.dirPaths = []string{}
 	audit.mu.Unlock()
 
-	fmt.Fprintf(os.Stderr, "AUDIT: fsync stats reset\n")
+	fmt.Fprintf(os.Stderr, "AUDIT: Fsync stats reset fsync.stats.reset=true\n")
 }
 
 // AtomicRename performs atomic rename with audit logging
 func AtomicRename(src, dst string) error {
 	if audit.enabled {
-		fmt.Fprintf(os.Stderr, "AUDIT: atomic.rename src=%s dst=%s\n", src, dst)
+		fmt.Fprintf(os.Stderr, "AUDIT: Atomic rename completed fsync.atomic.rename=true src=%s dst=%s\n", src, dst)
 	}
 
 	// Same implementation as non-audit version
@@ -132,7 +132,7 @@ func AtomicRename(src, dst string) error {
 // WriteFileSync writes file with sync and audit logging
 func WriteFileSync(path string, data []byte, perm os.FileMode) error {
 	if audit.enabled {
-		fmt.Fprintf(os.Stderr, "AUDIT: write.file.sync path=%s size=%d\n", path, len(data))
+		fmt.Fprintf(os.Stderr, "AUDIT: File write with sync completed fsync.write.file.sync=true path=%s size=%d\n", path, len(data))
 	}
 
 	// Create temp file

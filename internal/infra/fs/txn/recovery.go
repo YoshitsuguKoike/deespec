@@ -9,19 +9,58 @@ import (
 	"time"
 )
 
+// Recovery configuration constants
+const (
+	DefaultRecoveryTimeout = 30 * time.Second       // Maximum time for single transaction recovery
+	DefaultTotalTimeout    = 5 * time.Minute        // Maximum time for complete recovery process
+	DefaultMaxRetries      = 3                      // Maximum retry attempts per transaction
+	DefaultRetryBaseDelay  = 100 * time.Millisecond // Base delay for exponential backoff
+	DefaultRetryMaxDelay   = 2 * time.Second        // Maximum retry delay
+)
+
 // Recovery handles transaction recovery operations
 type Recovery struct {
-	manager *Manager
+	manager      *Manager
+	timeout      time.Duration
+	totalTimeout time.Duration
+	maxRetries   int
+	baseDelay    time.Duration
+	maxDelay     time.Duration
 }
 
-// NewRecovery creates a new recovery handler
+// RecoveryConfig configures recovery behavior
+type RecoveryConfig struct {
+	Timeout      time.Duration
+	TotalTimeout time.Duration
+	MaxRetries   int
+	BaseDelay    time.Duration
+	MaxDelay     time.Duration
+}
+
+// NewRecovery creates a new recovery handler with default configuration
 func NewRecovery(manager *Manager) *Recovery {
+	return NewRecoveryWithConfig(manager, RecoveryConfig{
+		Timeout:      DefaultRecoveryTimeout,
+		TotalTimeout: DefaultTotalTimeout,
+		MaxRetries:   DefaultMaxRetries,
+		BaseDelay:    DefaultRetryBaseDelay,
+		MaxDelay:     DefaultRetryMaxDelay,
+	})
+}
+
+// NewRecoveryWithConfig creates a new recovery handler with custom configuration
+func NewRecoveryWithConfig(manager *Manager, config RecoveryConfig) *Recovery {
 	return &Recovery{
-		manager: manager,
+		manager:      manager,
+		timeout:      config.Timeout,
+		totalTimeout: config.TotalTimeout,
+		maxRetries:   config.MaxRetries,
+		baseDelay:    config.BaseDelay,
+		maxDelay:     config.MaxDelay,
 	}
 }
 
-// RecoverAll performs recovery for all incomplete transactions
+// RecoverAll performs recovery for all incomplete transactions with timeout and retry
 func (r *Recovery) RecoverAll(ctx context.Context) (*RecoveryResult, error) {
 	startTime := time.Now()
 	result := &RecoveryResult{
@@ -32,6 +71,10 @@ func (r *Recovery) RecoverAll(ctx context.Context) (*RecoveryResult, error) {
 		Errors:         []error{},
 	}
 
+	// Apply total timeout to the context
+	totalCtx, cancel := context.WithTimeout(ctx, r.totalTimeout)
+	defer cancel()
+
 	// Scan for incomplete transactions
 	scanner := NewScanner(r.manager.baseDir)
 	scanResult, err := scanner.Scan()
@@ -41,7 +84,13 @@ func (r *Recovery) RecoverAll(ctx context.Context) (*RecoveryResult, error) {
 
 	// Process transactions that need forward recovery (intent without commit)
 	for _, txnID := range scanResult.IntentOnly {
-		if err := r.recoverTransaction(ctx, txnID); err != nil {
+		// Check context timeout
+		if totalCtx.Err() != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("recovery cancelled due to timeout"))
+			break
+		}
+
+		if err := r.recoverTransactionWithRetry(totalCtx, txnID); err != nil {
 			result.FailedCount++
 			result.Errors = append(result.Errors, fmt.Errorf("failed to recover %s: %w", txnID, err))
 			fmt.Fprintf(os.Stderr, "ERROR: Failed to recover transaction %s=%s %s=%v\n",
@@ -79,8 +128,65 @@ func (r *Recovery) RecoverAll(ctx context.Context) (*RecoveryResult, error) {
 	return result, nil
 }
 
+// recoverTransactionWithRetry performs forward recovery with retry logic
+func (r *Recovery) recoverTransactionWithRetry(ctx context.Context, txnID TxnID) error {
+	var lastErr error
+
+	for attempt := 0; attempt <= r.maxRetries; attempt++ {
+		// Create timeout context for this attempt
+		attemptCtx, cancel := context.WithTimeout(ctx, r.timeout)
+
+		err := r.recoverTransaction(attemptCtx, txnID)
+		cancel()
+
+		if err == nil {
+			if attempt > 0 {
+				fmt.Fprintf(os.Stderr, "INFO: Transaction recovery succeeded on retry txn.id=%s txn.retry.attempt=%d\n",
+					txnID, attempt)
+			}
+			return nil
+		}
+
+		lastErr = err
+
+		// Check if context was cancelled (don't retry on timeout/cancellation)
+		if attemptCtx.Err() != nil || ctx.Err() != nil {
+			fmt.Fprintf(os.Stderr, "WARN: Transaction recovery timeout/cancelled txn.id=%s txn.retry.attempt=%d\n",
+				txnID, attempt)
+			break
+		}
+
+		// Don't retry on the last attempt
+		if attempt < r.maxRetries {
+			// Calculate exponential backoff delay
+			delay := r.baseDelay * time.Duration(1<<uint(attempt))
+			if delay > r.maxDelay {
+				delay = r.maxDelay
+			}
+
+			fmt.Fprintf(os.Stderr, "WARN: Transaction recovery failed, retrying txn.id=%s txn.retry.attempt=%d txn.retry.delay_ms=%d error=%v\n",
+				txnID, attempt, delay.Milliseconds(), err)
+
+			// Wait for backoff delay
+			select {
+			case <-time.After(delay):
+				// Continue to next attempt
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	}
+
+	return fmt.Errorf("transaction recovery failed after %d attempts: %w", r.maxRetries+1, lastErr)
+}
+
 // recoverTransaction performs forward recovery for a single transaction
 func (r *Recovery) recoverTransaction(ctx context.Context, txnID TxnID) error {
+	// Check context at start
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	txnDir := filepath.Join(r.manager.baseDir, string(txnID))
 
 	// Load manifest
@@ -88,6 +194,11 @@ func (r *Recovery) recoverTransaction(ctx context.Context, txnID TxnID) error {
 	manifestData, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return fmt.Errorf("failed to read manifest: %w", err)
+	}
+
+	// Check context after I/O operation
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
 	var manifest Manifest
@@ -126,6 +237,11 @@ func (r *Recovery) recoverTransaction(ctx context.Context, txnID TxnID) error {
 	destRoot := ".deespec"
 	if envRoot := os.Getenv("DEESPEC_TX_DEST_ROOT"); envRoot != "" {
 		destRoot = envRoot
+	}
+
+	// Check context before expensive commit operation
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
 	// Note: The journal callback is nil here because the original journal entry

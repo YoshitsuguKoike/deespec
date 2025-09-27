@@ -107,17 +107,30 @@ func (m *Manager) StageFile(tx *Transaction, dst string, content []byte) error {
 		return fmt.Errorf("create stage parent directory: %w", err)
 	}
 
+	// Calculate checksum for content before writing
+	checksumInfo, err := CalculateDataChecksum(content, ChecksumSHA256)
+	if err != nil {
+		return fmt.Errorf("calculate checksum: %w", err)
+	}
+
 	// Write file to stage with fsync
 	if err := fs.WriteFileSync(stagePath, content, 0644); err != nil {
 		return fmt.Errorf("write staged file: %w", err)
 	}
 
-	// Update manifest with file operation
+	// Verify staged file checksum (integrity check)
+	if err := ValidateFileChecksum(stagePath, checksumInfo); err != nil {
+		return fmt.Errorf("staged file checksum validation failed: %w", err)
+	}
+
+	// Update manifest with file operation including checksum
 	op := FileOperation{
-		Type:        "create",
-		Destination: dst,
-		Size:        int64(len(content)),
-		Mode:        0644,
+		Type:         "create",
+		Destination:  dst,
+		Size:         int64(len(content)),
+		Mode:         0644,
+		Checksum:     checksumInfo.Value, // Legacy field
+		ChecksumInfo: checksumInfo,       // Detailed checksum info
 	}
 
 	tx.Manifest.Files = append(tx.Manifest.Files, op)
@@ -194,7 +207,19 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 		return fmt.Errorf("cannot commit: transaction status is %s", tx.Status)
 	}
 
-	// Phase 1: Rename staged files to final destinations
+	// Phase 1: Validate staged file checksums before commit
+	for _, op := range tx.Manifest.Files {
+		stagePath := filepath.Join(tx.StageDir, op.Destination)
+
+		// Validate checksum if available
+		if op.ChecksumInfo != nil {
+			if err := ValidateFileChecksum(stagePath, op.ChecksumInfo); err != nil {
+				return fmt.Errorf("staged file checksum validation failed for %s: %w", op.Destination, err)
+			}
+		}
+	}
+
+	// Phase 2: Rename staged files to final destinations
 	for _, op := range tx.Manifest.Files {
 		stagePath := filepath.Join(tx.StageDir, op.Destination)
 		finalPath := filepath.Join(destRoot, op.Destination)
@@ -209,9 +234,16 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 		if err := fs.AtomicRename(stagePath, finalPath); err != nil {
 			return fmt.Errorf("rename %s to %s: %w", stagePath, finalPath, err)
 		}
+
+		// Verify final file checksum after rename
+		if op.ChecksumInfo != nil {
+			if err := ValidateFileChecksum(finalPath, op.ChecksumInfo); err != nil {
+				return fmt.Errorf("final file checksum validation failed for %s: %w", op.Destination, err)
+			}
+		}
 	}
 
-	// Phase 2: Execute journal operation
+	// Phase 3: Execute journal operation
 	// CLEANUP ORDER (Step 7 feedback): Journal must be successfully appended BEFORE
 	// creating status.commit marker. This ensures journal durability before marking
 	// the transaction as complete.
@@ -221,7 +253,7 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 		}
 	}
 
-	// Phase 3: Mark commit complete
+	// Phase 4: Mark commit complete
 	// This creates status.commit AFTER successful journal append
 	commit := &Commit{
 		TxnID:       tx.Manifest.ID,
@@ -252,6 +284,85 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 	tx.Commit = commit
 
 	return nil
+}
+
+// Rollback aborts transaction and optionally restores original files
+// Rollback can be called at any stage of the transaction lifecycle
+func (m *Manager) Rollback(tx *Transaction, reason string) error {
+	startTime := time.Now()
+
+	// Log rollback attempt with metrics
+	fmt.Fprintf(os.Stderr, "INFO: Rolling back transaction %s=%s %s=%s\n",
+		MetricRegisterRollbackCount, tx.Manifest.ID, "reason", reason)
+
+	// Check if transaction is already committed
+	if tx.Status == StatusCommit {
+		fmt.Fprintf(os.Stderr, "ERROR: Cannot rollback committed transaction %s=%s\n",
+			MetricRollbackFailed, tx.Manifest.ID)
+		return fmt.Errorf("cannot rollback committed transaction %s", tx.Manifest.ID)
+	}
+
+	// Phase 1: Restore original files if undo information exists
+	undoPerformed := false
+	if tx.Undo != nil && len(tx.Undo.RestoreOps) > 0 {
+		for _, restore := range tx.Undo.RestoreOps {
+			if err := m.performRestore(restore); err != nil {
+				fmt.Fprintf(os.Stderr, "WARN: Failed to restore %s during rollback: %v\n",
+					restore.TargetPath, err)
+				// Continue with other restore operations
+			} else {
+				undoPerformed = true
+			}
+		}
+	}
+
+	// Phase 2: Clean up transaction files (stage, undo, manifest)
+	if err := os.RemoveAll(tx.BaseDir); err != nil {
+		duration := time.Since(startTime)
+		fmt.Fprintf(os.Stderr, "ERROR: Failed to cleanup transaction during rollback %s=%s %s=%dms error=%v\n",
+			MetricRollbackFailed, tx.Manifest.ID, "duration_ms", duration.Milliseconds(), err)
+		return fmt.Errorf("cleanup transaction directory: %w", err)
+	}
+
+	// Phase 3: Fsync parent directory to ensure cleanup is persisted
+	if err := fs.FsyncDir(m.baseDir); err != nil {
+		fmt.Fprintf(os.Stderr, "WARN: fsync after rollback cleanup failed: %v\n", err)
+	}
+
+	// Update transaction state
+	tx.Status = StatusAborted
+
+	// Log successful rollback with metrics
+	duration := time.Since(startTime)
+	fmt.Fprintf(os.Stderr, "INFO: Transaction rollback completed %s=%s %s=%t %s=%dms\n",
+		MetricRollbackSuccess, tx.Manifest.ID, "undo_performed", undoPerformed,
+		"duration_ms", duration.Milliseconds())
+
+	return nil
+}
+
+// performRestore restores a single file from undo information
+func (m *Manager) performRestore(restore RestoreOp) error {
+	switch restore.Type {
+	case "overwrite":
+		// Restore original content from undo directory
+		return fs.AtomicRename(restore.UndoPath, restore.TargetPath)
+
+	case "delete":
+		// Remove file that was created during transaction
+		if err := os.Remove(restore.TargetPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove created file: %w", err)
+		}
+		// Fsync parent directory
+		return fs.FsyncDir(filepath.Dir(restore.TargetPath))
+
+	case "create":
+		// Recreate file that was deleted during transaction
+		return fs.AtomicRename(restore.UndoPath, restore.TargetPath)
+
+	default:
+		return fmt.Errorf("unknown restore operation type: %s", restore.Type)
+	}
 }
 
 // Cleanup removes transaction work directory

@@ -3,6 +3,7 @@ package txn
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -69,6 +70,9 @@ type FileOperation struct {
 
 	// SHA256 checksum of the file content (for verification)
 	Checksum string `json:"checksum,omitempty"`
+
+	// Detailed checksum information (Step 11)
+	ChecksumInfo *FileChecksum `json:"checksum_info,omitempty"`
 
 	// File size in bytes
 	Size int64 `json:"size,omitempty"`
@@ -201,11 +205,29 @@ type Undo struct {
 	// Backup locations of original files
 	Backups map[string]string `json:"backups"`
 
+	// Structured restore operations for rollback
+	RestoreOps []RestoreOp `json:"restore_ops"`
+
 	// Timestamp when undo was prepared
 	PreparedAt time.Time `json:"prepared_at"`
 
 	// Whether undo is still valid
 	Valid bool `json:"valid"`
+}
+
+// RestoreOp represents a single restore operation for rollback
+type RestoreOp struct {
+	// Type of restore operation: "overwrite", "delete", "create"
+	Type string `json:"type"`
+
+	// Target path to restore
+	TargetPath string `json:"target_path"`
+
+	// Path to undo data (for overwrite/create operations)
+	UndoPath string `json:"undo_path,omitempty"`
+
+	// Original file permissions (for create operations)
+	Permissions os.FileMode `json:"permissions,omitempty"`
 }
 
 // Transaction represents the complete transaction state.

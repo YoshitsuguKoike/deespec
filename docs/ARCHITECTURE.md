@@ -64,6 +64,32 @@ fsync(file) → fsync(parent dir)
   - クラッシュ耐性を最優先
 - **ディレクトリ同期**: rename操作後は必ず親ディレクトリの`fsync(parent dir)`を実行
 
+**親ディレクトリfsync の重要性:**
+- **メタデータ永続化**: ファイル作成・rename操作後、親ディレクトリをfsyncしないと目次エントリが失われる
+- **原子性保証**: `rename(tempfile, target)`操作後、親ディレクトリのfsyncが必須
+- **クラッシュ耐性**: 電源断時にファイルは存在するが親ディレクトリのエントリが失われるリスクを回避
+- **POSIX要件**: POSIXファイルシステムでは、ディレクトリ変更（作成・削除・rename）後のfsyncが必要
+
+**実装例:**
+```go
+// ファイル作成とfsync
+file, err := os.Create("newfile.txt")
+file.Write(data)
+file.Sync()  // ファイル内容をfsync
+file.Close()
+
+// 親ディレクトリをfsync（重要！）
+dir, err := os.Open(filepath.Dir("newfile.txt"))
+dir.Sync()   // ディレクトリエントリをfsync
+dir.Close()
+
+// Rename操作とfsync
+os.Rename("tempfile", "target")
+parentDir, err := os.Open(filepath.Dir("target"))
+parentDir.Sync()  // rename後の親ディレクトリfsync（必須）
+parentDir.Close()
+```
+
 **fsync失敗時の方針:**
 - **現在のデフォルト**: WARNログのみ（処理は継続）
 - **厳密モード（環境変数）**: `DEE_STRICT_FSYNC=1`でfsync失敗をエラーとして扱う
@@ -114,6 +140,14 @@ fsync(file) → fsync(parent dir)
 
 システム起動時の復旧処理規則：
 
+**CRITICAL: 起動シーケンス要件**
+```
+main() → RunStartupRecovery() → AcquireLock() → Normal Operation
+```
+- `RunStartupRecovery()`は**必ず**state lockやrun lock取得前に呼び出す
+- ロック前に実行することで、障害回復処理とロック競合の分離を保証
+- 違反時は複数プロセス間でのデッドロックや不整合状態を引き起こす可能性
+
 **スキャンタイミング:**
 - トランザクションディレクトリのスキャンは、アプリケーション起動直後、**ロック取得前**に実行
 - これによりロックを保持する前に復旧可能性を判断し、起動時間を最適化
@@ -129,7 +163,43 @@ fsync(file) → fsync(parent dir)
   - `commit`完了後のtxnディレクトリは次回起動時に削除
   - Step 8で実装予定：バッチ削除によりI/O負荷を軽減
 
-### 3.8 Constraints and Non-Goals {#tx-constraints}
+### 3.8 Cleanup Policy {#tx-cleanup}
+
+トランザクション関連ファイルの削除方針：
+
+**即座クリーンアップ（Immediate Cleanup）:**
+- **対象**: 正常完了したトランザクション（`status.commit`存在）
+- **タイミング**: Commit操作の最終フェーズで即座に実行
+- **方針**:
+  ```go
+  if err := manager.Cleanup(tx); err != nil {
+      // Non-fatal: just log warning
+      fmt.Fprintf(os.Stderr, "WARN: failed to cleanup transaction: %v\n", err)
+  }
+  ```
+- **失敗時**: WARN ログのみ（処理継続、次回起動時に再試行）
+
+**起動時一括クリーンアップ（Startup Batch Cleanup）:**
+- **対象**: 残存している完了済みトランザクション
+- **実行場所**: `RunStartupRecovery()`内で実行
+- **処理順序**:
+  1. アクティブトランザクションの前方回復処理
+  2. 完了済みトランザクション（`status.commit`存在）の一括削除
+  3. 孤立ファイルの検出とログ出力
+- **安全性**: ロック取得前に実行することで競合回避
+
+**保持ポリシー（Retention Policy）:**
+- **デフォルト**: 完了後即座削除（ディスク使用量最小化）
+- **デバッグモード**: `DEESPEC_KEEP_TX_DIRS=1`で削除を無効化
+- **ログ保持**: 削除されたトランザクションの情報はjournal.ndjsonに永続記録
+- **監査要件**: 削除操作もメトリクス出力対象（`txn.cleanup.success`/`txn.cleanup.failed`）
+
+**エラー処理:**
+- **アクセス権限エラー**: WARN ログ、次回起動時に再試行
+- **ディスク容量不足**: クリーンアップ失敗は致命的エラーとしない
+- **同時アクセス**: 他プロセスによる削除は正常として扱う（ディレクトリ不存在は成功）
+
+### 3.9 Constraints and Non-Goals {#tx-constraints}
 
 **制約事項:**
 - **同一ファイルシステム要件**: rename操作の原子性を保証するため、全ファイルは同一FS上に配置
@@ -176,7 +246,108 @@ fsync(file) → fsync(parent dir)
 - `E_TX_INCOMPLETE`: トランザクション不完全
 - `E_FSYNC_FAILED`: fsync失敗
 
-### 5.2 Performance Considerations
+### 5.2 Metrics Output Standard {#metrics-standard}
+
+システム全体での一貫したメトリクス出力形式：
+
+**標準フォーマット:**
+```
+LOG_LEVEL: Human readable message key1=value1 key2=value2
+```
+
+**フォーマット規則:**
+- **ログレベル**: `INFO`, `WARN`, `ERROR`, `DEBUG`, `AUDIT`
+- **メッセージ**: 人間が読みやすい説明（英語/日本語混在可）
+- **キー**: ピリオド区切りの階層形式（例：`txn.commit.success`）
+- **値**: 引用符なしの単純値（文字列、数値、ブール値）
+- **区切り**: キー=値ペアはスペースで区切り
+
+**メトリクス名前空間:**
+- `txn.*`: トランザクション関連メトリクス
+- `fsync.*`: fsync監査関連メトリクス
+- `run.*`: 実行・ワークフロー関連メトリクス
+- `register.*`: タスク登録関連メトリクス
+
+**例:**
+```bash
+INFO: Transaction committed successfully txn.commit.success=true txn.id=abc123 txn.duration_ms=45
+WARN: Failed to cleanup transaction txn.cleanup.failed=def456 error="permission denied"
+AUDIT: fsync operation completed fsync.file.count=3 fsync.path=/path/to/file
+```
+
+**パースとモニタリング:**
+- key=value形式により、ログ解析ツール（fluentd/logstash）で簡単にパース可能
+- メトリクス名は`internal/infra/fs/txn/metrics.go`で集中管理
+- Step 12のdoctorコマンドでメトリクス収集・集計予定
+
+### 5.3 Build Tags Configuration {#build-tags}
+
+条件付きコンパイルによる機能制御：
+
+**Build Tag一覧:**
+```bash
+# fsync audit mode (監査モード)
+go build -tags fsync_audit
+go test -tags fsync_audit ./...
+
+# Normal mode (本番モード) - デフォルト
+go build
+go test ./...
+```
+
+**fsync_audit タグ:**
+- **目的**: データ永続性の検証とデバッグ
+- **有効化方法**:
+  ```bash
+  # ビルド時指定
+  go build -tags fsync_audit -o deespec-audit ./cmd/deespec
+
+  # テスト時指定
+  go test -tags fsync_audit ./...
+
+  # 環境変数併用
+  DEESPEC_FSYNC_AUDIT=1 go test -tags fsync_audit ./...
+  ```
+
+- **動作変更**:
+  - `FsyncFile()` と `FsyncDir()` がaudit情報を出力
+  - fsync操作の回数とパスを追跡
+  - AUDIT ログによる詳細な操作記録
+  - パフォーマンス計測用の統計情報収集
+
+**ファイル構成:**
+```
+internal/infra/fs/
+├── io.go                      # 通常版 (build tag: !fsync_audit)
+├── fsync_audit.go            # 監査版 (build tag: fsync_audit)
+├── fsync_audit_test.go       # 監査専用テスト
+└── txn/
+    └── fsync_audit_integration_test.go  # 統合監査テスト
+```
+
+**使用場面:**
+- **本番**: 通常モードでパフォーマンス重視
+- **開発**: 監査モードでfsync動作を検証
+- **CI**: 両モードでテストを実行
+- **デバッグ**: データ永続性の問題調査
+
+**制約事項:**
+- 監査モードは性能が低下するため、本番環境では使用しない
+- build tagは実行時ではなくコンパイル時に決定される
+- 環境変数 `DEESPEC_FSYNC_AUDIT=1` と build tag の両方が必要
+
+**CI設定例:**
+```yaml
+# 通常テスト
+- run: go test ./...
+
+# 監査テスト
+- run: go test -tags fsync_audit ./...
+  env:
+    DEESPEC_FSYNC_AUDIT: "1"
+```
+
+### 5.4 Performance Considerations
 - fsync呼び出しはI/O性能に影響するため、必要最小限に留める
 - journalのO_APPENDは原子的追記を保証しつつ性能を維持
 - リースTTLは障害検出時間と性能のトレードオフを考慮

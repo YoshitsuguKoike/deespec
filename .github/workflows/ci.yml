@@ -30,6 +30,51 @@ jobs:
         run: |
           go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 ./...
 
+      - name: Validate coverage threshold
+        run: |
+          # Extract total coverage percentage
+          COVERAGE=$(go tool cover -func=coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+')
+          echo "Total coverage: ${COVERAGE}%"
+
+          # Set minimum coverage thresholds
+          MIN_COVERAGE=70.0
+          CRITICAL_MIN_COVERAGE=50.0
+
+          # Check critical minimum (fail CI if below this)
+          if (( $(echo "$COVERAGE < $CRITICAL_MIN_COVERAGE" | bc -l) )); then
+            echo "ERROR: Coverage ${COVERAGE}% is below critical minimum ${CRITICAL_MIN_COVERAGE}%"
+            exit 1
+          fi
+
+          # Check target coverage (warning only)
+          if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
+            echo "WARNING: Coverage ${COVERAGE}% is below target ${MIN_COVERAGE}%"
+            echo "Consider adding more tests for critical code paths"
+          else
+            echo "SUCCESS: Coverage ${COVERAGE}% meets target ${MIN_COVERAGE}%"
+          fi
+
+      - name: Coverage assertions for critical packages
+        run: |
+          # Ensure critical packages have high coverage
+          echo "Checking coverage for critical packages..."
+
+          # Check transaction package coverage
+          TXN_COVERAGE=$(go tool cover -func=coverage.txt | grep "internal/infra/fs/txn" | grep -v "test" | awk '{sum+=$3; count++} END {if(count>0) print sum/count; else print 0}')
+          echo "Transaction package coverage: ${TXN_COVERAGE}%"
+
+          if (( $(echo "$TXN_COVERAGE < 80.0" | bc -l) )); then
+            echo "WARNING: Transaction package coverage ${TXN_COVERAGE}% below 80%"
+          fi
+
+          # Check CLI package coverage
+          CLI_COVERAGE=$(go tool cover -func=coverage.txt | grep "internal/interface/cli" | grep -v "test" | awk '{sum+=$3; count++} END {if(count>0) print sum/count; else print 0}')
+          echo "CLI package coverage: ${CLI_COVERAGE}%"
+
+          if (( $(echo "$CLI_COVERAGE < 60.0" | bc -l) )); then
+            echo "WARNING: CLI package coverage ${CLI_COVERAGE}% below 60%"
+          fi
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:

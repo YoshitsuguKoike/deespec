@@ -19,6 +19,12 @@ const (
 	MetricRecoverForwardSuccess = "txn.recover.forward.success"
 	MetricRecoverForwardFailed  = "txn.recover.forward.failed"
 
+	// Recovery retry metrics
+	MetricRecoveryRetryAttempt = "txn.retry.attempt"
+	MetricRecoveryRetrySuccess = "txn.retry.success"
+	MetricRecoveryRetryTimeout = "txn.retry.timeout"
+	MetricRecoveryRetryDelay   = "txn.retry.delay_ms"
+
 	// Transaction scan metrics
 	MetricScanTotal      = "txn.scan.total"
 	MetricScanIntentOnly = "txn.scan.intent_only_count"
@@ -40,4 +46,18 @@ const (
 	MetricCommitDurationMs  = "txn.commit.duration_ms"
 	MetricRecoverDurationMs = "txn.recover.duration_ms"
 	MetricScanDurationMs    = "txn.scan.duration_ms"
+
+	// Fsync audit metrics (standardized format)
+	MetricFsyncFileCount = "fsync.file.count"
+	MetricFsyncDirCount  = "fsync.dir.count"
+	MetricFsyncFilePath  = "fsync.file.path"
+	MetricFsyncDirPath   = "fsync.dir.path"
+	MetricAtomicRename   = "fsync.atomic.rename"
+	MetricWriteFileSync  = "fsync.write.file.sync"
+
+	// Checksum validation metrics (Step 11)
+	MetricChecksumValidationSuccess = "txn.checksum.validation.success"
+	MetricChecksumValidationFailed  = "txn.checksum.validation.failed"
+	MetricChecksumCalculationTime   = "txn.checksum.calculation.duration_ms"
+	MetricChecksumAlgorithm         = "txn.checksum.algorithm"
 )

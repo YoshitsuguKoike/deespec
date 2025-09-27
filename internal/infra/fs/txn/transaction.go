@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
@@ -79,8 +80,26 @@ func (m *Manager) StageFile(tx *Transaction, dst string, content []byte) error {
 		return fmt.Errorf("cannot stage file: transaction status is %s", tx.Status)
 	}
 
-	// Create relative path for staging
+	// Early EXDEV detection: verify stage and destination are on same filesystem
+	// This prevents late failures during commit
 	stagePath := filepath.Join(tx.StageDir, dst)
+
+	// Create a test file in stage directory to check filesystem
+	testStagePath := filepath.Join(tx.StageDir, ".test_fs")
+	if err := os.WriteFile(testStagePath, []byte("test"), 0644); err == nil {
+		defer os.Remove(testStagePath)
+
+		// Try a test rename to detect EXDEV early
+		testDstPath := filepath.Join(m.baseDir, ".test_dst")
+		if err := os.Rename(testStagePath, testDstPath); err != nil {
+			if strings.Contains(err.Error(), "cross-device") || strings.Contains(err.Error(), "invalid cross-device") {
+				return fmt.Errorf("stage and destination on different filesystems (EXDEV): cannot stage file %s", dst)
+			}
+		} else {
+			os.Remove(testDstPath)
+		}
+	}
+
 	stageDir := filepath.Dir(stagePath)
 
 	// Create parent directories if needed
@@ -156,7 +175,18 @@ func (m *Manager) MarkIntent(tx *Transaction) error {
 
 // Commit commits the transaction
 // The destRoot parameter specifies the root directory for final file destinations
+// This method is idempotent - if already committed, it returns success without action
 func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() error) error {
+	// Check if already committed (idempotent)
+	commitPath := filepath.Join(tx.BaseDir, "status.commit")
+	if _, err := os.Stat(commitPath); err == nil {
+		// Already committed - this is safe, just update status and return
+		tx.Status = StatusCommit
+		// Log for metrics tracking (Step 12 preparation)
+		fmt.Fprintf(os.Stderr, "INFO: Transaction already committed txn.commit.idempotent=true txn.id=%s\n", tx.Manifest.ID)
+		return nil
+	}
+
 	if tx.Status != StatusIntent {
 		return fmt.Errorf("cannot commit: transaction status is %s", tx.Status)
 	}
@@ -200,13 +230,13 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 	}
 
 	// Save commit marker
-	commitPath := filepath.Join(tx.BaseDir, "status.commit")
+	commitPathForSave := filepath.Join(tx.BaseDir, "status.commit")
 	commitData, err := json.MarshalIndent(commit, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal commit: %w", err)
 	}
 
-	if err := fs.WriteFileSync(commitPath, commitData, 0644); err != nil {
+	if err := fs.WriteFileSync(commitPathForSave, commitData, 0644); err != nil {
 		return fmt.Errorf("write commit marker: %w", err)
 	}
 

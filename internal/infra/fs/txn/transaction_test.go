@@ -189,10 +189,15 @@ func TestTransactionStateValidation(t *testing.T) {
 		t.Fatalf("Commit failed: %v", err)
 	}
 
-	t.Run("Cannot commit twice", func(t *testing.T) {
+	t.Run("Idempotent commit", func(t *testing.T) {
+		// Per Step 6 feedback: commits should be idempotent
 		err := manager.Commit(tx, tempDir, nil)
-		if err == nil {
-			t.Error("Expected error when committing twice")
+		if err != nil {
+			t.Errorf("Idempotent commit should succeed, got error: %v", err)
+		}
+		// Verify status is still commit
+		if tx.Status != StatusCommit {
+			t.Errorf("Expected status COMMIT after idempotent commit, got %s", tx.Status)
 		}
 	})
 

@@ -93,22 +93,29 @@ func LoadMetrics(metricsPath string) (*MetricsCollector, error) {
 
 // SaveMetrics saves metrics to disk with file locking and monotonic guarantees
 func (m *MetricsCollector) SaveMetrics(metricsPath string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	// 1) Take snapshot of in-memory state (avoid lock nesting)
+	m.mu.RLock()
+	snap := MetricsCollector{
+		CommitSuccess: m.CommitSuccess,
+		CommitFailed:  m.CommitFailed,
+		CASConflicts:  m.CASConflicts,
+		RecoveryCount: m.RecoveryCount,
+		SchemaVersion: MetricsSchemaVersion,
+		LastUpdate:    time.Now().UTC().Format(time.RFC3339),
+	}
+	m.mu.RUnlock()
 
-	// Ensure directory exists
+	// 2) File operations with exclusive lock only
 	if err := os.MkdirAll(filepath.Dir(metricsPath), 0755); err != nil {
 		return fmt.Errorf("create metrics dir: %w", err)
 	}
 
-	// Open or create metrics file for exclusive access
 	file, err := os.OpenFile(metricsPath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("open metrics file: %w", err)
 	}
 	defer file.Close()
 
-	// Acquire exclusive lock
 	if err := lockFile(int(file.Fd()), syscall.LOCK_EX); err != nil {
 		return fmt.Errorf("acquire write lock: %w", err)
 	}
@@ -118,11 +125,10 @@ func (m *MetricsCollector) SaveMetrics(metricsPath string) error {
 		}
 	}()
 
-	// Read existing metrics for monotonic merge
+	// 3) Read existing metrics for additive merge
 	var existingMetrics *MetricsCollector
 	stat, err := file.Stat()
 	if err == nil && stat.Size() > 0 {
-		// File exists and has content
 		data := make([]byte, stat.Size())
 		if _, err := file.ReadAt(data, 0); err != nil {
 			return fmt.Errorf("read existing metrics: %w", err)
@@ -132,50 +138,37 @@ func (m *MetricsCollector) SaveMetrics(metricsPath string) error {
 		if err := json.Unmarshal(data, existing); err == nil {
 			existingMetrics = existing
 		}
-		// If unmarshal fails, we'll overwrite with current metrics
 	}
 
-	// Ensure monotonic increase by taking maximum values
+	// 4) Merge with additive behavior (monotonic increase)
+	merged := MetricsCollector{
+		CommitSuccess:  snap.CommitSuccess,
+		CommitFailed:   snap.CommitFailed,
+		CASConflicts:   snap.CASConflicts,
+		RecoveryCount:  snap.RecoveryCount,
+		SchemaVersion:  snap.SchemaVersion,
+		LastUpdate:     snap.LastUpdate,
+	}
 	if existingMetrics != nil {
-		if m.CommitSuccess < existingMetrics.CommitSuccess {
-			m.CommitSuccess = existingMetrics.CommitSuccess
-		}
-		if m.CommitFailed < existingMetrics.CommitFailed {
-			m.CommitFailed = existingMetrics.CommitFailed
-		}
-		if m.CASConflicts < existingMetrics.CASConflicts {
-			m.CASConflicts = existingMetrics.CASConflicts
-		}
-		if m.RecoveryCount < existingMetrics.RecoveryCount {
-			m.RecoveryCount = existingMetrics.RecoveryCount
-		}
+		merged.CommitSuccess += existingMetrics.CommitSuccess
+		merged.CommitFailed += existingMetrics.CommitFailed
+		merged.CASConflicts += existingMetrics.CASConflicts
+		merged.RecoveryCount += existingMetrics.RecoveryCount
 	}
 
-	// Set schema version and update timestamp
-	m.SchemaVersion = MetricsSchemaVersion
-	m.LastUpdate = time.Now().UTC().Format(time.RFC3339)
-
-	// Marshal updated metrics
-	data, err := json.MarshalIndent(m, "", "  ")
+	// 5) Write atomically
+	data, err := json.MarshalIndent(&merged, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal metrics: %w", err)
 	}
 
-	// Write atomically using temp file within same directory
 	tempPath := metricsPath + ".tmp." + strconv.FormatInt(time.Now().UnixNano(), 10)
-
-	// Ensure the parent directory exists for temp file
-	if err := os.MkdirAll(filepath.Dir(tempPath), 0755); err != nil {
-		return fmt.Errorf("ensure temp file dir: %w", err)
-	}
-
 	if err := os.WriteFile(tempPath, data, 0644); err != nil {
 		return fmt.Errorf("write temp metrics: %w", err)
 	}
 
-	// Atomic rename
 	if err := os.Rename(tempPath, metricsPath); err != nil {
-		os.Remove(tempPath) // cleanup on failure
+		os.Remove(tempPath)
 		return fmt.Errorf("rename metrics: %w", err)
 	}
 

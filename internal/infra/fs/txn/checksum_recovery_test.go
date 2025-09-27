@@ -136,12 +136,28 @@ func TestChecksumMismatchRecoveryIntegration(t *testing.T) {
 
 	// Test Scenario 3: Parallel checksum validation during recovery
 	t.Run("ParallelChecksumValidationDuringRecovery", func(t *testing.T) {
+		// Create independent environment for this subtest
+		tmp := t.TempDir()
+		deespec := filepath.Join(tmp, ".deespec")
+		if err := os.MkdirAll(filepath.Join(deespec, "var", "txn"), 0o755); err != nil {
+			t.Fatalf("Failed to create deespec dirs: %v", err)
+		}
+
+		// Set DEE_HOME environment for absolute path resolution
+		t.Setenv("DEE_HOME", deespec)
+		// Enable recovery for this test
+		t.Setenv("DEESPEC_DISABLE_RECOVERY", "0")
+
+		// Create manager with isolated transaction directory
+		isolatedTxnDir := filepath.Join(deespec, "var", "txn")
+		isolatedManager := NewManager(isolatedTxnDir)
+
 		// Create multiple transactions with mixed valid/invalid checksums
 		var transactions []*Transaction
 
 		// Create 3 transactions
 		for i := 0; i < 3; i++ {
-			tx, err := manager.Begin(ctx)
+			tx, err := isolatedManager.Begin(ctx)
 			if err != nil {
 				t.Fatalf("Begin failed for tx %d: %v", i, err)
 			}
@@ -150,13 +166,13 @@ func TestChecksumMismatchRecoveryIntegration(t *testing.T) {
 			// Stage file
 			content := []byte("parallel test content " + string(rune('A'+i)))
 			fileName := "parallel_test_" + string(rune('A'+i)) + ".txt"
-			err = manager.StageFile(tx, fileName, content)
+			err = isolatedManager.StageFile(tx, fileName, content)
 			if err != nil {
 				t.Fatalf("StageFile failed for tx %d: %v", i, err)
 			}
 
 			// Mark intent
-			err = manager.MarkIntent(tx)
+			err = isolatedManager.MarkIntent(tx)
 			if err != nil {
 				t.Fatalf("MarkIntent failed for tx %d: %v", i, err)
 			}
@@ -173,7 +189,7 @@ func TestChecksumMismatchRecoveryIntegration(t *testing.T) {
 		}
 
 		// Run parallel checksum validation through recovery
-		recovery := NewRecovery(manager)
+		recovery := NewRecovery(isolatedManager)
 		recoveryResult, err := recovery.RecoverAll(ctx)
 		if err != nil {
 			t.Fatalf("RecoverAll failed: %v", err)
@@ -191,17 +207,17 @@ func TestChecksumMismatchRecoveryIntegration(t *testing.T) {
 			t.Errorf("Expected %d failed transactions, got %d", expectedFailed, recoveryResult.FailedCount)
 		}
 
-		// Verify only valid transactions created destination files
+		// Verify only valid transactions created destination files (use absolute path via deespec)
 		validFiles := []string{"parallel_test_A.txt", "parallel_test_C.txt"}
 		for _, fileName := range validFiles {
-			destFile := filepath.Join(destRoot, fileName)
+			destFile := filepath.Join(deespec, fileName)
 			if _, err := os.Stat(destFile); err != nil {
 				t.Errorf("Valid transaction file should exist: %s, error: %v", fileName, err)
 			}
 		}
 
 		// Verify corrupted transaction did not create destination file
-		corruptedFile := filepath.Join(destRoot, "parallel_test_B.txt")
+		corruptedFile := filepath.Join(deespec, "parallel_test_B.txt")
 		if _, err := os.Stat(corruptedFile); !os.IsNotExist(err) {
 			t.Error("Corrupted transaction file should not exist: parallel_test_B.txt")
 		}

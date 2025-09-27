@@ -133,7 +133,7 @@ func TestFileOperationValidate(t *testing.T) {
 			name: "Valid create operation",
 			op: FileOperation{
 				Type:        "create",
-				Destination: "/path/to/file.txt",
+				Destination: "path/to/file.txt",
 			},
 			wantErr: false,
 		},
@@ -141,20 +141,20 @@ func TestFileOperationValidate(t *testing.T) {
 			name: "Valid rename operation",
 			op: FileOperation{
 				Type:        "rename",
-				Source:      "/old/path.txt",
-				Destination: "/new/path.txt",
+				Source:      "old/path.txt",
+				Destination: "new/path.txt",
 			},
 			wantErr: false,
 		},
 		{
 			name:    "Missing type",
-			op:      FileOperation{Destination: "/path/to/file.txt"},
+			op:      FileOperation{Destination: "path/to/file.txt"},
 			wantErr: true,
 			errMsg:  "file operation type is required",
 		},
 		{
 			name:    "Invalid type",
-			op:      FileOperation{Type: "invalid", Destination: "/path"},
+			op:      FileOperation{Type: "invalid", Destination: "path"},
 			wantErr: true,
 			errMsg:  "invalid file operation type",
 		},
@@ -166,7 +166,7 @@ func TestFileOperationValidate(t *testing.T) {
 		},
 		{
 			name:    "Rename missing source",
-			op:      FileOperation{Type: "rename", Destination: "/new/path.txt"},
+			op:      FileOperation{Type: "rename", Destination: "new/path.txt"},
 			wantErr: true,
 			errMsg:  "source path is required for rename operation",
 		},
@@ -238,7 +238,7 @@ func TestManifestValidate(t *testing.T) {
 				ID:          TxnID("txn_valid"),
 				Description: "Valid transaction",
 				Files: []FileOperation{
-					{Type: "create", Destination: "/path/to/file"},
+					{Type: "create", Destination: "path/to/file"},
 				},
 				CreatedAt: time.Now(),
 			},
@@ -248,7 +248,7 @@ func TestManifestValidate(t *testing.T) {
 			name: "Missing ID",
 			m: Manifest{
 				Files: []FileOperation{
-					{Type: "create", Destination: "/path/to/file"},
+					{Type: "create", Destination: "path/to/file"},
 				},
 				CreatedAt: time.Now(),
 			},
@@ -270,7 +270,7 @@ func TestManifestValidate(t *testing.T) {
 			m: Manifest{
 				ID: TxnID("txn_invalid_op"),
 				Files: []FileOperation{
-					{Type: "", Destination: "/path"},
+					{Type: "", Destination: "path"},
 				},
 				CreatedAt: time.Now(),
 			},
@@ -282,7 +282,7 @@ func TestManifestValidate(t *testing.T) {
 			m: Manifest{
 				ID: TxnID("txn_no_time"),
 				Files: []FileOperation{
-					{Type: "create", Destination: "/path"},
+					{Type: "create", Destination: "path"},
 				},
 			},
 			wantErr: true,

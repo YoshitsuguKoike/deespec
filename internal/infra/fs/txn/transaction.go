@@ -311,6 +311,10 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 		if err := withJournal(); err != nil {
 			return fmt.Errorf("journal operation failed: %w", err)
 		}
+	} else {
+		if !isTestEnvironment() {
+			fmt.Fprintf(os.Stderr, "WARN: Forward recovery without journal callback for %s\n", tx.Manifest.ID)
+		}
 	}
 
 	// Phase 4: Mark commit complete

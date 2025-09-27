@@ -281,6 +281,9 @@ func TestMultiProcessMetricsConsistency(t *testing.T) {
 		t.Skip("skipping multi-process consistency test in short mode")
 	}
 
+	// Disable metrics rotation for stable final count testing
+	t.Setenv("DEESPEC_DISABLE_METRICS_ROTATION", "1")
+
 	tempDir, err := os.MkdirTemp("", "multiprocess_consistency_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)

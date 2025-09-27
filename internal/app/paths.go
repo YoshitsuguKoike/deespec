@@ -1,7 +1,6 @@
 package app
 
 import (
-	"os"
 	"path/filepath"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app/config"
@@ -26,15 +25,11 @@ type Paths struct {
 	StateLock string // .deespec/var/state.lock
 }
 
-// ResolvePaths returns all paths based on DEE_HOME environment variable
-// All paths are resolved to absolute paths with symlinks evaluated
+// ResolvePaths returns all paths with default home directory
+// Deprecated: Use ResolvePathsWithConfig instead
 func ResolvePaths() Paths {
-	// Get base home directory
-	// Still check ENV for backward compatibility
-	home := os.Getenv("DEE_HOME")
-	if home == "" {
-		home = ".deespec"
-	}
+	// Default home directory when no config is available
+	home := ".deespec"
 	return ResolvePathsWithHome(home)
 }
 
@@ -87,11 +82,8 @@ var cachedPaths *Paths
 var pathsConfig config.Config
 
 func GetPaths() Paths {
-	// Skip cache if in test mode
-	if os.Getenv("DEESPEC_TEST_MODE") == "true" {
-		return ResolvePaths()
-	}
-
+	// This function is deprecated but kept for backward compatibility
+	// It uses default paths when no config is available
 	if cachedPaths == nil {
 		paths := ResolvePaths()
 		cachedPaths = &paths

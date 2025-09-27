@@ -6,16 +6,24 @@ import (
 	"errors"
 	"log"
 	"os"
+
+	"github.com/YoshitsuguKoike/deespec/internal/app/config"
 )
 
 // JournalWriter provides a unified interface for writing normalized journal entries
 type JournalWriter struct {
 	path string
+	cfg  config.Config
 }
 
 // NewJournalWriter creates a new JournalWriter instance
 func NewJournalWriter(path string) *JournalWriter {
 	return &JournalWriter{path: path}
+}
+
+// NewJournalWriterWithConfig creates a new JournalWriter with config
+func NewJournalWriterWithConfig(path string, cfg config.Config) *JournalWriter {
+	return &JournalWriter{path: path, cfg: cfg}
 }
 
 // Append writes a normalized journal entry to the journal file
@@ -24,8 +32,8 @@ func (w *JournalWriter) Append(entry *JournalEntry) error {
 	// Normalize the entry to ensure all required fields
 	e := NormalizeJournalEntry(entry)
 
-	// Optional validation when DEE_VALIDATE=1
-	if os.Getenv("DEE_VALIDATE") == "1" {
+	// Optional validation based on config
+	if w.cfg != nil && w.cfg.Validate() {
 		if err := validateJournal(e); err != nil {
 			// MVP: Don't stop, just warn
 			log.Printf("WARN: journal schema validation: %v", err)

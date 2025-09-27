@@ -127,8 +127,12 @@ func TestRegisterValidationBehavior(t *testing.T) {
 			defer os.Chdir(oldDir)
 
 			// Create .deespec structure
-			os.MkdirAll(".deespec/var", 0755)
-			os.MkdirAll(".deespec/specs", 0755)
+			if err := os.MkdirAll(".deespec/var", 0755); err != nil {
+				t.Fatalf("mkdir .deespec/var failed: %v", err)
+			}
+			if err := os.MkdirAll(".deespec/specs", 0755); err != nil {
+				t.Fatalf("mkdir .deespec/specs failed: %v", err)
+			}
 
 			// Capture stderr
 			var stderr bytes.Buffer

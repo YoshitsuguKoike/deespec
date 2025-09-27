@@ -168,7 +168,10 @@ func TestIsPathSafe(t *testing.T) {
 	// Create temp directory for testing
 	tmpDir := t.TempDir()
 	baseDir := filepath.Join(tmpDir, "base")
-	os.MkdirAll(baseDir, 0755)
+
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", baseDir, err)
+	}
 
 	tests := []struct {
 		name     string
@@ -218,7 +221,9 @@ func TestCheckForSymlinks(t *testing.T) {
 	// Resolve any symlinks in the temp dir path itself (e.g., /var -> /private/var on macOS)
 	tmpDir, _ := filepath.EvalSymlinks(tmpDirRaw)
 	realDir := filepath.Join(tmpDir, "real")
-	os.MkdirAll(realDir, 0755)
+	if err := os.MkdirAll(realDir, 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", realDir, err)
+	}
 
 	// Create a symlink
 	linkDir := filepath.Join(tmpDir, "link")
@@ -260,10 +265,14 @@ func TestResolveCollision(t *testing.T) {
 	// Create temp directory for testing
 	tmpDir := t.TempDir()
 	baseDir := filepath.Join(tmpDir, ".deespec", "specs", "sbi")
-	os.MkdirAll(baseDir, 0755)
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", baseDir, err)
+	}
 
 	existingPath := filepath.Join(baseDir, "existing")
-	os.MkdirAll(existingPath, 0755)
+	if err := os.MkdirAll(existingPath, 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", baseDir, err)
+	}
 
 	tests := []struct {
 		name        string
@@ -327,7 +336,9 @@ func TestResolveCollision(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Recreate existing path if it was removed
 			if tt.path == existingPath && tt.mode == CollisionReplace {
-				os.MkdirAll(existingPath, 0755)
+				if err := os.MkdirAll(existingPath, 0755); err != nil {
+					t.Fatalf("mkdir %s failed: %v", baseDir, err)
+				}
 			}
 
 			config := GetDefaultPolicy()
@@ -351,14 +362,20 @@ func TestCollisionSuffixExhaustion(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
 	baseDir := filepath.Join(tmpDir, ".deespec", "specs", "sbi")
-	os.MkdirAll(baseDir, 0755)
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", baseDir, err)
+	}
 
 	basePath := filepath.Join(baseDir, "test")
 
 	// Create base and many suffix variations
-	os.MkdirAll(basePath, 0755)
+	if err := os.MkdirAll(basePath, 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", baseDir, err)
+	}
 	for i := 2; i <= 10; i++ {
-		os.MkdirAll(fmt.Sprintf("%s_%d", basePath, i), 0755)
+		if err := os.MkdirAll(fmt.Sprintf("%s_%d", basePath, i), 0755); err != nil {
+			t.Fatalf("mkdir %s failed: %v", baseDir, err)
+		}
 	}
 
 	// Should find _11

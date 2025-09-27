@@ -11,7 +11,6 @@ func TestLoadSettings(t *testing.T) {
 	tests := []struct {
 		name        string
 		setupFunc   func(t *testing.T, tmpDir string)
-		envVars     map[string]string
 		wantHome    string
 		wantAgent   string
 		wantTimeout int
@@ -20,24 +19,10 @@ func TestLoadSettings(t *testing.T) {
 		{
 			name:        "Default values only",
 			setupFunc:   nil,
-			envVars:     nil,
 			wantHome:    ".deespec",
 			wantAgent:   "claude",
 			wantTimeout: 60,
 			wantSource:  "default",
-		},
-		{
-			name:      "Environment variables only",
-			setupFunc: nil,
-			envVars: map[string]string{
-				"DEE_HOME":        "custom/home",
-				"DEE_AGENT_BIN":   "custom-agent",
-				"DEE_TIMEOUT_SEC": "120",
-			},
-			wantHome:    "custom/home",
-			wantAgent:   "custom-agent",
-			wantTimeout: 120,
-			wantSource:  "env",
 		},
 		{
 			name: "JSON file only",
@@ -55,35 +40,10 @@ func TestLoadSettings(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			envVars:     nil,
 			wantHome:    "json/home",
 			wantAgent:   "json-agent",
 			wantTimeout: 180,
 			wantSource:  "json",
-		},
-		{
-			name: "JSON with ENV override",
-			setupFunc: func(t *testing.T, tmpDir string) {
-				settings := map[string]interface{}{
-					"home":        "json/home",
-					"agent_bin":   "json-agent",
-					"timeout_sec": 180,
-				}
-				data, err := json.MarshalIndent(settings, "", "  ")
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(filepath.Join(tmpDir, "setting.json"), data, 0644); err != nil {
-					t.Fatal(err)
-				}
-			},
-			envVars: map[string]string{
-				"DEE_AGENT_BIN": "env-override-agent",
-			},
-			wantHome:    "json/home",
-			wantAgent:   "env-override-agent", // ENV overrides JSON
-			wantTimeout: 180,
-			wantSource:  "json", // Source is still JSON since it was loaded
 		},
 	}
 
@@ -96,28 +56,9 @@ func TestLoadSettings(t *testing.T) {
 			}
 			defer os.RemoveAll(tmpDir)
 
-			// Clear all environment variables first
-			for _, env := range []string{
-				"DEE_HOME", "DEE_AGENT_BIN", "DEE_TIMEOUT_SEC", "DEE_ARTIFACTS_DIR",
-				"DEE_PROJECT_NAME", "DEE_LANGUAGE", "DEE_TURN", "DEE_TASK_ID",
-				"DEE_VALIDATE", "DEE_AUTO_FB", "DEE_STRICT_FSYNC",
-				"DEESPEC_TX_DEST_ROOT", "DEESPEC_DISABLE_RECOVERY", "DEESPEC_DISABLE_STATE_TX",
-				"DEESPEC_USE_TX", "DEESPEC_DISABLE_METRICS_ROTATION", "DEESPEC_FSYNC_AUDIT",
-				"DEESPEC_TEST_MODE", "DEESPEC_TEST_QUIET", "DEESPEC_WORKFLOW",
-				"DEESPEC_POLICY_PATH", "DEESPEC_STDERR_LEVEL",
-			} {
-				os.Unsetenv(env)
-			}
-
 			// Setup test data
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, tmpDir)
-			}
-
-			// Set environment variables
-			for k, v := range tt.envVars {
-				os.Setenv(k, v)
-				defer os.Unsetenv(k)
 			}
 
 			// Load settings

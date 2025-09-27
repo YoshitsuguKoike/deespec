@@ -21,6 +21,7 @@ const (
 // Recovery handles transaction recovery operations
 type Recovery struct {
 	manager      *Manager
+	destRoot     string // Destination root for recovery
 	timeout      time.Duration
 	totalTimeout time.Duration
 	maxRetries   int
@@ -30,6 +31,7 @@ type Recovery struct {
 
 // RecoveryConfig configures recovery behavior
 type RecoveryConfig struct {
+	DestRoot     string // Destination root directory for recovery
 	Timeout      time.Duration
 	TotalTimeout time.Duration
 	MaxRetries   int
@@ -38,8 +40,9 @@ type RecoveryConfig struct {
 }
 
 // NewRecovery creates a new recovery handler with default configuration
-func NewRecovery(manager *Manager) *Recovery {
+func NewRecovery(manager *Manager, destRoot string) *Recovery {
 	return NewRecoveryWithConfig(manager, RecoveryConfig{
+		DestRoot:     destRoot,
 		Timeout:      DefaultRecoveryTimeout,
 		TotalTimeout: DefaultTotalTimeout,
 		MaxRetries:   DefaultMaxRetries,
@@ -50,8 +53,13 @@ func NewRecovery(manager *Manager) *Recovery {
 
 // NewRecoveryWithConfig creates a new recovery handler with custom configuration
 func NewRecoveryWithConfig(manager *Manager, config RecoveryConfig) *Recovery {
+	destRoot := config.DestRoot
+	if destRoot == "" {
+		destRoot = ".deespec"
+	}
 	return &Recovery{
 		manager:      manager,
+		destRoot:     destRoot,
 		timeout:      config.Timeout,
 		totalTimeout: config.TotalTimeout,
 		maxRetries:   config.MaxRetries,
@@ -232,15 +240,8 @@ func (r *Recovery) recoverTransaction(ctx context.Context, txnID TxnID) error {
 	// Since we have intent marker, all files were successfully staged
 	// We need to determine the correct destination root
 
-	// Determine destination root (prefer explicit env, then DEE_HOME, then local .deespec)
-	destRoot := os.Getenv("DEESPEC_TX_DEST_ROOT")
-	if destRoot == "" {
-		if home := os.Getenv("DEE_HOME"); home != "" {
-			destRoot = home
-		} else {
-			destRoot = ".deespec"
-		}
-	}
+	// Use the destRoot configured during Recovery creation
+	destRoot := r.destRoot
 
 	// Check context before expensive commit operation
 	if ctx.Err() != nil {

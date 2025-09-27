@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"os"
-
 	"github.com/YoshitsuguKoike/deespec/internal/app/config"
 	infraConfig "github.com/YoshitsuguKoike/deespec/internal/infra/config"
 	"github.com/spf13/cobra"
@@ -18,10 +16,8 @@ func NewRoot() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Load configuration before any command runs
 			// Priority: setting.json > ENV > defaults
+			// Always use .deespec as the base directory
 			baseDir := ".deespec"
-			if home := os.Getenv("DEE_HOME"); home != "" {
-				baseDir = home
-			}
 
 			cfg, err := infraConfig.LoadSettings(baseDir)
 			if err != nil {

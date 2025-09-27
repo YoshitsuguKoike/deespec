@@ -1,7 +1,9 @@
+// Deprecated: This file is no longer used. Use settings.go instead.
+// Kept for reference but will be removed in a future version.
+
 package config
 
 import (
-	"os"
 	"strconv"
 	"time"
 )
@@ -12,11 +14,10 @@ type Config struct {
 	ArtifactsDir string        // default ".artifacts"
 }
 
+// Deprecated: Use LoadSettings instead
 func Load() Config {
+	// Always return defaults - environment variables are not used
 	get := func(k, def string) string {
-		if v := os.Getenv(k); v != "" {
-			return v
-		}
 		return def
 	}
 	toDur := func(s string, def time.Duration) time.Duration {

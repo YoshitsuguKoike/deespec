@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app/config"
@@ -51,10 +50,8 @@ type RawSettings struct {
 	StderrLevel *string `json:"stderr_level"`
 }
 
-// LoadSettings loads configuration from multiple sources with the following priority:
-// 1. setting.json (if exists)
-// 2. Environment variables (override JSON)
-// 3. Default values (fill missing)
+// LoadSettings loads configuration from setting.json only.
+// Priority: setting.json > defaults
 func LoadSettings(baseDir string) (*config.AppConfig, error) {
 	// Start with empty settings
 	settings := &RawSettings{}
@@ -71,8 +68,7 @@ func LoadSettings(baseDir string) (*config.AppConfig, error) {
 		settingPath = jsonPath
 	}
 
-	// Override with environment variables
-	overrideFromEnv(settings, &configSource)
+	// No environment variable overrides - setting.json only
 
 	// Apply defaults
 	applyDefaults(settings)
@@ -84,166 +80,8 @@ func LoadSettings(baseDir string) (*config.AppConfig, error) {
 	return buildAppConfig(settings, configSource, settingPath), nil
 }
 
-// overrideFromEnv overrides settings with environment variables if they are set
-func overrideFromEnv(settings *RawSettings, configSource *string) {
-	// Core settings
-	if v := os.Getenv("DEE_HOME"); v != "" {
-		settings.Home = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEE_AGENT_BIN"); v != "" {
-		settings.AgentBin = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEE_TIMEOUT_SEC"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			settings.TimeoutSec = &n
-			if *configSource == "default" {
-				*configSource = "env"
-			}
-		}
-	}
-	if v := os.Getenv("DEE_ARTIFACTS_DIR"); v != "" {
-		settings.ArtifactsDir = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-
-	// Workflow variables
-	if v := os.Getenv("DEE_PROJECT_NAME"); v != "" {
-		settings.ProjectName = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEE_LANGUAGE"); v != "" {
-		settings.Language = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEE_TURN"); v != "" {
-		settings.Turn = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEE_TASK_ID"); v != "" {
-		settings.TaskID = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-
-	// Feature flags
-	if v := os.Getenv("DEE_VALIDATE"); v != "" {
-		b := toBool(v)
-		settings.Validate = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEE_AUTO_FB"); v != "" {
-		b := toBool(v)
-		settings.AutoFB = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEE_STRICT_FSYNC"); v != "" {
-		b := toBool(v)
-		settings.StrictFsync = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-
-	// Transaction settings
-	if v := os.Getenv("DEESPEC_TX_DEST_ROOT"); v != "" {
-		settings.TxDestRoot = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEESPEC_DISABLE_RECOVERY"); v != "" {
-		b := toBool(v)
-		settings.DisableRecovery = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEESPEC_DISABLE_STATE_TX"); v != "" {
-		b := toBool(v)
-		settings.DisableStateTx = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEESPEC_USE_TX"); v != "" {
-		b := toBool(v)
-		settings.UseTx = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-
-	// Metrics and audit
-	if v := os.Getenv("DEESPEC_DISABLE_METRICS_ROTATION"); v != "" {
-		b := toBool(v)
-		settings.DisableMetricsRotation = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEESPEC_FSYNC_AUDIT"); v != "" {
-		b := toBool(v)
-		settings.FsyncAudit = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-
-	// Test and debug
-	if v := os.Getenv("DEESPEC_TEST_MODE"); v != "" {
-		b := toBool(v)
-		settings.TestMode = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEESPEC_TEST_QUIET"); v != "" {
-		b := toBool(v)
-		settings.TestQuiet = &b
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-
-	// Paths and logging
-	if v := os.Getenv("DEESPEC_WORKFLOW"); v != "" {
-		settings.Workflow = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEESPEC_POLICY_PATH"); v != "" {
-		settings.PolicyPath = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-	if v := os.Getenv("DEESPEC_STDERR_LEVEL"); v != "" {
-		settings.StderrLevel = &v
-		if *configSource == "default" {
-			*configSource = "env"
-		}
-	}
-}
+// Removed: Environment variable overrides are no longer supported.
+// Configuration must be set in setting.json only.
 
 // applyDefaults fills in default values for any nil fields
 func applyDefaults(settings *RawSettings) {

@@ -12,10 +12,10 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
-	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs/txn"
 	"github.com/YoshitsuguKoike/deespec/internal/workflow"
 	"github.com/spf13/cobra"
@@ -86,18 +86,28 @@ func newDoctorCmd() *cobra.Command {
 			if format == "json" {
 				return runDoctorValidationJSON()
 			}
-			paths := app.GetPaths()
-			cfg := config.Load()
+			paths := app.GetPathsWithConfig(globalConfig)
 			exitCode := 0 // Track errors for exit code
-			fmt.Println("AgentBin:", cfg.AgentBin)
-			fmt.Println("ArtifactsDir:", paths.Artifacts) // Use paths instead of cfg
-			fmt.Println("Timeout:", cfg.Timeout)
+			// Use globalConfig if available
+			if globalConfig != nil {
+				fmt.Println("AgentBin:", globalConfig.AgentBin())
+				fmt.Println("ArtifactsDir:", paths.Artifacts)
+				fmt.Println("Timeout:", time.Duration(globalConfig.TimeoutSec())*time.Second)
+			} else {
+				fmt.Println("AgentBin: claude")
+				fmt.Println("ArtifactsDir:", paths.Artifacts)
+				fmt.Println("Timeout: 60s")
+			}
 			fmt.Println("DeespecHome:", paths.Home)
 
-			if _, err := exec.LookPath(cfg.AgentBin); err != nil {
-				fmt.Printf("WARN: %s not found in PATH\n", cfg.AgentBin)
+			agentBin := "claude"
+			if globalConfig != nil {
+				agentBin = globalConfig.AgentBin()
+			}
+			if _, err := exec.LookPath(agentBin); err != nil {
+				fmt.Printf("WARN: %s not found in PATH\n", agentBin)
 			} else {
-				fmt.Printf("OK: %s found\n", cfg.AgentBin)
+				fmt.Printf("OK: %s found\n", agentBin)
 			}
 			if err := os.MkdirAll(paths.Artifacts, 0o755); err != nil {
 				return fmt.Errorf("artifacts dir error: %w", err)
@@ -118,9 +128,9 @@ func newDoctorCmd() *cobra.Command {
 				// Try to load and validate workflow
 				ctx := context.Background()
 				wfPath := paths.Workflow
-				// Check for test override
-				if envPath := os.Getenv("DEESPEC_WORKFLOW"); envPath != "" {
-					wfPath = envPath
+				// Check for config override
+				if globalConfig != nil && globalConfig.Workflow() != "" {
+					wfPath = globalConfig.Workflow()
 				}
 				wf, err := workflow.LoadWorkflow(ctx, wfPath)
 				if err != nil {
@@ -636,13 +646,16 @@ func isValidIdentifier(s string) bool {
 }
 
 func runDoctorJSON() error {
-	cfg := config.Load()
 	paths := app.GetPathsWithConfig(globalConfig)
+	agentBin := "claude"
+	if globalConfig != nil {
+		agentBin = globalConfig.AgentBin()
+	}
 	result := DoctorJSON{
 		Runner:       "none",
 		Active:       false,
 		WorkingDir:   "",
-		AgentBin:     cfg.AgentBin,
+		AgentBin:     agentBin,
 		Errors:       []string{},
 		ConfigSource: "",
 		SettingPath:  "",
@@ -687,8 +700,8 @@ func runDoctorJSON() error {
 	}
 
 	// Check agent binary
-	if _, err := exec.LookPath(cfg.AgentBin); err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("agent_bin '%s' not found", cfg.AgentBin))
+	if _, err := exec.LookPath(agentBin); err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("agent_bin '%s' not found", agentBin))
 	}
 
 	// Check scheduler based on OS
@@ -727,7 +740,7 @@ func runDoctorJSON() error {
 }
 
 func runDoctorValidationJSON() error {
-	paths := app.GetPaths()
+	paths := app.GetPathsWithConfig(globalConfig)
 
 	// Check workflow.yaml exists and validate
 	if _, err := os.Stat(paths.Workflow); err != nil {
@@ -749,8 +762,8 @@ func runDoctorValidationJSON() error {
 	// Load and validate workflow
 	ctx := context.Background()
 	wfPath := paths.Workflow
-	if envPath := os.Getenv("DEESPEC_WORKFLOW"); envPath != "" {
-		wfPath = envPath
+	if globalConfig != nil && globalConfig.Workflow() != "" {
+		wfPath = globalConfig.Workflow()
 	}
 
 	wf, err := workflow.LoadWorkflow(ctx, wfPath)

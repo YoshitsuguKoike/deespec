@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
+	"github.com/YoshitsuguKoike/deespec/internal/app/config"
 )
 
 // TestStateJournalTXConsistency verifies atomic updates of state and journal
@@ -23,9 +24,15 @@ func TestStateJournalTXConsistency(t *testing.T) {
 
 	// Create .deespec structure
 	varDir := filepath.Join(tempDir, ".deespec/var")
-	os.MkdirAll(varDir, 0755)
-	os.MkdirAll(filepath.Join(varDir, "txn"), 0755)
-	os.MkdirAll(filepath.Join(varDir, "artifacts"), 0755)
+	if err := os.MkdirAll(varDir, 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", varDir, err)
+	}
+	if err := os.MkdirAll(filepath.Join(varDir, "txn"), 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(varDir, "artifacts"), 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
 
 	// Change to temp directory
 	oldDir, _ := os.Getwd()
@@ -180,7 +187,9 @@ func TestStateJournalConsistencyCheck(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	varDir := filepath.Join(tempDir, ".deespec/var")
-	os.MkdirAll(filepath.Join(varDir, "txn"), 0755)
+	if err := os.MkdirAll(filepath.Join(varDir, "txn"), 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
 
 	paths := app.Paths{
 		Var:     varDir,
@@ -267,16 +276,44 @@ func TestStateJournalConsistencyCheck(t *testing.T) {
 
 // TestUseTXForStateJournal verifies the feature flag
 func TestUseTXForStateJournal(t *testing.T) {
-	// Default should be true (TX enabled)
+	// When globalConfig is nil, default should be true (TX enabled)
+	oldConfig := globalConfig
+	globalConfig = nil
+	defer func() { globalConfig = oldConfig }()
+
 	if !UseTXForStateJournal() {
-		t.Error("TX should be enabled by default")
+		t.Error("TX should be enabled by default when config is nil")
 	}
 
-	// Disable via environment
-	os.Setenv("DEESPEC_DISABLE_STATE_TX", "1")
-	defer os.Unsetenv("DEESPEC_DISABLE_STATE_TX")
+	// Test with config that has DisableStateTx set to false (TX enabled)
+	globalConfig = config.NewAppConfig(
+		".deespec", "claude", 60, ".deespec/var/artifacts",
+		"", "", "", "",
+		false, false, false,
+		"", false, false, false, // disable_state_tx is false here
+		false, false,
+		false, false,
+		"", "", "",
+		"default", "",
+	)
+
+	if !UseTXForStateJournal() {
+		t.Error("TX should be enabled when DisableStateTx is false")
+	}
+
+	// Test with config that has DisableStateTx set to true (TX disabled)
+	globalConfig = config.NewAppConfig(
+		".deespec", "claude", 60, ".deespec/var/artifacts",
+		"", "", "", "",
+		false, false, false,
+		"", false, true, false, // disable_state_tx is true here
+		false, false,
+		false, false,
+		"", "", "",
+		"default", "",
+	)
 
 	if UseTXForStateJournal() {
-		t.Error("TX should be disabled when env var is set")
+		t.Error("TX should be disabled when DisableStateTx is true")
 	}
 }

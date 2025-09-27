@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
@@ -474,24 +473,8 @@ func generateTxnID() TxnID {
 		now.Nanosecond()))
 }
 
-// resolveAbsDst resolves destination to absolute path to eliminate cwd dependency
-func (t *Transaction) resolveAbsDst(dst string) string {
-	// .deespec/ 前置きを誤って含むケースを除去（防御）
-	if strings.HasPrefix(dst, ".deespec"+string(os.PathSeparator)) {
-		dst = strings.TrimPrefix(dst, ".deespec"+string(os.PathSeparator))
-	}
-	// 絶対は使わない前提（Validateで弾く）。念のため残すならそのまま返す
-	if filepath.IsAbs(dst) {
-		return dst
-	}
-
-	if home := os.Getenv("DEE_HOME"); home != "" {
-		return filepath.Join(home, dst) // ← 期待する出力は常に tmp/.deespec/xxx
-	}
-	// txn の作業ディレクトリ(BaseDir)は“作業用”なので最終物のフォールバックには使わない
-	// 最後の保険：cwd。テストでは必ず DEE_HOME を設定する想定
-	return filepath.Join(".", dst)
-}
+// resolveAbsDst is deprecated and no longer used
+// Kept for reference but will be removed in future versions
 
 // sameDevice は 2 つのパスが同一デバイス上かを判定する
 func sameDevice(p1, p2 string) (bool, error) {

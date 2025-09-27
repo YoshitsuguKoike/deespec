@@ -82,9 +82,12 @@ func SaveStateAndJournalTX(
 	}
 
 	// Determine destination root for finalization
-	destRoot := os.Getenv("DEE_HOME")
+	var destRoot string
+	if globalConfig != nil {
+		destRoot = globalConfig.Home()
+	}
 	if destRoot == "" {
-		// Prefer explicit home, else derive from paths.Var, else fallback local
+		// Fallback logic if config is not available
 		if paths.Home != "" {
 			destRoot = filepath.Join(paths.Home, ".deespec")
 		} else if paths.Var != "" {
@@ -184,10 +187,10 @@ func marshalStableJSON(v interface{}) ([]byte, error) {
 // UseTXForStateJournal returns true if transaction mode should be used
 // for state.json and journal updates. Can be controlled via configuration.
 func UseTXForStateJournal() bool {
-	// Use config if available, otherwise check env for backward compatibility
+	// Use config if available
 	if globalConfig != nil {
 		return !globalConfig.DisableStateTx()
 	}
-	// Fallback to env for backward compatibility
-	return os.Getenv("DEESPEC_DISABLE_STATE_TX") != "1"
+	// Default to enabled if config not available
+	return true
 }

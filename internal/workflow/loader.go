@@ -49,8 +49,17 @@ func LoadWorkflow(ctx context.Context, wfPath string) (*Workflow, error) {
 		return nil, err
 	}
 
-	// Resolve prompt paths
-	paths := app.GetPaths()
+	// Resolve prompt paths relative to the workflow's home (.deespec)
+	// Do not read from environment; derive from the workflow file location.
+	// Cases:
+	//  - If wfPath is <home>/.deespec/etc/workflow.yaml → home = parent(dir(wfPath)) (".deespec")
+	//  - Otherwise → home = dir(wfPath)/.deespec
+	wfDir := filepath.Dir(wfPath)
+	home := filepath.Join(wfDir, ".deespec")
+	if filepath.Base(wfDir) == "etc" {
+		home = filepath.Dir(wfDir)
+	}
+	paths := app.ResolvePathsWithHome(home)
 	if err := resolvePromptPaths(&wf, paths); err != nil {
 		return nil, err
 	}

@@ -311,9 +311,9 @@ func ResolveRegisterConfig(cliCollisionMode string, policy *RegisterPolicy) (*Re
 	config.JournalRecordInputBytes = policy.Journal.RecordInputBytes
 
 	// Logging configuration
-	// Check for CLI override via environment variable (set by --stderr-level flag)
-	if envLevel := os.Getenv("DEESPEC_STDERR_LEVEL"); envLevel != "" {
-		config.StderrLevel = strings.ToLower(envLevel)
+	// Use globalConfig if available, otherwise use policy default
+	if globalConfig != nil && globalConfig.StderrLevel() != "" {
+		config.StderrLevel = strings.ToLower(globalConfig.StderrLevel())
 	} else {
 		config.StderrLevel = strings.ToLower(policy.Logging.StderrLevelDefault)
 	}
@@ -349,9 +349,9 @@ func (c *ResolvedConfig) ShouldLog(level string) bool {
 
 // GetPolicyPath returns the default policy file path
 var GetPolicyPath = func() string {
-	// Allow override via environment variable for testing
-	if envPath := os.Getenv("DEESPEC_POLICY_PATH"); envPath != "" {
-		return envPath
+	// Use globalConfig if available, otherwise use default
+	if globalConfig != nil && globalConfig.PolicyPath() != "" {
+		return globalConfig.PolicyPath()
 	}
 	return filepath.Join(".deespec", "etc", "policies", "register_policy.yaml")
 }

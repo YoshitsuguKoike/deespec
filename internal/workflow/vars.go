@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
+	"github.com/YoshitsuguKoike/deespec/internal/app/config"
 	"github.com/YoshitsuguKoike/deespec/internal/app/state"
 )
 
@@ -28,10 +29,19 @@ var allowedSet = map[string]struct{}{
 var rePH = regexp.MustCompile(`\{[a-zA-Z_][a-zA-Z0-9_]*\}`)
 
 // BuildVarMap builds the variable map from various sources with priority:
-// 1. Environment variables (highest priority)
+// 1. Config values (highest priority)
 // 2. Workflow vars
 // 3. Runtime defaults (lowest priority)
+// Deprecated: Use BuildVarMapWithConfig instead
 func BuildVarMap(ctx context.Context, p app.Paths, wfVars map[string]string, st *state.State) map[string]string {
+	return BuildVarMapWithConfig(ctx, p, wfVars, st, nil)
+}
+
+// BuildVarMapWithConfig builds the variable map from various sources with priority:
+// 1. Config values (highest priority)
+// 2. Workflow vars
+// 3. Runtime defaults (lowest priority)
+func BuildVarMapWithConfig(ctx context.Context, p app.Paths, wfVars map[string]string, st *state.State, cfg config.Config) map[string]string {
 	vars := map[string]string{}
 
 	// Default values
@@ -77,18 +87,20 @@ func BuildVarMap(ctx context.Context, p app.Paths, wfVars map[string]string, st 
 		}
 	}
 
-	// Override with environment variables (highest priority)
-	if v := os.Getenv("DEE_PROJECT_NAME"); v != "" {
-		vars["project_name"] = v
-	}
-	if v := os.Getenv("DEE_LANGUAGE"); v != "" {
-		vars["language"] = v
-	}
-	if v := os.Getenv("DEE_TURN"); v != "" {
-		vars["turn"] = v
-	}
-	if v := os.Getenv("DEE_TASK_ID"); v != "" {
-		vars["task_id"] = v
+	// Override with config values (highest priority)
+	if cfg != nil {
+		if v := cfg.ProjectName(); v != "" {
+			vars["project_name"] = v
+		}
+		if v := cfg.Language(); v != "" {
+			vars["language"] = v
+		}
+		if v := cfg.Turn(); v != "" {
+			vars["turn"] = v
+		}
+		if v := cfg.TaskID(); v != "" {
+			vars["task_id"] = v
+		}
 	}
 
 	return vars

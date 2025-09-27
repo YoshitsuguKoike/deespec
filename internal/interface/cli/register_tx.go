@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs/txn"
@@ -54,13 +55,18 @@ func registerWithTransaction(
 	}
 
 	// Stage the meta.yaml file
-	relMetaPath := filepath.Join("specs", result.SpecPath, "meta.yaml")
+	// Note: result.SpecPath contains the full path, but we need to strip .deespec/ prefix for staging
+	stagePath := result.SpecPath
+	if strings.HasPrefix(stagePath, ".deespec/") {
+		stagePath = strings.TrimPrefix(stagePath, ".deespec/")
+	}
+	relMetaPath := filepath.Join(stagePath, "meta.yaml")
 	if err := manager.StageFile(tx, relMetaPath, metaYAML); err != nil {
 		return fmt.Errorf("failed to stage meta.yaml: %w", err)
 	}
 
 	// Stage 2: Prepare empty spec content file
-	specContentPath := filepath.Join("specs", result.SpecPath, "spec.md")
+	specContentPath := filepath.Join(stagePath, "spec.md")
 	specContent := fmt.Sprintf("# %s\n\nID: %s\n\n## Description\n\n<!-- Add spec details here -->\n",
 		spec.Title, spec.ID)
 

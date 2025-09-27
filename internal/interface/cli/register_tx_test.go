@@ -31,10 +31,11 @@ func TestRegisterWithTransaction(t *testing.T) {
 	}
 
 	// Create test result
+	// SpecPath should include the base path as it does in the real command
 	result := &RegisterResult{
 		OK:       true,
 		ID:       spec.ID,
-		SpecPath: "test-001_test_specification",
+		SpecPath: ".deespec/specs/test-001_test_specification",
 		Warnings: []string{},
 	}
 
@@ -60,7 +61,8 @@ func TestRegisterWithTransaction(t *testing.T) {
 	}
 
 	// Verify meta.yaml was created
-	metaPath := filepath.Join(".deespec/specs", result.SpecPath, "meta.yaml")
+	// result.SpecPath already contains the full path
+	metaPath := filepath.Join(result.SpecPath, "meta.yaml")
 	if _, err := os.Stat(metaPath); os.IsNotExist(err) {
 		t.Error("meta.yaml not created")
 	}
@@ -84,7 +86,7 @@ func TestRegisterWithTransaction(t *testing.T) {
 	}
 
 	// Verify spec.md was created
-	specPath := filepath.Join(".deespec/specs", result.SpecPath, "spec.md")
+	specPath := filepath.Join(result.SpecPath, "spec.md")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Error("spec.md not created")
 	}
@@ -170,7 +172,7 @@ func TestRegisterWithTransactionFailure(t *testing.T) {
 	result := &RegisterResult{
 		OK:       true,
 		ID:       spec.ID,
-		SpecPath: "test",
+		SpecPath: ".deespec/specs/test",
 		Warnings: []string{},
 	}
 
@@ -189,7 +191,7 @@ func TestRegisterWithTransactionFailure(t *testing.T) {
 	}
 
 	// Verify no files were created
-	metaPath := filepath.Join(".deespec/specs", result.SpecPath, "meta.yaml")
+	metaPath := filepath.Join(result.SpecPath, "meta.yaml")
 	if _, err := os.Stat(metaPath); !os.IsNotExist(err) {
 		t.Error("meta.yaml should not exist after failed transaction")
 	}
@@ -218,7 +220,9 @@ func TestTransactionWithCrashRecovery(t *testing.T) {
 	// Manually create a transaction with intent but no commit
 	txnID := "txn_test_recovery"
 	txnDir := filepath.Join(".deespec/var/txn", txnID)
-	os.MkdirAll(txnDir, 0755)
+	if err := os.MkdirAll(txnDir, 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", txnDir, err)
+	}
 
 	// Create intent marker
 	intentPath := filepath.Join(txnDir, "status.intent")

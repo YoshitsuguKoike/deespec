@@ -397,9 +397,5 @@ func isTestEnvironment() bool {
 	if strings.Contains(os.Args[0], ".test") || strings.HasSuffix(os.Args[0], ".test.exe") {
 		return true
 	}
-	// Check for TEST environment variable
-	if os.Getenv("DEESPEC_TEST_QUIET") != "" {
-		return true
-	}
 	return false
 }

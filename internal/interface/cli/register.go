@@ -315,7 +315,11 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 	printJSONLine(result)
 
 	// Use transaction if enabled (Step 7)
-	useTX := os.Getenv("DEESPEC_USE_TX") == "1"
+	// Use config to check if transactions are enabled
+	useTX := false
+	if globalConfig != nil {
+		useTX = globalConfig.UseTx()
+	}
 
 	if useTX {
 		// Create journal entry for TX version

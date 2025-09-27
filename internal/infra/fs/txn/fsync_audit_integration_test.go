@@ -61,7 +61,10 @@ func TestTransactionFsyncAudit(t *testing.T) {
 	err = manager.Commit(tx, destRoot, func() error {
 		// Simulate journal append
 		journalPath := filepath.Join(destRoot, "var", "journal.ndjson")
-		os.MkdirAll(filepath.Dir(journalPath), 0755)
+
+		if err := os.MkdirAll(filepath.Dir(journalPath), 0755); err != nil {
+			t.Fatalf("mkdir %s failed: %v", baseDir, err)
+		}
 
 		f, err := os.OpenFile(journalPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
@@ -147,8 +150,13 @@ func TestRegisterFsyncPath(t *testing.T) {
 	defer os.Chdir(oldDir)
 
 	// Setup .deespec structure
-	os.MkdirAll(".deespec/var/txn", 0755)
-	os.MkdirAll(".deespec/specs", 0755)
+	if err := os.MkdirAll(".deespec/var/txn", 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", baseDir, err)
+	}
+
+	if err := os.MkdirAll(".deespec/specs", 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", baseDir, err)
+	}
 
 	// Reset stats
 	fs.ResetFsyncStats()
@@ -275,7 +283,9 @@ func TestParallelChecksumWithFsyncOrder(t *testing.T) {
 	err = manager.Commit(tx, destRoot, func() error {
 		// Journal append with fsync
 		journalPath := filepath.Join(destRoot, "var", "journal.ndjson")
-		os.MkdirAll(filepath.Dir(journalPath), 0755)
+		if err := os.MkdirAll(filepath.Dir(journalPath), 0755); err != nil {
+			t.Fatalf("mkdir %s failed: %v", baseDir, err)
+		}
 
 		f, err := os.OpenFile(journalPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {

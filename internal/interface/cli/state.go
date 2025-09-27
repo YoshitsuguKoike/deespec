@@ -33,10 +33,10 @@ func newStateVerifyCmd() *cobra.Command {
 		},
 	}
 
-	// DEE_HOME があれば <DEE_HOME>/var/state.json を既定に、それ以外は従来どおり
+	// Use config home if available, otherwise fallback to default
 	defaultState := ".deespec/var/state.json"
-	if home := os.Getenv("DEE_HOME"); home != "" {
-		defaultState = filepath.Join(home, "var", "state.json")
+	if globalConfig != nil && globalConfig.Home() != "" {
+		defaultState = filepath.Join(globalConfig.Home(), "var", "state.json")
 	}
 	cmd.Flags().StringVar(&filePath, "path", defaultState, "Path to state.json file (defaults to $DEE_HOME/var/state.json when set)")
 	cmd.Flags().StringVar(&format, "format", "", "Output format (json for CI integration)")
@@ -44,11 +44,11 @@ func newStateVerifyCmd() *cobra.Command {
 }
 
 func runStateVerify(filePath, format string) error {
-	// 互換のため：--path が ".deespec/..." の相対指定で来た場合は DEE_HOME に付け替え
-	if home := os.Getenv("DEE_HOME"); home != "" {
+	// Use config home if available for relative path resolution
+	if globalConfig != nil && globalConfig.Home() != "" {
 		clean := filepath.Clean(filePath)
 		if clean == ".deespec/var/state.json" || clean == filepath.Join(".deespec", "var", "state.json") {
-			filePath = filepath.Join(home, "var", "state.json")
+			filePath = filepath.Join(globalConfig.Home(), "var", "state.json")
 		}
 	}
 

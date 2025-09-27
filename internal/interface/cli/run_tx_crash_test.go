@@ -87,7 +87,7 @@ func TestSaveStateAndJournalTX_CrashRecoveryE2E(t *testing.T) {
 		// ★ 前方回復を明示的に起動して中間状態を完成側に寄せる
 		//    （あなたの実装名に合わせて。ここでは例として txn.RunStartupRecovery を想定）
 		recoverRoot := filepath.Join(paths.Var, "txn")
-		if rerr := txn.RunStartupRecovery(context.Background(), recoverRoot); rerr != nil {
+		if rerr := txn.RunStartupRecovery(context.Background(), recoverRoot, ".deespec", false); rerr != nil {
 			t.Fatalf("RunStartupRecovery failed: %v", rerr)
 		}
 
@@ -188,7 +188,7 @@ func TestSaveStateAndJournalTX_CrashRecoveryE2E(t *testing.T) {
 		}
 
 		// Simulate forward recovery using Recovery class
-		recovery := txn.NewRecovery(manager)
+		recovery := txn.NewRecovery(manager, ".deespec")
 		recoveryResult, err := recovery.RecoverAll(ctx)
 		if err != nil {
 			t.Fatalf("RecoverAll failed: %v", err)
@@ -200,7 +200,8 @@ func TestSaveStateAndJournalTX_CrashRecoveryE2E(t *testing.T) {
 		}
 
 		// Complete the transaction (forward recovery) with no-op journal callback
-		if err := manager.Commit(tx, os.Getenv("DEE_HOME"), func() error { return nil }); err != nil {
+		// Use default .deespec as destination root
+		if err := manager.Commit(tx, ".deespec", func() error { return nil }); err != nil {
 			t.Fatalf("Forward recovery commit failed: %v", err)
 		}
 

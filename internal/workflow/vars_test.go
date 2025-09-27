@@ -189,36 +189,17 @@ func TestExpandPrompt(t *testing.T) {
 }
 
 func TestBuildVarMap(t *testing.T) {
-	// Save and restore environment variables
-	saveEnv := func(keys []string) map[string]string {
-		saved := make(map[string]string)
-		for _, k := range keys {
-			saved[k] = os.Getenv(k)
-		}
-		return saved
-	}
-
-	restoreEnv := func(saved map[string]string) {
-		for k, v := range saved {
-			if v == "" {
-				os.Unsetenv(k)
-			} else {
-				os.Setenv(k, v)
-			}
-		}
-	}
+	// Environment variables are no longer used
+	// Config should be passed through BuildVarMapWithConfig instead
 
 	// Get the current working directory for project name
 	wd, _ := os.Getwd()
 	defaultProjectName := filepath.Base(wd)
 
-	envKeys := []string{"DEE_TURN", "DEE_TASK_ID", "DEE_PROJECT_NAME", "DEE_LANGUAGE"}
-
 	tests := []struct {
 		name     string
 		wfVars   map[string]string
 		state    *state.State
-		envVars  map[string]string
 		wantVars map[string]string
 	}{
 		{
@@ -230,7 +211,6 @@ func TestBuildVarMap(t *testing.T) {
 					"task_id": "TASK-123",
 				},
 			},
-			envVars: nil,
 			wantVars: map[string]string{
 				"turn":         "5",
 				"task_id":      "TASK-123",
@@ -248,7 +228,6 @@ func TestBuildVarMap(t *testing.T) {
 				Turn: 3,
 				Meta: map[string]interface{}{},
 			},
-			envVars: nil,
 			wantVars: map[string]string{
 				"turn":         "3",
 				"task_id":      "",
@@ -257,35 +236,9 @@ func TestBuildVarMap(t *testing.T) {
 			},
 		},
 		{
-			name: "env vars override all",
-			wfVars: map[string]string{
-				"project_name": "workflow-project",
-				"language":     "fr",
-			},
-			state: &state.State{
-				Turn: 2,
-				Meta: map[string]interface{}{
-					"task_id": "WF-TASK",
-				},
-			},
-			envVars: map[string]string{
-				"DEE_PROJECT_NAME": "env-project",
-				"DEE_LANGUAGE":     "de",
-				"DEE_TURN":         "10",
-				"DEE_TASK_ID":      "ENV-TASK",
-			},
-			wantVars: map[string]string{
-				"turn":         "10",
-				"task_id":      "ENV-TASK",
-				"project_name": "env-project",
-				"language":     "de",
-			},
-		},
-		{
-			name:    "nil state handled",
-			wfVars:  nil,
-			state:   nil,
-			envVars: nil,
+			name:   "nil state handled",
+			wfVars: nil,
+			state:  nil,
 			wantVars: map[string]string{
 				"turn":         "0",
 				"task_id":      "",
@@ -297,21 +250,8 @@ func TestBuildVarMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save current environment
-			saved := saveEnv(envKeys)
-			defer restoreEnv(saved)
-
-			// Clear environment
-			for _, k := range envKeys {
-				os.Unsetenv(k)
-			}
-
-			// Set test environment variables
-			if tt.envVars != nil {
-				for k, v := range tt.envVars {
-					os.Setenv(k, v)
-				}
-			}
+			// Environment variables are no longer used
+			// Config is passed through BuildVarMapWithConfig instead
 
 			// Call BuildVarMap
 			ctx := context.Background()

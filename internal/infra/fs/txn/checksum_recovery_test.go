@@ -108,7 +108,7 @@ func TestChecksumMismatchRecoveryIntegration(t *testing.T) {
 		// (transaction remains in intent state with corrupted data)
 
 		// Run recovery
-		recovery := NewRecovery(manager)
+		recovery := NewRecovery(manager, destRoot)
 		recoveryResult, err := recovery.RecoverAll(ctx)
 		if err != nil {
 			t.Fatalf("RecoverAll failed: %v", err)
@@ -193,7 +193,7 @@ func TestChecksumMismatchRecoveryIntegration(t *testing.T) {
 		}
 
 		// Run parallel checksum validation through recovery
-		recovery := NewRecovery(isolatedManager)
+		recovery := NewRecovery(isolatedManager, deespec)
 		recoveryResult, err := recovery.RecoverAll(ctx)
 		if err != nil {
 			t.Fatalf("RecoverAll failed: %v", err)

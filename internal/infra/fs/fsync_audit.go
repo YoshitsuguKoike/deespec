@@ -26,11 +26,11 @@ var audit = &FsyncAudit{
 	enabled: true,
 }
 
-func init() {
-	// Also check environment variable
-	if os.Getenv("DEESPEC_FSYNC_AUDIT") == "1" {
-		audit.enabled = true
-		fmt.Fprintf(os.Stderr, "INFO: Fsync audit enabled via environment\n")
+// ConfigureFsyncAudit sets the audit enabled flag
+func ConfigureFsyncAudit(enabled bool) {
+	audit.enabled = enabled
+	if enabled {
+		fmt.Fprintf(os.Stderr, "INFO: Fsync audit enabled\n")
 	}
 }
 

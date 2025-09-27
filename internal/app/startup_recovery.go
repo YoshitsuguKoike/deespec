@@ -4,25 +4,42 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/YoshitsuguKoike/deespec/internal/app/config"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs/txn"
 )
 
 // RunStartupRecovery performs transaction recovery at application startup
 // This should be called before acquiring any locks (per ARCHITECTURE.md Section 3.7)
+// Deprecated: Use RunStartupRecoveryWithConfig instead
 func RunStartupRecovery() error {
+	return RunStartupRecoveryWithConfig(nil)
+}
+
+// RunStartupRecoveryWithConfig performs transaction recovery with configuration
+func RunStartupRecoveryWithConfig(cfg config.Config) error {
 	// Check if recovery is enabled
-	if os.Getenv("DEESPEC_DISABLE_RECOVERY") == "1" {
-		fmt.Fprintf(os.Stderr, "INFO: Transaction recovery disabled by environment variable\n")
+	disableRecovery := false
+	destRoot := ".deespec"
+	txnBaseDir := ".deespec/var/txn"
+
+	if cfg != nil {
+		disableRecovery = cfg.DisableRecovery()
+		destRoot = cfg.Home()
+		txnBaseDir = filepath.Join(cfg.Home(), "var", "txn")
+	}
+
+	if disableRecovery {
+		fmt.Fprintf(os.Stderr, "INFO: Transaction recovery disabled\n")
 		return nil
 	}
 
 	// Initialize transaction manager
-	txnBaseDir := ".deespec/var/txn"
 	manager := txn.NewManager(txnBaseDir)
 
 	// Create recovery handler
-	recovery := txn.NewRecovery(manager)
+	recovery := txn.NewRecovery(manager, destRoot)
 
 	// Perform recovery
 	ctx := context.Background()

@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
-	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/external/claudecli"
 )
@@ -192,8 +191,14 @@ func runOnce(autoFB bool) error {
 	}
 
 	// 設定読み込みとエージェント作成
-	cfg := config.Load()
-	agent := claudecli.Runner{Bin: cfg.AgentBin, Timeout: cfg.Timeout}
+	// Use globalConfig if available, otherwise use defaults
+	agentBin := "claude"
+	timeout := 60 * time.Second
+	if globalConfig != nil {
+		agentBin = globalConfig.AgentBin()
+		timeout = time.Duration(globalConfig.TimeoutSec()) * time.Second
+	}
+	agent := claudecli.Runner{Bin: agentBin, Timeout: timeout}
 
 	next := st.Current
 	output := "# no-op\n"

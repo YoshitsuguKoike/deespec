@@ -46,12 +46,10 @@ func TestForwardRecovery(t *testing.T) {
 
 	// Simulate crash by creating new manager instance
 	manager2 := NewManager(txnDir)
-	recovery := NewRecovery(manager2)
 
 	// Set destination root for test - files will be placed directly here
 	destRoot := filepath.Join(tempDir, ".deespec")
-	os.Setenv("DEESPEC_TX_DEST_ROOT", destRoot)
-	defer os.Unsetenv("DEESPEC_TX_DEST_ROOT")
+	recovery := NewRecovery(manager2, destRoot)
 
 	// Perform recovery
 	result, err := recovery.RecoverAll(ctx)
@@ -140,8 +138,9 @@ func TestCleanupAfterCommit(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	txnDir := filepath.Join(tempDir, ".deespec/var/txn")
+	destRoot := filepath.Join(tempDir, ".deespec")
 	manager := NewManager(txnDir)
-	recovery := NewRecovery(manager)
+	recovery := NewRecovery(manager, destRoot)
 
 	// Create a committed transaction
 	txnID := "txn_test_cleanup"
@@ -227,9 +226,7 @@ func TestE2ECrashRecoveryWithRetry(t *testing.T) {
 	txnDir := filepath.Join(tempDir, ".deespec/var/txn")
 	destRoot := filepath.Join(tempDir, ".deespec")
 
-	// Set environment for recovery destination
-	os.Setenv("DEESPEC_TX_DEST_ROOT", destRoot)
-	defer os.Unsetenv("DEESPEC_TX_DEST_ROOT")
+	// Recovery will use destRoot for destination
 
 	t.Run("MultipleTransactionCrashRecovery", func(t *testing.T) {
 		manager := NewManager(txnDir)
@@ -264,6 +261,7 @@ func TestE2ECrashRecoveryWithRetry(t *testing.T) {
 
 		// Configure recovery with short timeouts for testing
 		recovery := NewRecoveryWithConfig(manager2, RecoveryConfig{
+			DestRoot:     destRoot,
 			Timeout:      2 * time.Second,
 			TotalTimeout: 10 * time.Second,
 			MaxRetries:   2,
@@ -328,6 +326,7 @@ func TestE2ECrashRecoveryWithRetry(t *testing.T) {
 
 		// Configure recovery with very short timeout to test timeout behavior
 		recovery := NewRecoveryWithConfig(manager2, RecoveryConfig{
+			DestRoot:     destRoot,
 			Timeout:      1 * time.Millisecond, // Very short timeout
 			TotalTimeout: 100 * time.Millisecond,
 			MaxRetries:   1,
@@ -386,7 +385,8 @@ func TestE2ECrashRecoveryWithRetry(t *testing.T) {
 
 		// Create new manager for recovery
 		manager2 := NewManager(txnDir)
-		recovery := NewRecovery(manager2)
+		destRoot := filepath.Join(tempDir, ".deespec")
+		recovery := NewRecovery(manager2, destRoot)
 
 		// Recovery should handle corrupted transaction gracefully
 		result, err := recovery.RecoverAll(ctx)
@@ -415,9 +415,6 @@ func TestRecoveryMetrics(t *testing.T) {
 
 	txnDir := filepath.Join(tempDir, ".deespec/var/txn")
 	destRoot := filepath.Join(tempDir, ".deespec")
-
-	os.Setenv("DEESPEC_TX_DEST_ROOT", destRoot)
-	defer os.Unsetenv("DEESPEC_TX_DEST_ROOT")
 
 	manager := NewManager(txnDir)
 	ctx := context.Background()
@@ -457,7 +454,7 @@ func TestRecoveryMetrics(t *testing.T) {
 
 	// Create new manager for recovery
 	manager2 := NewManager(txnDir)
-	recovery := NewRecovery(manager2)
+	recovery := NewRecovery(manager2, destRoot)
 
 	// Capture stderr output to verify metrics
 	// Note: In real tests, you might want to use a custom logger or capture mechanism

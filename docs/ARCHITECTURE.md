@@ -199,7 +199,41 @@ main() → RunStartupRecovery() → AcquireLock() → Normal Operation
 - **ディスク容量不足**: クリーンアップ失敗は致命的エラーとしない
 - **同時アクセス**: 他プロセスによる削除は正常として扱う（ディレクトリ不存在は成功）
 
-### 3.9 Constraints and Non-Goals {#tx-constraints}
+### 3.9 CAS Failure Retry Policy {#tx-cas-retry}
+
+**CAS（Compare-And-Swap）失敗時の再試行方針:**
+
+**現行方針（安全失敗）:**
+- CAS操作失敗時は即座にエラーを返し、アプリケーション層で処理を終了
+- 競合状態の発生により一時的な失敗を許容し、システムの安定性を優先
+
+**将来の拡張計画:**
+- **限度付きリトライ（指数バックオフ）** の採用可否を運用実績に基づいて判断
+- **実装方針**:
+  ```go
+  // 指数バックオフでの再試行例
+  for attempt := 0; attempt < maxRetries; attempt++ {
+      if err := casOperation(); err == nil {
+          break  // 成功
+      }
+      if !isCASConflict(err) {
+          return err  // CAS以外のエラーは即座に失敗
+      }
+      backoff := time.Duration(math.Pow(2, float64(attempt))) * baseDelay
+      time.Sleep(backoff)
+  }
+  ```
+- **適用条件**:
+  - CAS競合頻度が高い環境での運用が必要になった場合
+  - システム負荷と成功率のトレードオフが明確になった場合
+  - メトリクス収集によりリトライ効果が定量的に証明された場合
+
+**運用判断基準:**
+- Step 12のメトリクス収集により`txn.cas.conflict.count`を監視
+- 競合率が5%を超える場合、リトライ機構導入を検討
+- 本実装は現行の安全失敗方針を継続し、将来の運用データに基づく判断を優先
+
+### 3.10 Constraints and Non-Goals {#tx-constraints}
 
 **制約事項:**
 - **同一ファイルシステム要件**: rename操作の原子性を保証するため、全ファイルは同一FS上に配置
@@ -346,6 +380,45 @@ internal/infra/fs/
   env:
     DEESPEC_FSYNC_AUDIT: "1"
 ```
+
+### 5.5 Migration Timeline and Deprecation Policy {#migration-timeline}
+
+**DEESPEC_DISABLE_STATE_TX 廃止予定:**
+
+**現行実装状況（2024年12月）:**
+- TX（トランザクション）モードがデフォルトで有効
+- 環境変数 `DEESPEC_DISABLE_STATE_TX=1` で従来の直接書き込みモードに切り替え可能
+- TX モードは Step 10 で実装完了し、本番運用での安定性を確認済み
+
+**段階的移行計画:**
+
+**Phase 1: 移行準備期間（2025年1月〜3月）**
+- TX モードを継続してデフォルト設定として運用
+- Step 12 メトリクス収集により TX モードの安定性を定量的に評価
+- `doctor --json` でのメトリクス可視化により運用状況を監視
+- 重大な不具合が発見された場合のみ、従来モードへの切り戻しを許可
+
+**Phase 2: 廃止警告期間（2025年4月〜6月）**
+- `DEESPEC_DISABLE_STATE_TX=1` 設定時に廃止警告メッセージを表示
+- README.md および CHANGELOG で廃止予定を明記
+- 移行支援ドキュメントの提供とコミュニティサポート
+
+**Phase 3: 完全廃止（2025年7月）**
+- `DEESPEC_DISABLE_STATE_TX` 環境変数を完全削除
+- TX モードのみをサポート（従来の直接書き込みは使用不可）
+- 関連するレガシーコードの削除とコードベースの簡素化
+
+**廃止理由:**
+- **データ整合性**: TX モードは CAS 保護と原子的更新により優れた整合性を提供
+- **可観測性**: メトリクス収集とエラー追跡が TX モード前提で設計済み
+- **保守性**: 二重実装の維持コストを削減し、開発効率を向上
+- **前方互換性**: 将来の拡張機能（分散ロック、バッチ処理等）は TX 基盤が前提
+
+**移行時の注意事項:**
+- TX モード使用時は `.deespec/var/txn/` ディレクトリが作成される
+- ディスク使用量は僅かに増加（トランザクション中間ファイル）
+- パフォーマンスへの影響は微小（ベンチマーク結果に基づく）
+- 既存の state.json/journal.ndjson 形式との完全後方互換性を維持
 
 ### 5.4 Performance Considerations
 - fsync呼び出しはI/O性能に影響するため、必要最小限に留める

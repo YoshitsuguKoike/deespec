@@ -16,6 +16,7 @@ import (
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
+	"github.com/YoshitsuguKoike/deespec/internal/infra/fs/txn"
 	"github.com/YoshitsuguKoike/deespec/internal/workflow"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -23,13 +24,25 @@ import (
 
 // DoctorJSON represents the JSON output structure for doctor command
 type DoctorJSON struct {
-	Runner           string   `json:"runner"`
-	Active           bool     `json:"active"`
-	WorkingDir       string   `json:"working_dir"`
-	AgentBin         string   `json:"agent_bin"`
-	StartIntervalSec int      `json:"start_interval_sec,omitempty"`
-	Next             string   `json:"next,omitempty"`
-	Errors           []string `json:"errors"`
+	Runner           string             `json:"runner"`
+	Active           bool               `json:"active"`
+	WorkingDir       string             `json:"working_dir"`
+	AgentBin         string             `json:"agent_bin"`
+	StartIntervalSec int                `json:"start_interval_sec,omitempty"`
+	Next             string             `json:"next,omitempty"`
+	Errors           []string           `json:"errors"`
+	Metrics          *DoctorMetricsJSON `json:"metrics,omitempty"`
+}
+
+// DoctorMetricsJSON represents transaction metrics for doctor --json
+type DoctorMetricsJSON struct {
+	CommitSuccess int64   `json:"commit_success"`
+	CommitFailed  int64   `json:"commit_failed"`
+	CASConflicts  int64   `json:"cas_conflicts"`
+	RecoveryCount int64   `json:"recovery_count"`
+	TotalCommits  int64   `json:"total_commits"`
+	SuccessRate   float64 `json:"success_rate_percent"`
+	LastUpdate    string  `json:"last_update"`
 }
 
 // DoctorValidationJSON represents the JSON output structure for --format=json
@@ -629,6 +642,21 @@ func runDoctorJSON() error {
 		WorkingDir: "",
 		AgentBin:   cfg.AgentBin,
 		Errors:     []string{},
+	}
+
+	// Load transaction metrics
+	metricsPath := filepath.Join(paths.Var, "metrics.json")
+	if metrics, err := txn.LoadMetrics(metricsPath); err == nil {
+		snapshot := metrics.GetSnapshot()
+		result.Metrics = &DoctorMetricsJSON{
+			CommitSuccess: snapshot.CommitSuccess,
+			CommitFailed:  snapshot.CommitFailed,
+			CASConflicts:  snapshot.CASConflicts,
+			RecoveryCount: snapshot.RecoveryCount,
+			TotalCommits:  metrics.GetTotalCommits(),
+			SuccessRate:   metrics.GetSuccessRate(),
+			LastUpdate:    snapshot.LastUpdate,
+		}
 	}
 
 	// Check working directory

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -20,8 +21,18 @@ func SaveStateAndJournalTX(
 	paths app.Paths,
 	prevVersion int,
 ) error {
+	// Load metrics for tracking first
+	metricsPath := filepath.Join(paths.Var, "metrics.json")
+	metrics, err := txn.LoadMetrics(metricsPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "WARN: Failed to load metrics: %v\n", err)
+		metrics = &txn.MetricsCollector{} // Use fresh metrics on error
+	}
+
 	// Validate CAS version first (like original saveStateCAS)
 	if state.Version != prevVersion {
+		metrics.IncrementCASConflict()
+		metrics.SaveMetrics(metricsPath) // Best effort save
 		return fmt.Errorf("version changed (expected %d, got %d)", prevVersion, state.Version)
 	}
 
@@ -32,6 +43,8 @@ func SaveStateAndJournalTX(
 			return fmt.Errorf("failed to load current state for CAS: %w", err)
 		}
 		if currentState.Version != prevVersion {
+			metrics.IncrementCASConflict()
+			metrics.SaveMetrics(metricsPath) // Best effort save
 			return fmt.Errorf("version changed on disk (expected %d, got %d)", prevVersion, currentState.Version)
 		}
 	}
@@ -44,28 +57,28 @@ func SaveStateAndJournalTX(
 	// Begin transaction
 	tx, err := manager.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
+		return fmt.Errorf("state-tx begin: %w", err)
 	}
 
 	// Increment version and update timestamp for state
 	state.Version++
 	state.Meta.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 
-	// Marshal state to JSON
-	stateData, err := json.MarshalIndent(state, "", "  ")
+	// Marshal state to stable JSON (fixed key order + trailing LF)
+	stateData, err := marshalStableJSON(state)
 	if err != nil {
-		return fmt.Errorf("marshal state: %w", err)
+		return fmt.Errorf("state-tx marshal: %w", err)
 	}
 
 	// Stage state.json
 	relStatePath := "var/state.json"
 	if err := manager.StageFile(tx, relStatePath, stateData); err != nil {
-		return fmt.Errorf("stage state.json: %w", err)
+		return fmt.Errorf("state-tx stage: %w", err)
 	}
 
 	// Mark intent - all staging complete
 	if err := manager.MarkIntent(tx); err != nil {
-		return fmt.Errorf("mark intent: %w", err)
+		return fmt.Errorf("state-tx intent: %w", err)
 	}
 
 	// Commit with journal append
@@ -77,8 +90,14 @@ func SaveStateAndJournalTX(
 	if err != nil {
 		// Transaction failed - state version was not actually incremented
 		state.Version--
-		return fmt.Errorf("commit transaction: %w", err)
+		metrics.IncrementCommitFailed()
+		metrics.SaveMetrics(metricsPath) // Best effort save
+		return fmt.Errorf("state-tx commit: %w", err)
 	}
+
+	// Transaction committed successfully
+	metrics.IncrementCommitSuccess()
+	metrics.SaveMetrics(metricsPath) // Best effort save
 
 	// Clean up transaction directory after successful commit
 	if err := manager.Cleanup(tx); err != nil {
@@ -95,28 +114,28 @@ func appendJournalEntryInTX(journalRec map[string]interface{}, journalPath strin
 	// Ensure journal directory exists
 	journalDir := filepath.Dir(journalPath)
 	if err := os.MkdirAll(journalDir, 0755); err != nil {
-		return fmt.Errorf("create journal directory: %w", err)
+		return fmt.Errorf("state-tx journal mkdir: %w", err)
 	}
 
 	// Marshal journal entry
 	data, err := json.Marshal(journalRec)
 	if err != nil {
-		return fmt.Errorf("marshal journal entry: %w", err)
+		return fmt.Errorf("state-tx journal marshal: %w", err)
 	}
 
 	// Open journal file in append mode with O_APPEND for atomic appends
 	file, err := os.OpenFile(journalPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return fmt.Errorf("open journal file: %w", err)
+		return fmt.Errorf("state-tx journal open: %w", err)
 	}
 	defer file.Close()
 
 	// Write entry
 	if _, err := file.Write(data); err != nil {
-		return fmt.Errorf("write journal entry: %w", err)
+		return fmt.Errorf("state-tx journal write: %w", err)
 	}
 	if _, err := file.Write([]byte("\n")); err != nil {
-		return fmt.Errorf("write newline: %w", err)
+		return fmt.Errorf("state-tx journal newline: %w", err)
 	}
 
 	// DURABILITY: O_APPEND → fsync(file) → fsync(parent dir)
@@ -130,6 +149,22 @@ func appendJournalEntryInTX(journalRec map[string]interface{}, journalPath strin
 	}
 
 	return nil
+}
+
+// marshalStableJSON marshals data to JSON with stable key ordering and trailing LF
+// This ensures consistent output for CAS comparison and diff reviews
+func marshalStableJSON(v interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetIndent("", "  ")
+	encoder.SetEscapeHTML(false) // Preserve special characters for stability
+
+	if err := encoder.Encode(v); err != nil {
+		return nil, err
+	}
+
+	// Encoder.Encode already adds trailing newline, ensuring stable format
+	return buf.Bytes(), nil
 }
 
 // UseTXForStateJournal returns true if transaction mode should be used

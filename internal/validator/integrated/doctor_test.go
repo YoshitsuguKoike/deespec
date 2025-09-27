@@ -36,7 +36,8 @@ func TestIntegratedValidation(t *testing.T) {
 	stateContent := `{
   "version": 1,
   "step": "plan",
-  "turn": 1
+  "turn": 1,
+  "meta.updated_at": "2025-01-26T10:00:00.000000000Z"
 }`
 
 	healthContent := `{
@@ -47,7 +48,7 @@ func TestIntegratedValidation(t *testing.T) {
   "error": ""
 }`
 
-	journalContent := `{"ts":"2025-01-26T10:00:00.000000000Z","turn":1,"step":"plan","decision":"","elapsed_ms":0,"error":"","artifacts":[]}
+	journalContent := `{"ts":"2025-01-26T10:00:00.000000000Z","turn":1,"step":"plan","decision":"PENDING","elapsed_ms":0,"error":"","artifacts":[]}
 {"ts":"2025-01-26T10:00:10.000000000Z","turn":1,"step":"plan","decision":"OK","elapsed_ms":10000,"error":"","artifacts":[]}`
 
 	// Write test files

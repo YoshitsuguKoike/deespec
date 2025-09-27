@@ -33,12 +33,12 @@ func TestDoctorPromptValidation(t *testing.T) {
 	t.Setenv("DEE_HOME", deespecDir)
 
 	tests := []struct {
-		name            string
-		workflowYAML    string
-		setupFiles      map[string]string  // path -> content
-		expectErrors    []string
-		expectOK        []string
-		expectExitCode  bool  // true if should exit with code 1
+		name           string
+		workflowYAML   string
+		setupFiles     map[string]string // path -> content
+		expectErrors   []string
+		expectOK       []string
+		expectExitCode bool // true if should exit with code 1
 	}{
 		{
 			name: "all prompts exist and readable",
@@ -206,12 +206,12 @@ func TestDoctorPromptSizeAndEncoding(t *testing.T) {
 	t.Setenv("DEE_HOME", deespecDir)
 
 	tests := []struct {
-		name            string
-		workflowYAML    string
-		setupFiles      map[string][]byte  // path -> content (as bytes for binary data)
-		expectErrors    []string
-		expectWarnings  []string
-		expectOK        []string
+		name           string
+		workflowYAML   string
+		setupFiles     map[string][]byte // path -> content (as bytes for binary data)
+		expectErrors   []string
+		expectWarnings []string
+		expectOK       []string
 	}{
 		{
 			name: "prompt within size limit",
@@ -287,7 +287,7 @@ steps:
     agent: system
     prompt_path: prompts/system/invalid.md`,
 			setupFiles: map[string][]byte{
-				"prompts/system/invalid.md": []byte{0xFF, 0xFE, 0x00, 0x00}, // Invalid UTF-8
+				"prompts/system/invalid.md": {0xFF, 0xFE, 0x00, 0x00}, // Invalid UTF-8
 			},
 			expectErrors: []string{
 				"ERROR: prompt_path (invalid) invalid UTF-8 encoding",
@@ -410,73 +410,73 @@ steps:
 // TestDoctorPlaceholderValidation tests placeholder validation (SBI-DR-003)
 func TestDoctorPlaceholderValidation(t *testing.T) {
 	tests := []struct {
-		name             string
-		content          string
-		stepID           string
-		expectErrors     []string
-		expectWarnings   []string
+		name           string
+		content        string
+		stepID         string
+		expectErrors   []string
+		expectWarnings []string
 	}{
 		{
-			name:    "valid placeholders only",
-			content: "Hello {project_name}, task {task_id} on turn {turn} in {language}",
-			stepID:  "test",
-			expectErrors: nil,
+			name:           "valid placeholders only",
+			content:        "Hello {project_name}, task {task_id} on turn {turn} in {language}",
+			stepID:         "test",
+			expectErrors:   nil,
 			expectWarnings: nil,
 		},
 		{
-			name:    "empty placeholder",
-			content: "Hello {}, this is invalid",
-			stepID:  "test",
-			expectErrors: []string{"contains empty placeholder {} at line"},
+			name:           "empty placeholder",
+			content:        "Hello {}, this is invalid",
+			stepID:         "test",
+			expectErrors:   []string{"contains empty placeholder {} at line"},
 			expectWarnings: nil,
 		},
 		{
-			name:    "unknown placeholder",
-			content: "Hello {foo}, this is unknown",
-			stepID:  "test",
-			expectErrors: []string{"unknown placeholder {foo} at line"},
+			name:           "unknown placeholder",
+			content:        "Hello {foo}, this is unknown",
+			stepID:         "test",
+			expectErrors:   []string{"unknown placeholder {foo} at line"},
 			expectWarnings: nil,
 		},
 		{
-			name:    "placeholder in fenced code block (ignored)",
-			content: "```\n{foo} should be ignored\n```\nValid: {turn}",
-			stepID:  "test",
-			expectErrors: nil,
+			name:           "placeholder in fenced code block (ignored)",
+			content:        "```\n{foo} should be ignored\n```\nValid: {turn}",
+			stepID:         "test",
+			expectErrors:   nil,
 			expectWarnings: nil,
 		},
 		{
-			name:    "placeholder in inline code (ignored)",
-			content: "Use `{foo}` in your template. Valid: {turn}",
-			stepID:  "test",
-			expectErrors: nil,
+			name:           "placeholder in inline code (ignored)",
+			content:        "Use `{foo}` in your template. Valid: {turn}",
+			stepID:         "test",
+			expectErrors:   nil,
 			expectWarnings: nil,
 		},
 		{
-			name:    "escaped placeholder (ignored)",
-			content: "Literal \\{foo\\} should be ignored. Valid: {turn}",
-			stepID:  "test",
-			expectErrors: nil,
+			name:           "escaped placeholder (ignored)",
+			content:        "Literal \\{foo\\} should be ignored. Valid: {turn}",
+			stepID:         "test",
+			expectErrors:   nil,
 			expectWarnings: nil,
 		},
 		{
-			name:    "mustache template (warning)",
-			content: "Hello {{name}}, this is mustache style",
-			stepID:  "test",
-			expectErrors: nil,
+			name:           "mustache template (warning)",
+			content:        "Hello {{name}}, this is mustache style",
+			stepID:         "test",
+			expectErrors:   nil,
 			expectWarnings: []string{"contains non-standard {{name}} at line"},
 		},
 		{
-			name:    "invalid identifier",
-			content: "Hello {foo-bar}, this has invalid characters",
-			stepID:  "test",
-			expectErrors: []string{"invalid placeholder {foo-bar} at line"},
+			name:           "invalid identifier",
+			content:        "Hello {foo-bar}, this has invalid characters",
+			stepID:         "test",
+			expectErrors:   []string{"invalid placeholder {foo-bar} at line"},
 			expectWarnings: nil,
 		},
 		{
-			name:    "whitespace placeholder",
-			content: "Hello {   }, this is empty with spaces",
-			stepID:  "test",
-			expectErrors: []string{"contains empty placeholder {} at line"},
+			name:           "whitespace placeholder",
+			content:        "Hello {   }, this is empty with spaces",
+			stepID:         "test",
+			expectErrors:   []string{"contains empty placeholder {} at line"},
 			expectWarnings: nil,
 		},
 	}
@@ -613,7 +613,7 @@ steps:
 	}()
 
 	// Run command (should error due to missing prompt)
-	_ = cmd.Execute()  // Ignore error as we're testing output
+	_ = cmd.Execute() // Ignore error as we're testing output
 
 	// Restore stdout
 	w.Close()

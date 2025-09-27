@@ -16,23 +16,23 @@ import (
 
 // DryRunReport represents the complete dry-run output
 type DryRunReport struct {
-	Meta             DryRunMeta         `json:"meta" yaml:"meta"`
-	Input            DryRunInput        `json:"input" yaml:"input"`
-	Validation       DryRunValidation   `json:"validation" yaml:"validation"`
-	Resolution       DryRunResolution   `json:"resolution" yaml:"resolution"`
-	JournalPreview   DryRunJournal      `json:"journal_preview" yaml:"journal_preview"`
+	Meta           DryRunMeta       `json:"meta" yaml:"meta"`
+	Input          DryRunInput      `json:"input" yaml:"input"`
+	Validation     DryRunValidation `json:"validation" yaml:"validation"`
+	Resolution     DryRunResolution `json:"resolution" yaml:"resolution"`
+	JournalPreview DryRunJournal    `json:"journal_preview" yaml:"journal_preview"`
 }
 
 // DryRunMeta contains metadata about the dry-run execution
 type DryRunMeta struct {
-	SchemaVersion    int      `json:"schema_version" yaml:"schema_version"`
-	TsUTC            string   `json:"ts_utc" yaml:"ts_utc"`
-	Version          string   `json:"version" yaml:"version"`
-	PolicyFileFound  bool     `json:"policy_file_found" yaml:"policy_file_found"`
-	PolicyPath       string   `json:"policy_path" yaml:"policy_path"`
-	PolicySHA256     string   `json:"policy_sha256,omitempty" yaml:"policy_sha256,omitempty"`
-	SourcePriority   []string `json:"source_priority" yaml:"source_priority"`
-	DryRun           bool     `json:"dry_run" yaml:"dry_run"`
+	SchemaVersion   int      `json:"schema_version" yaml:"schema_version"`
+	TsUTC           string   `json:"ts_utc" yaml:"ts_utc"`
+	Version         string   `json:"version" yaml:"version"`
+	PolicyFileFound bool     `json:"policy_file_found" yaml:"policy_file_found"`
+	PolicyPath      string   `json:"policy_path" yaml:"policy_path"`
+	PolicySHA256    string   `json:"policy_sha256,omitempty" yaml:"policy_sha256,omitempty"`
+	SourcePriority  []string `json:"source_priority" yaml:"source_priority"`
+	DryRun          bool     `json:"dry_run" yaml:"dry_run"`
 }
 
 // DryRunInput describes the input source
@@ -66,13 +66,13 @@ type DryRunResolution struct {
 
 // DryRunJournal represents the journal entry that would be written
 type DryRunJournal struct {
-	Ts         string                   `json:"ts" yaml:"ts"`
-	Turn       int                      `json:"turn" yaml:"turn"`
-	Step       string                   `json:"step" yaml:"step"`
-	Decision   string                   `json:"decision" yaml:"decision"`
-	ElapsedMs  int64                    `json:"elapsed_ms" yaml:"elapsed_ms"`
-	Error      string                   `json:"error" yaml:"error"`
-	Artifacts  []map[string]interface{} `json:"artifacts" yaml:"artifacts"`
+	Ts        string                   `json:"ts" yaml:"ts"`
+	Turn      int                      `json:"turn" yaml:"turn"`
+	Step      string                   `json:"step" yaml:"step"`
+	Decision  string                   `json:"decision" yaml:"decision"`
+	ElapsedMs int64                    `json:"elapsed_ms" yaml:"elapsed_ms"`
+	Error     string                   `json:"error" yaml:"error"`
+	Artifacts []map[string]interface{} `json:"artifacts" yaml:"artifacts"`
 }
 
 // runDryRun executes a dry-run of the registration process
@@ -266,13 +266,13 @@ func buildDryRunReport(
 	// Build meta
 	meta := DryRunMeta{
 		SchemaVersion:   1,
-		TsUTC:          now.Format(time.RFC3339Nano),
-		Version:        buildinfo.GetVersion(),
+		TsUTC:           now.Format(time.RFC3339Nano),
+		Version:         buildinfo.GetVersion(),
 		PolicyFileFound: policyFileFound,
-		PolicyPath:     "",
-		PolicySHA256:   policySHA256,
-		SourcePriority: []string{"cli", "policy", "defaults"},
-		DryRun:         true,
+		PolicyPath:      "",
+		PolicySHA256:    policySHA256,
+		SourcePriority:  []string{"cli", "policy", "defaults"},
+		DryRun:          true,
 	}
 
 	if policyFileFound {
@@ -359,13 +359,13 @@ func buildErrorReport(err error, message string, config *ResolvedConfig, policyF
 
 	meta := DryRunMeta{
 		SchemaVersion:   1,
-		TsUTC:          now.Format(time.RFC3339Nano),
-		Version:        buildinfo.GetVersion(),
+		TsUTC:           now.Format(time.RFC3339Nano),
+		Version:         buildinfo.GetVersion(),
 		PolicyFileFound: policyFileFound,
-		PolicyPath:     "",
-		PolicySHA256:   policySHA256,
-		SourcePriority: []string{"cli", "policy", "defaults"},
-		DryRun:         true,
+		PolicyPath:      "",
+		PolicySHA256:    policySHA256,
+		SourcePriority:  []string{"cli", "policy", "defaults"},
+		DryRun:          true,
 	}
 
 	if policyFileFound {

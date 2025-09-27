@@ -7,12 +7,12 @@ import (
 
 func TestComputeSpecPath(t *testing.T) {
 	tests := []struct {
-		name      string
-		id        string
-		title     string
-		cfg       ResolvedConfig
-		want      string
-		wantErr   bool
+		name    string
+		id      string
+		title   string
+		cfg     ResolvedConfig
+		want    string
+		wantErr bool
 	}{
 		{
 			name:  "basic path construction",

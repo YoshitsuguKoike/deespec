@@ -10,8 +10,8 @@ import (
 // LockInfo represents the information stored in the lock file
 type LockInfo struct {
 	PID        int    `json:"pid"`
-	AcquiredAt string `json:"acquired_at"`  // UTC RFC3339
-	ExpiresAt  string `json:"expires_at"`   // UTC RFC3339
+	AcquiredAt string `json:"acquired_at"` // UTC RFC3339
+	ExpiresAt  string `json:"expires_at"`  // UTC RFC3339
 	Hostname   string `json:"hostname"`
 }
 

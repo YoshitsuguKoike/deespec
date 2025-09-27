@@ -20,7 +20,7 @@ func TestSlugifyTitle(t *testing.T) {
 		{"with hyphens", "Already-Hyphenated", "already-hyphenated"},
 
 		// Non-ASCII and NFKC normalization
-		{"japanese", "日本語タイトル", "spec"},  // All non-ASCII removed
+		{"japanese", "日本語タイトル", "spec"}, // All non-ASCII removed
 		{"mixed", "Test 日本語 Title", "test-title"},
 		{"full-width", "ＦＵＬＬ　ＷＩＤＴＨ", "full-width"}, // NFKC normalizes
 
@@ -214,7 +214,9 @@ func TestIsPathSafe(t *testing.T) {
 
 func TestCheckForSymlinks(t *testing.T) {
 	// Create temp directory structure
-	tmpDir := t.TempDir()
+	tmpDirRaw := t.TempDir()
+	// Resolve any symlinks in the temp dir path itself (e.g., /var -> /private/var on macOS)
+	tmpDir, _ := filepath.EvalSymlinks(tmpDirRaw)
 	realDir := filepath.Join(tmpDir, "real")
 	os.MkdirAll(realDir, 0755)
 
@@ -264,11 +266,11 @@ func TestResolveCollision(t *testing.T) {
 	os.MkdirAll(existingPath, 0755)
 
 	tests := []struct {
-		name         string
-		path         string
-		mode         string
-		expectErr    bool
-		checkResult  func(string, string) bool
+		name        string
+		path        string
+		mode        string
+		expectErr   bool
+		checkResult func(string, string) bool
 	}{
 		{
 			name:      "error mode - no collision",

@@ -75,8 +75,8 @@ func GetTemplates() ([]Template, error) {
 
 // WriteTemplateResult represents the result of writing a template
 type WriteTemplateResult struct {
-	Path    string
-	Action  string // "WROTE", "SKIP", "WROTE (force)"
+	Path   string
+	Action string // "WROTE", "SKIP", "WROTE (force)"
 }
 
 // WriteTemplate writes a template file atomically and returns the action taken

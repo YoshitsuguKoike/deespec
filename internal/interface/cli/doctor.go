@@ -14,11 +14,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"github.com/YoshitsuguKoike/deespec/internal/app"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
 	"github.com/YoshitsuguKoike/deespec/internal/workflow"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // DoctorJSON represents the JSON output structure for doctor command
@@ -34,18 +34,18 @@ type DoctorJSON struct {
 
 // DoctorValidationJSON represents the JSON output structure for --format=json
 type DoctorValidationJSON struct {
-	Steps   []DoctorStepJSON `json:"steps"`
+	Steps   []DoctorStepJSON  `json:"steps"`
 	Summary DoctorSummaryJSON `json:"summary"`
 }
 
 type DoctorStepJSON struct {
-	ID     string           `json:"id"`
-	Path   string           `json:"path"`
+	ID     string            `json:"id"`
+	Path   string            `json:"path"`
 	Issues []DoctorIssueJSON `json:"issues"`
 }
 
 type DoctorIssueJSON struct {
-	Type    string `json:"type"`    // "ok", "warn", "error"
+	Type    string `json:"type"` // "ok", "warn", "error"
 	Line    int    `json:"line,omitempty"`
 	Message string `json:"message"`
 }
@@ -73,9 +73,9 @@ func newDoctorCmd() *cobra.Command {
 			}
 			paths := app.GetPaths()
 			cfg := config.Load()
-			exitCode := 0  // Track errors for exit code
+			exitCode := 0 // Track errors for exit code
 			fmt.Println("AgentBin:", cfg.AgentBin)
-			fmt.Println("ArtifactsDir:", paths.Artifacts)  // Use paths instead of cfg
+			fmt.Println("ArtifactsDir:", paths.Artifacts) // Use paths instead of cfg
 			fmt.Println("Timeout:", cfg.Timeout)
 			fmt.Println("DeespecHome:", paths.Home)
 
@@ -695,7 +695,7 @@ func runDoctorValidationJSON() error {
 	if _, err := os.Stat(paths.Workflow); err != nil {
 		// If workflow not found, return error
 		result := DoctorValidationJSON{
-			Steps: []DoctorStepJSON{},
+			Steps:   []DoctorStepJSON{},
 			Summary: DoctorSummaryJSON{Steps: 0, OK: 0, Warn: 0, Error: 1},
 		}
 		enc := json.NewEncoder(os.Stdout)
@@ -716,7 +716,7 @@ func runDoctorValidationJSON() error {
 	if err != nil {
 		// Workflow loading failed
 		result := DoctorValidationJSON{
-			Steps: []DoctorStepJSON{},
+			Steps:   []DoctorStepJSON{},
 			Summary: DoctorSummaryJSON{Steps: 0, OK: 0, Warn: 0, Error: 1},
 		}
 		enc := json.NewEncoder(os.Stdout)

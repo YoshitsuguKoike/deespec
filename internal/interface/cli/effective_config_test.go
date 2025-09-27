@@ -339,4 +339,3 @@ journal:
 		t.Error("Expected journal.record_source to be true from policy")
 	}
 }
-

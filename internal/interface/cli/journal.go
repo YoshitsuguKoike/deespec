@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/YoshitsuguKoike/deespec/internal/validator/journal"
+	"github.com/spf13/cobra"
 )
 
 func newJournalCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "journal",
 		Short: "Journal validation commands",
-		RunE: func(c *cobra.Command, _ []string) error { return c.Help() },
+		RunE:  func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
 	cmd.AddCommand(newJournalVerifyCmd())
 	return cmd

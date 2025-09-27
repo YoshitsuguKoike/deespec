@@ -4,7 +4,7 @@ import "time"
 
 // ValidationIssue represents a single validation issue
 type ValidationIssue struct {
-	Type    string `json:"type"`    // "ok", "warn", "error"
+	Type    string `json:"type"` // "ok", "warn", "error"
 	Field   string `json:"field,omitempty"`
 	Message string `json:"message"`
 }

@@ -215,11 +215,11 @@ func TestBuildVarMap(t *testing.T) {
 	envKeys := []string{"DEE_TURN", "DEE_TASK_ID", "DEE_PROJECT_NAME", "DEE_LANGUAGE"}
 
 	tests := []struct {
-		name      string
-		wfVars    map[string]string
-		state     *state.State
-		envVars   map[string]string
-		wantVars  map[string]string
+		name     string
+		wfVars   map[string]string
+		state    *state.State
+		envVars  map[string]string
+		wantVars map[string]string
 	}{
 		{
 			name:   "defaults only",
@@ -282,9 +282,9 @@ func TestBuildVarMap(t *testing.T) {
 			},
 		},
 		{
-			name:   "nil state handled",
-			wfVars: nil,
-			state:  nil,
+			name:    "nil state handled",
+			wfVars:  nil,
+			state:   nil,
 			envVars: nil,
 			wantVars: map[string]string{
 				"turn":         "0",

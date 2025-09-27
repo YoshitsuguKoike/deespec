@@ -7,21 +7,21 @@ import (
 
 // Paths holds all resolved paths for deespec v1 structure
 type Paths struct {
-	Home       string // .deespec directory
-	Etc        string // .deespec/etc
-	Prompts    string // .deespec/prompts
-	Policies   string // .deespec/etc/policies
-	SpecsSBI   string // .deespec/specs/sbi
-	SpecsPBI   string // .deespec/specs/pbi
-	Var        string // .deespec/var
-	Artifacts  string // .deespec/var/artifacts
+	Home      string // .deespec directory
+	Etc       string // .deespec/etc
+	Prompts   string // .deespec/prompts
+	Policies  string // .deespec/etc/policies
+	SpecsSBI  string // .deespec/specs/sbi
+	SpecsPBI  string // .deespec/specs/pbi
+	Var       string // .deespec/var
+	Artifacts string // .deespec/var/artifacts
 
 	// Key files
-	Workflow   string // .deespec/etc/workflow.yaml
-	State      string // .deespec/var/state.json
-	Journal    string // .deespec/var/journal.ndjson
-	Health     string // .deespec/var/health.json
-	StateLock  string // .deespec/var/state.lock
+	Workflow  string // .deespec/etc/workflow.yaml
+	State     string // .deespec/var/state.json
+	Journal   string // .deespec/var/journal.ndjson
+	Health    string // .deespec/var/health.json
+	StateLock string // .deespec/var/state.lock
 }
 
 // ResolvePaths returns all paths based on DEE_HOME environment variable
@@ -47,10 +47,10 @@ func ResolvePaths() Paths {
 
 	// Build all paths (now all absolute)
 	p := Paths{
-		Home:     homeAbs,
-		Etc:      filepath.Join(homeAbs, "etc"),
-		Prompts:  filepath.Join(homeAbs, "prompts"),
-		Var:      filepath.Join(homeAbs, "var"),
+		Home:    homeAbs,
+		Etc:     filepath.Join(homeAbs, "etc"),
+		Prompts: filepath.Join(homeAbs, "prompts"),
+		Var:     filepath.Join(homeAbs, "var"),
 	}
 
 	// Derived paths

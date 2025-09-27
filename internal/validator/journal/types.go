@@ -2,25 +2,25 @@ package journal
 
 // JournalEntry represents a single journal NDJSON line with exactly 7 required keys
 type JournalEntry struct {
-	Timestamp   string        `json:"ts"`        // RFC3339Nano UTC (must end with Z)
-	Turn        int           `json:"turn"`      // Turn number, >= 0
-	Step        string        `json:"step"`      // plan|implement|test|review|done
-	Decision    string        `json:"decision"`  // OK|NEEDS_CHANGES|PENDING
-	ElapsedMS   int           `json:"elapsed_ms"` // Elapsed time in milliseconds, >= 0
-	Error       string        `json:"error"`     // Error message (can be empty string)
-	Artifacts   []interface{} `json:"artifacts"` // Array of strings or objects
+	Timestamp string        `json:"ts"`         // RFC3339Nano UTC (must end with Z)
+	Turn      int           `json:"turn"`       // Turn number, >= 0
+	Step      string        `json:"step"`       // plan|implement|test|review|done
+	Decision  string        `json:"decision"`   // OK|NEEDS_CHANGES|PENDING
+	ElapsedMS int           `json:"elapsed_ms"` // Elapsed time in milliseconds, >= 0
+	Error     string        `json:"error"`      // Error message (can be empty string)
+	Artifacts []interface{} `json:"artifacts"`  // Array of strings or objects
 }
 
 // ValidationIssue represents a single validation issue
 type ValidationIssue struct {
-	Type    string `json:"type"`    // "ok", "warn", "error"
+	Type    string `json:"type"` // "ok", "warn", "error"
 	Field   string `json:"field,omitempty"`
 	Message string `json:"message"`
 }
 
 // LineResult represents validation result for a single line
 type LineResult struct {
-	Line   int                `json:"line"`
+	Line   int               `json:"line"`
 	Issues []ValidationIssue `json:"issues"`
 }
 
@@ -58,9 +58,9 @@ var ValidSteps = map[string]bool{
 
 // ValidDecisions defines the allowed decision values
 var ValidDecisions = map[string]bool{
-	"OK":           true,
+	"OK":            true,
 	"NEEDS_CHANGES": true,
-	"PENDING":      true,
+	"PENDING":       true,
 }
 
 // NewValidator creates a new journal validator

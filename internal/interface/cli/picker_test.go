@@ -210,7 +210,7 @@ func TestSyncStateWithJournal(t *testing.T) {
 			state:        &State{Current: "review", Turn: 2, CurrentTaskID: "SBI-001"},
 			journalEntry: map[string]interface{}{"step": "done", "decision": "OK", "turn": float64(2)},
 			expectChange: true,
-			expectedStep: "plan",  // done/OK transitions to plan, not done
+			expectedStep: "plan", // done/OK transitions to plan, not done
 			expectedTurn: 2,
 		},
 	}

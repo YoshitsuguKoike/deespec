@@ -26,7 +26,7 @@ type LoadResult struct {
 
 // Issue represents a validation issue
 type Issue struct {
-	Type    string `json:"type"`    // "error" or "warn"
+	Type    string `json:"type"` // "error" or "warn"
 	Field   string `json:"field"`
 	Message string `json:"message"`
 }

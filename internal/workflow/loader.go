@@ -11,8 +11,8 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/yaml.v3"
 	"github.com/YoshitsuguKoike/deespec/internal/app"
+	"gopkg.in/yaml.v3"
 )
 
 // LoadWorkflow loads and validates a workflow from the specified path

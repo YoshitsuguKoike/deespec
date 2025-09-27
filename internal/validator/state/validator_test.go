@@ -200,7 +200,7 @@ func TestValidateStateFile(t *testing.T) {
 }
 
 func TestValidateStateFile_NotFound(t *testing.T) {
-	result, err := ValidateStateFile("/nonexistent/state.json")
+	result, err := ValidateStateFile("testdata/nonexistent/state.json")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

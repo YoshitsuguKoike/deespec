@@ -9,9 +9,9 @@ import (
 
 func TestDetectIncomplete(t *testing.T) {
 	tests := []struct {
-		name           string
-		task           *Task
-		ctx            *PickContext
+		name            string
+		task            *Task
+		ctx             *PickContext
 		expectedReasons []IncompleteReason
 	}{
 		{
@@ -78,7 +78,7 @@ func TestDetectIncomplete(t *testing.T) {
 				ID:         "SBI-003",
 				Title:      "Test",
 				Meta:       map[string]interface{}{},
-				PromptPath: "/absolute/path/prompt.txt",
+				PromptPath: "C:\\test\\absolute\\prompt.txt",
 			},
 			ctx: &PickContext{
 				CompletedTasks: map[string]bool{},

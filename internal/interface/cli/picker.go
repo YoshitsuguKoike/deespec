@@ -18,11 +18,11 @@ type Task struct {
 	SpecPath   string                 `json:"spec_path"`
 	Title      string                 `json:"title"`
 	Priority   int                    `json:"priority"`
-	POR        int                    `json:"por"`       // Priority of Requirements
-	DependsOn  []string               `json:"depends_on"` // Task dependencies
-	Meta       map[string]interface{} `json:"meta"`      // Metadata from meta.yaml
-	Status     string                 `json:"status"`    // Current status from journal
-	PromptPath string                 `json:"prompt_path"`  // Path to prompt file
+	POR        int                    `json:"por"`         // Priority of Requirements
+	DependsOn  []string               `json:"depends_on"`  // Task dependencies
+	Meta       map[string]interface{} `json:"meta"`        // Metadata from meta.yaml
+	Status     string                 `json:"status"`      // Current status from journal
+	PromptPath string                 `json:"prompt_path"` // Path to prompt file
 }
 
 // TaskMeta represents the structure of meta.yaml in task directories
@@ -38,10 +38,10 @@ type TaskMeta struct {
 
 // PickConfig represents configuration for task picking
 type PickConfig struct {
-	SpecsDir     string   // Base directory for specs (default: .deespec/specs/sbi)
-	JournalPath  string   // Path to journal file
-	OrderBy      []string // Sort order: ["por", "priority", "id"]
-	StderrLevel  string   // Log level
+	SpecsDir    string   // Base directory for specs (default: .deespec/specs/sbi)
+	JournalPath string   // Path to journal file
+	OrderBy     []string // Sort order: ["por", "priority", "id"]
+	StderrLevel string   // Log level
 }
 
 // PickNextTask selects the next task to process based on priority rules
@@ -601,8 +601,8 @@ func RecordPickInJournal(task *Task, turn int, journalPath string) error {
 	// Create artifact with required fields according to SBI-PICK-002
 	artifact := map[string]interface{}{
 		"type":      "pick",
-		"task_id":   task.ID,     // Primary key (required)
-		"id":        task.ID,     // Backward compatibility
+		"task_id":   task.ID, // Primary key (required)
+		"id":        task.ID, // Backward compatibility
 		"spec_path": task.SpecPath,
 	}
 

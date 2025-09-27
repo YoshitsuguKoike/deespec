@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/YoshitsuguKoike/deespec/internal/validator/common"
 	"github.com/YoshitsuguKoike/deespec/internal/validator/health"
+	"github.com/spf13/cobra"
 )
 
 func newHealthCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "health",
 		Short: "Health validation commands",
-		RunE: func(c *cobra.Command, _ []string) error { return c.Help() },
+		RunE:  func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
 	cmd.AddCommand(newHealthVerifyCmd())
 	return cmd

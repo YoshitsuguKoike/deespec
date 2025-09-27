@@ -68,7 +68,6 @@ func newRunCmd() *cobra.Command {
 	return cmd
 }
 
-
 func runOnce(autoFB bool) error {
 	startTime := time.Now()
 
@@ -320,8 +319,8 @@ func runOnce(autoFB bool) error {
 
 	journalRec := map[string]interface{}{
 		"ts":         time.Now().UTC().Format(time.RFC3339Nano),
-		"turn":       currentTurn,  // All entries in this run use same turn
-		"step":       next,         // 次のステップを記録
+		"turn":       currentTurn, // All entries in this run use same turn
+		"step":       next,        // 次のステップを記録
 		"decision":   "",
 		"elapsed_ms": elapsedMs,
 		"error":      errorMsg,

@@ -113,8 +113,8 @@ func TestValidator(t *testing.T) {
 			errorMessages: []string{"id is required"},
 		},
 		{
-			name: "empty steps",
-			content: `steps: []`,
+			name:          "empty steps",
+			content:       `steps: []`,
 			expectErrors:  1,
 			errorMessages: []string{"steps array is required and cannot be empty"},
 		},
@@ -243,9 +243,9 @@ func TestSymlinkValidation(t *testing.T) {
 		errorMessage string
 	}{
 		{
-			name:        "symlink to outside",
-			promptPath:  "prompts/link_outside.md",
-			expectError: true,
+			name:         "symlink to outside",
+			promptPath:   "prompts/link_outside.md",
+			expectError:  true,
 			errorMessage: "symlink points outside",
 		},
 		{

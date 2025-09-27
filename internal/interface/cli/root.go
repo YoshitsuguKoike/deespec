@@ -6,7 +6,7 @@ func NewRoot() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deespec",
 		Short: "DeeSpec CLI",
-		RunE: func(c *cobra.Command, _ []string) error { return c.Help() },
+		RunE:  func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
 	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newStatusCmd())

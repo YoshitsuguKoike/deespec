@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/YoshitsuguKoike/deespec/internal/embed"
+	"github.com/spf13/cobra"
 )
 
 func newInitCmd() *cobra.Command {

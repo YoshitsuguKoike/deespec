@@ -11,7 +11,7 @@ import (
 
 // ResolvedConfig represents the configuration for spec path computation
 type ResolvedConfig struct {
-	PathBaseDir       string
+	PathBaseDir string
 
 	// Slug policy (complete propagation from register policy)
 	SlugNFKC                  bool   // Apply NFKC normalization
@@ -23,8 +23,8 @@ type ResolvedConfig struct {
 	SlugTrimTrailingDotSpace  bool   // Remove trailing dots and spaces
 
 	// Collision handling
-	CollisionMode     string
-	SuffixLimit       int
+	CollisionMode string
+	SuffixLimit   int
 }
 
 // ComputeSpecPath computes the final spec path based on ID and title

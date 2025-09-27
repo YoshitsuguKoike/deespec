@@ -100,7 +100,7 @@ func TestAtomicRename(t *testing.T) {
 	}
 
 	// Test with non-existent source
-	if err := AtomicRename("/non/existent/file", dstPath); err == nil {
+	if err := AtomicRename("testdata/nonexistent/file", dstPath); err == nil {
 		t.Error("AtomicRename should fail with non-existent source")
 	}
 }

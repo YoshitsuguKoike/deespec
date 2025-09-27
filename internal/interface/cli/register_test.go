@@ -320,9 +320,9 @@ func TestValidationFunctions(t *testing.T) {
 			{"ABC123", false},
 			{"SBI-TEST-001", false},
 			{"A-B-C", false},
-			{"", true},           // empty
-			{"abc123", true},     // lowercase
-			{"ABC@123", true},    // special char
+			{"", true},                      // empty
+			{"abc123", true},                // lowercase
+			{"ABC@123", true},               // special char
 			{strings.Repeat("A", 65), true}, // too long
 		}
 
@@ -340,7 +340,7 @@ func TestValidationFunctions(t *testing.T) {
 			expectErr bool
 		}{
 			{"Valid Title", false},
-			{"", true}, // empty
+			{"", true},                        // empty
 			{strings.Repeat("a", 200), false}, // max length
 			{strings.Repeat("a", 201), true},  // too long
 		}
@@ -362,7 +362,7 @@ func TestValidationFunctions(t *testing.T) {
 		}{
 			{[]string{"test", "label"}, false, false, ""},
 			{[]string{"test-123", "another"}, false, false, ""},
-			{[]string{"TEST"}, true, false, ""}, // uppercase
+			{[]string{"TEST"}, true, false, ""},  // uppercase
 			{[]string{"test@"}, true, false, ""}, // special char
 			{[]string{"dup", "dup"}, false, true, "duplicate"},
 			{func() []string {

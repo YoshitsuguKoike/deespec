@@ -15,10 +15,10 @@ import (
 
 // IntegratedReport represents the complete validation report from all components
 type IntegratedReport struct {
-	Version     int                                `json:"version"`
-	GeneratedAt string                             `json:"generated_at"`
+	Version     int                                 `json:"version"`
+	GeneratedAt string                              `json:"generated_at"`
 	Components  map[string]*common.ValidationResult `json:"components"`
-	Summary     IntegratedSummary                  `json:"summary"`
+	Summary     IntegratedSummary                   `json:"summary"`
 }
 
 // IntegratedSummary contains aggregated validation statistics
@@ -178,7 +178,7 @@ func validateJournal(journalPath string) *common.ValidationResult {
 	file, err := os.Open(journalPath)
 	if err != nil {
 		fileResult := common.FileResult{
-			File: filepath.Base(journalPath),
+			File:   filepath.Base(journalPath),
 			Issues: []common.ValidationIssue{},
 		}
 

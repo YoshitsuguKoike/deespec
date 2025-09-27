@@ -228,7 +228,7 @@ func TestValidateHealthFile(t *testing.T) {
 }
 
 func TestValidateHealthFile_NotFound(t *testing.T) {
-	result, err := ValidateHealthFile("/nonexistent/health.json")
+	result, err := ValidateHealthFile("testdata/nonexistent/health.json")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -35,7 +35,7 @@ func TestFileOperation(t *testing.T) {
 	// Test FileOperation struct
 	op := FileOperation{
 		Type:        "create",
-		Destination: "/path/to/file.txt",
+		Destination: "testdata/path/to/file.txt",
 		Checksum:    "abc123",
 		Size:        1024,
 		Mode:        0644,
@@ -44,8 +44,8 @@ func TestFileOperation(t *testing.T) {
 	if op.Type != "create" {
 		t.Errorf("Type mismatch: got %s, want create", op.Type)
 	}
-	if op.Destination != "/path/to/file.txt" {
-		t.Errorf("Destination mismatch: got %s, want /path/to/file.txt", op.Destination)
+	if op.Destination != "testdata/path/to/file.txt" {
+		t.Errorf("Destination mismatch: got %s, want testdata/path/to/file.txt", op.Destination)
 	}
 	if op.Size != 1024 {
 		t.Errorf("Size mismatch: got %d, want 1024", op.Size)
@@ -54,12 +54,12 @@ func TestFileOperation(t *testing.T) {
 	// Test rename operation
 	renameOp := FileOperation{
 		Type:        "rename",
-		Source:      "/old/path.txt",
-		Destination: "/new/path.txt",
+		Source:      "testdata/old/path.txt",
+		Destination: "testdata/new/path.txt",
 	}
 
-	if renameOp.Source != "/old/path.txt" {
-		t.Errorf("Source mismatch: got %s, want /old/path.txt", renameOp.Source)
+	if renameOp.Source != "testdata/old/path.txt" {
+		t.Errorf("Source mismatch: got %s, want testdata/old/path.txt", renameOp.Source)
 	}
 }
 
@@ -73,12 +73,12 @@ func TestManifest(t *testing.T) {
 		Files: []FileOperation{
 			{
 				Type:        "create",
-				Destination: "/test/file1.txt",
+				Destination: "testdata/test/file1.txt",
 				Size:        100,
 			},
 			{
 				Type:        "update",
-				Destination: "/test/file2.txt",
+				Destination: "testdata/test/file2.txt",
 				Size:        200,
 			},
 		},
@@ -106,8 +106,8 @@ func TestIntent(t *testing.T) {
 		TxnID:    TxnID("txn_test_123"),
 		MarkedAt: time.Now(),
 		Checksums: map[string]string{
-			"/file1": "checksum1",
-			"/file2": "checksum2",
+			"testdata/file1": "checksum1",
+			"testdata/file2": "checksum2",
 		},
 		Ready: true,
 	}
@@ -118,8 +118,8 @@ func TestIntent(t *testing.T) {
 	if len(intent.Checksums) != 2 {
 		t.Errorf("Checksums count mismatch: got %d, want 2", len(intent.Checksums))
 	}
-	if intent.Checksums["/file1"] != "checksum1" {
-		t.Errorf("Checksum mismatch: got %s, want checksum1", intent.Checksums["/file1"])
+	if intent.Checksums["testdata/file1"] != "checksum1" {
+		t.Errorf("Checksum mismatch: got %s, want checksum1", intent.Checksums["testdata/file1"])
 	}
 }
 
@@ -129,9 +129,9 @@ func TestCommit(t *testing.T) {
 		CommittedAt: time.Now(),
 		JournalSeq:  42,
 		CommittedFiles: []string{
-			"/path/file1",
-			"/path/file2",
-			"/path/file3",
+			"testdata/path/file1",
+			"testdata/path/file2",
+			"testdata/path/file3",
 		},
 		Success: true,
 	}

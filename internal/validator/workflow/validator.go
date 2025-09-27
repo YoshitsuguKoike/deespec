@@ -98,7 +98,7 @@ func (v *Validator) Validate(path string) (*ValidationResult, error) {
 	// Check for issues in agents.yaml
 	if len(agentsResult.Issues) > 0 {
 		fileResult := FileResult{
-			File: "agents.yaml",
+			File:   "agents.yaml",
 			Issues: []Issue{},
 		}
 		for _, issue := range agentsResult.Issues {

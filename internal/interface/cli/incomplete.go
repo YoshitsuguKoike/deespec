@@ -37,21 +37,21 @@ type FBDraft struct {
 
 // FBDraftYAML represents the YAML structure for draft.yaml
 type FBDraftYAML struct {
-	ID        string   `yaml:"id"`
-	Title     string   `yaml:"title"`
-	Labels    []string `yaml:"labels"`
-	Por       int      `yaml:"por"`
-	Priority  int      `yaml:"priority"`
-	RelatesTo string   `yaml:"relates_to"`
-	ReasonCode string  `yaml:"reason_code"`
-	Details   string   `yaml:"details"`
+	ID         string   `yaml:"id"`
+	Title      string   `yaml:"title"`
+	Labels     []string `yaml:"labels"`
+	Por        int      `yaml:"por"`
+	Priority   int      `yaml:"priority"`
+	RelatesTo  string   `yaml:"relates_to"`
+	ReasonCode string   `yaml:"reason_code"`
+	Details    string   `yaml:"details"`
 }
 
 // PickContext provides context for incomplete detection
 type PickContext struct {
-	JournalPath   string
+	JournalPath    string
 	CompletedTasks map[string]bool
-	AllTasks      []*Task
+	AllTasks       []*Task
 }
 
 // DetectIncomplete checks for incomplete instructions in a task
@@ -246,7 +246,7 @@ func PersistFBDraft(d FBDraft, artifactsDir string) (string, error) {
 - メタ情報の修正
 - パス/プロンプトの調整
 `, d.TargetTaskID, d.ReasonCode, d.Summary,
-   d.CreatedAt.Format(time.RFC3339Nano), d.TargetTaskID, d.ReasonCode)
+		d.CreatedAt.Format(time.RFC3339Nano), d.TargetTaskID, d.ReasonCode)
 
 	if err := os.WriteFile(contextPath, []byte(contextContent), 0644); err != nil {
 		return "", fmt.Errorf("write context.md: %w", err)
@@ -267,12 +267,12 @@ Created At: %s
 	// Write draft.yaml
 	draftPath := filepath.Join(fbDir, "draft.yaml")
 	draftYAML := FBDraftYAML{
-		ID:        "", // Will be assigned on registration
-		Title:     d.Title,
-		Labels:    []string{"feedback", "pick", "sbi-fb"},
-		Por:       1,
-		Priority:  1,
-		RelatesTo: d.TargetTaskID,
+		ID:         "", // Will be assigned on registration
+		Title:      d.Title,
+		Labels:     []string{"feedback", "pick", "sbi-fb"},
+		Por:        1,
+		Priority:   1,
+		RelatesTo:  d.TargetTaskID,
 		ReasonCode: string(d.ReasonCode),
 		Details: fmt.Sprintf(`- 理由: %s
 - 対象タスク: %s
@@ -303,14 +303,14 @@ Created At: %s
 // RecordFBDraftInJournal adds FB draft record to journal
 func RecordFBDraftInJournal(d FBDraft, journalPath string, turn int) error {
 	artifact := map[string]interface{}{
-		"type":           "fb_sbi_draft",
-		"target_task_id": d.TargetTaskID,
-		"reason_code":    string(d.ReasonCode),
-		"title":          d.Title,
-		"summary":        d.Summary,
-		"evidence_paths": d.EvidencePaths,
+		"type":            "fb_sbi_draft",
+		"target_task_id":  d.TargetTaskID,
+		"reason_code":     string(d.ReasonCode),
+		"title":           d.Title,
+		"summary":         d.Summary,
+		"evidence_paths":  d.EvidencePaths,
 		"suggested_fb_id": d.SuggestedFBID,
-		"created_at":     d.CreatedAt.Format(time.RFC3339Nano),
+		"created_at":      d.CreatedAt.Format(time.RFC3339Nano),
 	}
 
 	record := map[string]interface{}{

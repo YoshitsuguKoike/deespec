@@ -8,20 +8,20 @@ import (
 
 func TestLoadAgents(t *testing.T) {
 	tests := []struct {
-		name          string
-		content       string
-		exists        bool
+		name           string
+		content        string
+		exists         bool
 		expectedSource string
 		expectedAgents []string
-		expectError   bool
-		errorContains string
+		expectError    bool
+		errorContains  string
 	}{
 		{
-			name:          "file not exists - use builtin",
-			exists:        false,
+			name:           "file not exists - use builtin",
+			exists:         false,
 			expectedSource: "builtin",
 			expectedAgents: BuiltinAgents,
-			expectError:   false,
+			expectError:    false,
 		},
 		{
 			name: "valid agents.yaml",
@@ -29,19 +29,19 @@ func TestLoadAgents(t *testing.T) {
   - custom_agent
   - another_agent
   - test_agent`,
-			exists:        true,
+			exists:         true,
 			expectedSource: "file",
 			expectedAgents: []string{"custom_agent", "another_agent", "test_agent"},
-			expectError:   false,
+			expectError:    false,
 		},
 		{
-			name: "empty agents array",
-			content: `agents: []`,
-			exists:        true,
+			name:           "empty agents array",
+			content:        `agents: []`,
+			exists:         true,
 			expectedSource: "file",
 			expectedAgents: []string{},
-			expectError:   true,
-			errorContains: "agents array cannot be empty",
+			expectError:    true,
+			errorContains:  "agents array cannot be empty",
 		},
 		{
 			name: "duplicate agents",
@@ -49,11 +49,11 @@ func TestLoadAgents(t *testing.T) {
   - agent1
   - agent2
   - agent1`,
-			exists:        true,
+			exists:         true,
 			expectedSource: "file",
 			expectedAgents: []string{"agent1", "agent2", "agent1"},
-			expectError:   true,
-			errorContains: "duplicate agent: agent1",
+			expectError:    true,
+			errorContains:  "duplicate agent: agent1",
 		},
 		{
 			name: "invalid agent name",
@@ -61,31 +61,31 @@ func TestLoadAgents(t *testing.T) {
   - valid_agent
   - bad-agent!
   - another_valid`,
-			exists:        true,
+			exists:         true,
 			expectedSource: "file",
 			expectedAgents: []string{"valid_agent", "bad-agent!", "another_valid"},
-			expectError:   true,
-			errorContains: "invalid agent name: bad-agent!",
+			expectError:    true,
+			errorContains:  "invalid agent name: bad-agent!",
 		},
 		{
 			name: "unknown fields",
 			content: `agents:
   - agent1
 extra_field: should_not_exist`,
-			exists:        true,
+			exists:         true,
 			expectedSource: "file",
-			expectError:   true,
-			errorContains: "field extra_field not found",
+			expectError:    true,
+			errorContains:  "field extra_field not found",
 		},
 		{
 			name: "invalid YAML",
 			content: `agents:
   - agent1
   invalid yaml content`,
-			exists:        true,
+			exists:         true,
 			expectedSource: "file",
-			expectError:   true,
-			errorContains: "invalid agents.yaml",
+			expectError:    true,
+			errorContains:  "invalid agents.yaml",
 		},
 		{
 			name: "empty agent name",
@@ -93,10 +93,10 @@ extra_field: should_not_exist`,
   - agent1
   - ""
   - agent3`,
-			exists:        true,
+			exists:         true,
 			expectedSource: "file",
-			expectError:   true,
-			errorContains: "agent name cannot be empty",
+			expectError:    true,
+			errorContains:  "agent name cannot be empty",
 		},
 	}
 

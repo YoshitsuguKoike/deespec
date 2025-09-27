@@ -217,17 +217,23 @@ func TestResolveRegisterConfig(t *testing.T) {
 		expectError    bool
 	}{
 		{
-			name:           "CLI overrides policy collision mode",
-			cliCollision:   "suffix",
-			policy:         &RegisterPolicy{Collision: struct{ DefaultMode string `yaml:"default_mode"`; SuffixLimit int `yaml:"suffix_limit"` }{DefaultMode: "error", SuffixLimit: 99}},
+			name:         "CLI overrides policy collision mode",
+			cliCollision: "suffix",
+			policy: &RegisterPolicy{Collision: struct {
+				DefaultMode string `yaml:"default_mode"`
+				SuffixLimit int    `yaml:"suffix_limit"`
+			}{DefaultMode: "error", SuffixLimit: 99}},
 			expectedMode:   "suffix",
 			expectedMaxLen: 0,
 			expectError:    false,
 		},
 		{
-			name:           "Policy collision mode used when CLI empty",
-			cliCollision:   "",
-			policy:         &RegisterPolicy{Collision: struct{ DefaultMode string `yaml:"default_mode"`; SuffixLimit int `yaml:"suffix_limit"` }{DefaultMode: "replace", SuffixLimit: 99}},
+			name:         "Policy collision mode used when CLI empty",
+			cliCollision: "",
+			policy: &RegisterPolicy{Collision: struct {
+				DefaultMode string `yaml:"default_mode"`
+				SuffixLimit int    `yaml:"suffix_limit"`
+			}{DefaultMode: "replace", SuffixLimit: 99}},
 			expectedMode:   "replace",
 			expectedMaxLen: 0,
 			expectError:    false,
@@ -436,12 +442,12 @@ func TestValidateSpecWithConfig(t *testing.T) {
 				Labels: []string{"test", "demo"},
 			},
 			config: &ResolvedConfig{
-				IDPattern:             regexp.MustCompile("^TEST-[0-9]{3}$"),
-				IDMaxLen:              10,
-				TitleMaxLen:           50,
-				TitleDenyEmpty:        true,
-				LabelsPattern:         regexp.MustCompile("^[a-z]+$"),
-				LabelsMaxCount:        5,
+				IDPattern:              regexp.MustCompile("^TEST-[0-9]{3}$"),
+				IDMaxLen:               10,
+				TitleMaxLen:            50,
+				TitleDenyEmpty:         true,
+				LabelsPattern:          regexp.MustCompile("^[a-z]+$"),
+				LabelsMaxCount:         5,
 				LabelsWarnOnDuplicates: true,
 			},
 			expectError: false,

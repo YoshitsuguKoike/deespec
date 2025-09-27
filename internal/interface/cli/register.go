@@ -653,14 +653,26 @@ func isPathSafe(base, path string) bool {
 // checkForSymlinks checks if any component of the path is a symlink
 func checkForSymlinks(path string) error {
 	path = filepath.Clean(path)
+
+	// Handle absolute paths
+	isAbs := filepath.IsAbs(path)
 	parts := strings.Split(path, string(filepath.Separator))
 
 	current := ""
+	if isAbs {
+		// For absolute paths on Unix, start with root "/"
+		current = string(filepath.Separator)
+	}
+
 	for _, part := range parts {
 		if part == "" {
 			continue
 		}
-		if current == "" {
+		if current == string(filepath.Separator) {
+			// After root, don't double the separator
+			current = filepath.Join(current, part)
+		} else if current == "" {
+			// For relative paths, start with the first part
 			current = part
 		} else {
 			current = filepath.Join(current, part)
@@ -775,7 +787,7 @@ func appendToJournalWithConfig(spec *RegisterSpec, result *RegisterResult, confi
 	entry := map[string]interface{}{
 		"ts":         time.Now().UTC().Format(time.RFC3339Nano),
 		"turn":       turn,
-		"step":       "plan",  // Using "plan" as registration is part of planning phase
+		"step":       "plan", // Using "plan" as registration is part of planning phase
 		"decision":   "PENDING",
 		"elapsed_ms": int64(time.Since(startTime).Milliseconds()),
 		"error":      "",

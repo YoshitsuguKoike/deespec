@@ -231,8 +231,8 @@ type ResolvedConfig struct {
 	PathEnforceContainment    bool
 
 	// Collision handling
-	CollisionMode  string
-	SuffixLimit    int
+	CollisionMode string
+	SuffixLimit   int
 
 	// Journal settings
 	JournalRecordSource     bool

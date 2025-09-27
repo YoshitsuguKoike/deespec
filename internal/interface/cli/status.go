@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/YoshitsuguKoike/deespec/internal/app"
+	"github.com/spf13/cobra"
 )
 
 type StatusOutput struct {

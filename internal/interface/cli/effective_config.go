@@ -14,17 +14,17 @@ import (
 
 // EffectiveConfig represents the final applied configuration for serialization
 type EffectiveConfig struct {
-	Meta        EffectiveConfigMeta        `json:"meta" yaml:"meta"`
-	ID          EffectiveConfigID          `json:"id" yaml:"id"`
-	Title       EffectiveConfigTitle       `json:"title" yaml:"title"`
-	Labels      EffectiveConfigLabels      `json:"labels" yaml:"labels"`
-	Input       EffectiveConfigInput       `json:"input" yaml:"input"`
-	Slug        EffectiveConfigSlug        `json:"slug" yaml:"slug"`
-	Path        EffectiveConfigPath        `json:"path" yaml:"path"`
-	Collision   EffectiveConfigCollision   `json:"collision" yaml:"collision"`
-	Journal     EffectiveConfigJournal     `json:"journal" yaml:"journal"`
-	Logging     EffectiveConfigLogging     `json:"logging" yaml:"logging"`
-	PathInputs  EffectiveConfigPathInputs  `json:"path_inputs" yaml:"path_inputs"`
+	Meta       EffectiveConfigMeta       `json:"meta" yaml:"meta"`
+	ID         EffectiveConfigID         `json:"id" yaml:"id"`
+	Title      EffectiveConfigTitle      `json:"title" yaml:"title"`
+	Labels     EffectiveConfigLabels     `json:"labels" yaml:"labels"`
+	Input      EffectiveConfigInput      `json:"input" yaml:"input"`
+	Slug       EffectiveConfigSlug       `json:"slug" yaml:"slug"`
+	Path       EffectiveConfigPath       `json:"path" yaml:"path"`
+	Collision  EffectiveConfigCollision  `json:"collision" yaml:"collision"`
+	Journal    EffectiveConfigJournal    `json:"journal" yaml:"journal"`
+	Logging    EffectiveConfigLogging    `json:"logging" yaml:"logging"`
+	PathInputs EffectiveConfigPathInputs `json:"path_inputs" yaml:"path_inputs"`
 }
 
 // EffectiveConfigMeta contains metadata about the configuration
@@ -98,15 +98,15 @@ type EffectiveConfigLogging struct {
 
 // EffectiveConfigPathInputs represents path input validation configuration
 type EffectiveConfigPathInputs struct {
-	Enabled            bool     `json:"enabled" yaml:"enabled"`
-	AllowedBases       []string `json:"allowed_bases" yaml:"allowed_bases"`
-	DenyAbsolute       bool     `json:"deny_absolute" yaml:"deny_absolute"`
-	DenyUNC            bool     `json:"deny_unc" yaml:"deny_unc"`
-	DenyDriveLetter    bool     `json:"deny_drive_letter" yaml:"deny_drive_letter"`
-	DenyDotDot         bool     `json:"deny_dotdot" yaml:"deny_dotdot"`
-	DenyMidSymlink     bool     `json:"deny_mid_symlink" yaml:"deny_mid_symlink"`
-	RequireEvalSymlinks bool    `json:"require_evalsymlinks" yaml:"require_evalsymlinks"`
-	MaxBytes           int     `json:"max_bytes" yaml:"max_bytes"`
+	Enabled             bool     `json:"enabled" yaml:"enabled"`
+	AllowedBases        []string `json:"allowed_bases" yaml:"allowed_bases"`
+	DenyAbsolute        bool     `json:"deny_absolute" yaml:"deny_absolute"`
+	DenyUNC             bool     `json:"deny_unc" yaml:"deny_unc"`
+	DenyDriveLetter     bool     `json:"deny_drive_letter" yaml:"deny_drive_letter"`
+	DenyDotDot          bool     `json:"deny_dotdot" yaml:"deny_dotdot"`
+	DenyMidSymlink      bool     `json:"deny_mid_symlink" yaml:"deny_mid_symlink"`
+	RequireEvalSymlinks bool     `json:"require_evalsymlinks" yaml:"require_evalsymlinks"`
+	MaxBytes            int      `json:"max_bytes" yaml:"max_bytes"`
 }
 
 // runPrintEffectiveConfig prints the effective configuration and exits
@@ -220,12 +220,12 @@ func buildEffectiveConfig(config *ResolvedConfig, policyFileFound bool, policyPa
 		Enabled:             false, // Default disabled
 		AllowedBases:        []string{},
 		DenyAbsolute:        true,
-		DenyUNC:            true,
-		DenyDriveLetter:    true,
-		DenyDotDot:         true,
-		DenyMidSymlink:     true,
+		DenyUNC:             true,
+		DenyDriveLetter:     true,
+		DenyDotDot:          true,
+		DenyMidSymlink:      true,
 		RequireEvalSymlinks: false,
-		MaxBytes:           config.PathMaxBytes,
+		MaxBytes:            config.PathMaxBytes,
 	}
 
 	return &EffectiveConfig{

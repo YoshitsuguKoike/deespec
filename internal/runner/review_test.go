@@ -13,10 +13,10 @@ func TestParseDecision(t *testing.T) {
 	customRegex := regexp.MustCompile(`^REVIEW_RESULT:\s*(OK|NEEDS_CHANGES)\s*$`)
 
 	tests := []struct {
-		name     string
-		output   string
-		regex    *regexp.Regexp
-		want     DecisionType
+		name   string
+		output string
+		regex  *regexp.Regexp
+		want   DecisionType
 	}{
 		{
 			name: "OK decision at end",
@@ -72,16 +72,16 @@ DECISION:    OK   `,
 			want:  DecisionOK,
 		},
 		{
-			name: "nil regex returns pending",
+			name:   "nil regex returns pending",
 			output: `DECISION: OK`,
-			regex: nil,
-			want:  DecisionPending,
+			regex:  nil,
+			want:   DecisionPending,
 		},
 		{
-			name: "empty output",
+			name:   "empty output",
 			output: ``,
-			regex: defaultRegex,
-			want:  DecisionPending,
+			regex:  defaultRegex,
+			want:   DecisionPending,
 		},
 		{
 			name: "multiline with decision at end",

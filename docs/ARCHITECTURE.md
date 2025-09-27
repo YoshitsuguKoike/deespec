@@ -113,10 +113,15 @@ fsync(file) → fsync(parent dir)
 
 **制約事項:**
 - **同一ファイルシステム要件**: rename操作の原子性を保証するため、全ファイルは同一FS上に配置
+  - EXDEV（cross-device link）エラーは明示的にハンドリング
+  - 一時ファイルは必ず目的ファイルと同一ディレクトリに作成
 - **プラットフォーム依存性**: fsyncの挙動はOSとファイルシステムに依存
   - Linux/ext4: 完全なメタデータ同期
-  - macOS/APFS: ディレクトリfsyncは部分的サポート
-  - Windows/NTFS: FlushFileBuffers APIを内部使用
+  - macOS/APFS: ディレクトリfsyncは部分的サポート（F_FULLFSYNC推奨）
+  - Windows/NTFS: FlushFileBuffers APIを内部使用、ディレクトリ同期は不要
+- **パーミッションとumask**:
+  - デフォルトパーミッション: 0644（ファイル）、0755（ディレクトリ）
+  - 実効パーミッションはプロセスのumaskに影響される
 
 **Non-Goals (対象外):**
 - 分散トランザクション（2PC/3PC）の実装

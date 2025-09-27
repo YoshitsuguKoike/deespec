@@ -10,6 +10,36 @@
 
 ---
 
+## \[v0.1.18] - 2025-09-28
+
+### 削除 (REMOVED)
+
+* **use_tx 設定の削除**: トランザクションモードを常に使用するため設定オプションを削除
+  - `Config` インターフェースから `UseTx()` メソッドを削除
+  - `register` コマンドは常に `registerWithTransaction` を実行
+  - レガシーの `appendToJournalWithConfig` 関数を削除
+
+* **disable_state_tx 設定の削除**: state/journal更新は常にトランザクションモードを使用
+  - `Config` インターフェースから `DisableStateTx()` メソッドを削除
+  - `UseTXForStateJournal()` 関数を削除
+  - `run` コマンドは常に `SaveStateAndJournalTX` を使用
+  - レガシーモード（直接書き込み）のコードパスを削除
+
+### 変更
+
+* **トランザクションモードの常時有効化**:
+  - spec登録時は常に `meta.yaml` と `spec.md` を生成
+  - state/journal更新は常にアトミックな操作を保証
+  - データの原子性・一貫性・耐久性を常に確保
+  - 障害時のリカバリー機能を常に利用可能
+
+* **コードベースの簡素化**:
+  - 条件分岐の削除によりコード複雑度が減少
+  - テストケースから不要な設定チェックを削除
+  - 設定ファイルとドキュメントから廃止項目を削除
+
+---
+
 ## \[v0.1.17] - 2025-09-27
 
 ### 破壊的変更 (BREAKING CHANGES)

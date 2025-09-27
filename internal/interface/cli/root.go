@@ -26,7 +26,7 @@ func NewRoot() *cobra.Command {
 					".deespec", "claude", 60, ".deespec/var/artifacts",
 					"", "", "", "",
 					false, false, false,
-					"", false, false, false,
+					"", false,
 					false, false,
 					false, false,
 					"", "", "",

@@ -27,8 +27,6 @@ type Config interface {
 	// Transaction settings
 	TxDestRoot() string    // Transaction destination root (DEESPEC_TX_DEST_ROOT)
 	DisableRecovery() bool // Disable startup recovery (DEESPEC_DISABLE_RECOVERY)
-	DisableStateTx() bool  // Disable state/journal TX mode (DEESPEC_DISABLE_STATE_TX)
-	UseTx() bool           // Enable TX mode for register (DEESPEC_USE_TX)
 
 	// Metrics and audit
 	DisableMetricsRotation() bool // Disable metrics rotation (DEESPEC_DISABLE_METRICS_ROTATION)
@@ -67,8 +65,6 @@ type AppConfig struct {
 
 	txDestRoot      string
 	disableRecovery bool
-	disableStateTx  bool
-	useTx           bool
 
 	disableMetricsRotation bool
 	fsyncAudit             bool
@@ -154,16 +150,6 @@ func (c *AppConfig) DisableRecovery() bool {
 	return c.disableRecovery
 }
 
-// DisableStateTx returns whether state/journal TX mode is disabled
-func (c *AppConfig) DisableStateTx() bool {
-	return c.disableStateTx
-}
-
-// UseTx returns whether TX mode is enabled for register
-func (c *AppConfig) UseTx() bool {
-	return c.useTx
-}
-
 // DisableMetricsRotation returns whether metrics rotation is disabled
 func (c *AppConfig) DisableMetricsRotation() bool {
 	return c.disableMetricsRotation
@@ -215,7 +201,7 @@ func NewAppConfig(
 	home, agentBin string, timeoutSec int, artifactsDir string,
 	projectName, language, turn, taskID string,
 	validate, autoFB, strictFsync bool,
-	txDestRoot string, disableRecovery, disableStateTx, useTx bool,
+	txDestRoot string, disableRecovery bool,
 	disableMetricsRotation, fsyncAudit bool,
 	testMode, testQuiet bool,
 	workflow, policyPath, stderrLevel string,
@@ -235,8 +221,6 @@ func NewAppConfig(
 		strictFsync:            strictFsync,
 		txDestRoot:             txDestRoot,
 		disableRecovery:        disableRecovery,
-		disableStateTx:         disableStateTx,
-		useTx:                  useTx,
 		disableMetricsRotation: disableMetricsRotation,
 		fsyncAudit:             fsyncAudit,
 		testMode:               testMode,

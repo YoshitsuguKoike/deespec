@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
-	"github.com/YoshitsuguKoike/deespec/internal/app/config"
 )
 
 // TestStateJournalTXConsistency verifies atomic updates of state and journal
@@ -272,48 +271,4 @@ func TestStateJournalConsistencyCheck(t *testing.T) {
 	}
 
 	t.Logf("Successfully verified %d consistent state/journal updates", len(lines))
-}
-
-// TestUseTXForStateJournal verifies the feature flag
-func TestUseTXForStateJournal(t *testing.T) {
-	// When globalConfig is nil, default should be true (TX enabled)
-	oldConfig := globalConfig
-	globalConfig = nil
-	defer func() { globalConfig = oldConfig }()
-
-	if !UseTXForStateJournal() {
-		t.Error("TX should be enabled by default when config is nil")
-	}
-
-	// Test with config that has DisableStateTx set to false (TX enabled)
-	globalConfig = config.NewAppConfig(
-		".deespec", "claude", 60, ".deespec/var/artifacts",
-		"", "", "", "",
-		false, false, false,
-		"", false, false, false, // disable_state_tx is false here
-		false, false,
-		false, false,
-		"", "", "",
-		"default", "",
-	)
-
-	if !UseTXForStateJournal() {
-		t.Error("TX should be enabled when DisableStateTx is false")
-	}
-
-	// Test with config that has DisableStateTx set to true (TX disabled)
-	globalConfig = config.NewAppConfig(
-		".deespec", "claude", 60, ".deespec/var/artifacts",
-		"", "", "", "",
-		false, false, false,
-		"", false, true, false, // disable_state_tx is true here
-		false, false,
-		false, false,
-		"", "", "",
-		"default", "",
-	)
-
-	if UseTXForStateJournal() {
-		t.Error("TX should be disabled when DisableStateTx is true")
-	}
 }

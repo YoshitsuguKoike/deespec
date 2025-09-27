@@ -314,41 +314,26 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 	}
 	printJSONLine(result)
 
-	// Use transaction if enabled (Step 7)
-	// Use config to check if transactions are enabled
-	useTX := false
-	if globalConfig != nil {
-		useTX = globalConfig.UseTx()
+	// Always use transaction mode
+	// Create journal entry for TX version
+	turn := getNextTurnNumber()
+	journalEntry := buildJournalEntry(&spec, &result, config, turn)
+
+	// Use transactional registration
+	if err := registerWithTransaction(&spec, &result, config, journalEntry); err != nil {
+		// TX failure is critical
+		if config.ShouldLog("error") {
+			stderrLog.Printf("ERROR: transaction failed: %v\n", err)
+		}
+		// Update result to reflect failure
+		result.OK = false
+		result.Error = fmt.Sprintf("transaction failed: %v", err)
+		printJSONLine(result)
+		exitFunc(1)
+		return nil
 	}
-
-	if useTX {
-		// Create journal entry for TX version
-		turn := getNextTurnNumber()
-		journalEntry := buildJournalEntry(&spec, &result, config, turn)
-
-		// Use transactional registration
-		if err := registerWithTransaction(&spec, &result, config, journalEntry); err != nil {
-			// TX failure is critical
-			if config.ShouldLog("error") {
-				stderrLog.Printf("ERROR: transaction failed: %v\n", err)
-			}
-			// Update result to reflect failure
-			result.OK = false
-			result.Error = fmt.Sprintf("transaction failed: %v", err)
-			printJSONLine(result)
-			exitFunc(1)
-			return nil
-		}
-		if config.ShouldLog("info") {
-			stderrLog.Printf("INFO: registration completed with transaction\n")
-		}
-	} else {
-		// Original non-transactional path
-		if err := appendToJournalWithConfig(&spec, &result, config); err != nil {
-			if config.ShouldLog("warn") {
-				stderrLog.Printf("WARN: failed to append to journal: %v\n", err)
-			}
-		}
+	if config.ShouldLog("info") {
+		stderrLog.Printf("INFO: registration completed with transaction\n")
 	}
 
 	return nil
@@ -842,109 +827,5 @@ func buildJournalEntry(spec *RegisterSpec, result *RegisterResult, config *Resol
 	return entry
 }
 
-// appendToJournalWithConfig appends a registration event to the journal with policy settings
-func appendToJournalWithConfig(spec *RegisterSpec, result *RegisterResult, config *ResolvedConfig) error {
-	// Create journal directory if it doesn't exist
-	journalDir := ".deespec/var"
-	if err := os.MkdirAll(journalDir, 0755); err != nil {
-		return fmt.Errorf("failed to create journal directory: %w", err)
-	}
-
-	journalPath := filepath.Join(journalDir, "journal.ndjson")
-
-	// Read existing journal to get turn number
-	turn := 0
-	if file, err := os.Open(journalPath); err == nil {
-		defer file.Close()
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			var entry map[string]interface{}
-			if err := json.Unmarshal(scanner.Bytes(), &entry); err == nil {
-				if t, ok := entry["turn"].(float64); ok && int(t) > turn {
-					turn = int(t)
-				}
-			}
-		}
-		turn++ // Increment for new entry
-	}
-
-	// Create journal entry with 7 required keys
-	startTime := time.Now()
-	entry := map[string]interface{}{
-		"ts":         time.Now().UTC().Format(time.RFC3339Nano),
-		"turn":       turn,
-		"step":       "plan", // Using "plan" as registration is part of planning phase
-		"decision":   "PENDING",
-		"elapsed_ms": int64(time.Since(startTime).Milliseconds()),
-		"error":      "",
-		"artifacts": []map[string]interface{}{
-			{
-				"type":      "register",
-				"id":        spec.ID,
-				"title":     spec.Title,
-				"labels":    spec.Labels,
-				"ok":        result.OK,
-				"warnings":  result.Warnings,
-				"spec_path": result.SpecPath,
-			},
-		},
-	}
-
-	// Add optional fields based on policy
-	if config.JournalRecordSource {
-		entry["input_source"] = config.InputSource
-	}
-	if config.JournalRecordInputBytes {
-		entry["input_bytes"] = config.InputBytes
-	}
-
-	// Marshal to JSON
-	data, err := json.Marshal(entry)
-	if err != nil {
-		return fmt.Errorf("failed to marshal journal entry: %w", err)
-	}
-
-	// Atomic write using temp file and rename
-	tmpPath := journalPath + ".tmp"
-
-	// Open in append mode
-	file, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open temp journal file: %w", err)
-	}
-
-	// If original journal exists, copy its content first
-	if origFile, err := os.Open(journalPath); err == nil {
-		defer origFile.Close()
-		if _, err := io.Copy(file, origFile); err != nil {
-			file.Close()
-			os.Remove(tmpPath)
-			return fmt.Errorf("failed to copy existing journal: %w", err)
-		}
-	}
-
-	// Write new entry
-	if _, err := file.Write(data); err != nil {
-		file.Close()
-		os.Remove(tmpPath)
-		return fmt.Errorf("failed to write journal entry: %w", err)
-	}
-
-	if _, err := file.Write([]byte("\n")); err != nil {
-		file.Close()
-		os.Remove(tmpPath)
-		return fmt.Errorf("failed to write newline: %w", err)
-	}
-
-	if err := file.Close(); err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("failed to close journal file: %w", err)
-	}
-
-	// Atomic rename
-	if err := os.Rename(tmpPath, journalPath); err != nil {
-		return fmt.Errorf("failed to rename journal file: %w", err)
-	}
-
-	return nil
-}
+// Legacy non-TX journal append function removed
+// Transaction mode is now always used via registerWithTransaction

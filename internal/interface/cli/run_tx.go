@@ -183,14 +183,3 @@ func marshalStableJSON(v interface{}) ([]byte, error) {
 	// Encoder.Encode already adds trailing newline, ensuring stable format
 	return buf.Bytes(), nil
 }
-
-// UseTXForStateJournal returns true if transaction mode should be used
-// for state.json and journal updates. Can be controlled via configuration.
-func UseTXForStateJournal() bool {
-	// Use config if available
-	if globalConfig != nil {
-		return !globalConfig.DisableStateTx()
-	}
-	// Default to enabled if config not available
-	return true
-}

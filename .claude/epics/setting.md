@@ -39,8 +39,6 @@
 
   "tx_dest_root": null,
   "disable_recovery": false,
-  "disable_state_tx": false,
-  "use_tx": false,
   "disable_metrics_rotation": false,
   "fsync_audit": false,
   "test_mode": false,
@@ -75,8 +73,6 @@
 | ---------------------------------- | -------------------------- | --------------------------- |
 | `DEESPEC_TX_DEST_ROOT`             | `tx_dest_root`             | 最優先で使うTX反映ルート               |
 | `DEESPEC_DISABLE_RECOVERY`         | `disable_recovery`         | `1`→true（既定: false=有効）      |
-| `DEESPEC_DISABLE_STATE_TX`         | `disable_state_tx`         | **廃止予定**→JSONでは保持しつつwarning |
-| `DEESPEC_USE_TX`                   | `use_tx`                   | `1`→true                    |
 | `DEESPEC_DISABLE_METRICS_ROTATION` | `disable_metrics_rotation` | `1`→true                    |
 | `DEESPEC_FSYNC_AUDIT`              | `fsync_audit`              | `1`→true                    |
 | `DEESPEC_TEST_MODE`                | `test_mode`                | `true`→true                 |

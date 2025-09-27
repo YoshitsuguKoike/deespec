@@ -33,8 +33,6 @@ type RawSettings struct {
 	// Transaction settings
 	TxDestRoot      *string `json:"tx_dest_root"`
 	DisableRecovery *bool   `json:"disable_recovery"`
-	DisableStateTx  *bool   `json:"disable_state_tx"`
-	UseTx           *bool   `json:"use_tx"`
 
 	// Metrics and audit
 	DisableMetricsRotation *bool `json:"disable_metrics_rotation"`
@@ -144,14 +142,6 @@ func applyDefaults(settings *RawSettings) {
 		v := false
 		settings.DisableRecovery = &v
 	}
-	if settings.DisableStateTx == nil {
-		v := false
-		settings.DisableStateTx = &v
-	}
-	if settings.UseTx == nil {
-		v := false
-		settings.UseTx = &v
-	}
 
 	// Metrics and audit
 	if settings.DisableMetricsRotation == nil {
@@ -190,9 +180,7 @@ func applyDefaults(settings *RawSettings) {
 
 // checkDeprecated warns about deprecated settings
 func checkDeprecated(settings *RawSettings) {
-	if settings.DisableStateTx != nil && *settings.DisableStateTx {
-		fmt.Fprintf(os.Stderr, "WARN: DEESPEC_DISABLE_STATE_TX/disable_state_tx is deprecated and will be removed in v0.2.0\n")
-	}
+	// Currently no deprecated settings
 }
 
 // buildAppConfig converts RawSettings to AppConfig
@@ -211,8 +199,6 @@ func buildAppConfig(settings *RawSettings, configSource, settingPath string) *co
 		*settings.StrictFsync,
 		*settings.TxDestRoot,
 		*settings.DisableRecovery,
-		*settings.DisableStateTx,
-		*settings.UseTx,
 		*settings.DisableMetricsRotation,
 		*settings.FsyncAudit,
 		*settings.TestMode,

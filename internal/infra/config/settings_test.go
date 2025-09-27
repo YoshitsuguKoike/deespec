@@ -139,57 +139,6 @@ func TestCreateDefaultSettings(t *testing.T) {
 	}
 }
 
-func TestDeprecatedWarning(t *testing.T) {
-	// Create temp directory
-	tmpDir, err := os.MkdirTemp("", "deprecated-test-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	// Create setting.json with deprecated setting
-	settings := map[string]interface{}{
-		"disable_state_tx": true,
-	}
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(tmpDir, "setting.json"), data, 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Capture stderr
-	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-
-	// Load settings (should print warning)
-	cfg, err := LoadSettings(tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Restore stderr
-	w.Close()
-	os.Stderr = oldStderr
-
-	// Read captured output
-	buf := make([]byte, 1024)
-	n, _ := r.Read(buf)
-	output := string(buf[:n])
-
-	// Check warning was printed
-	if !contains(output, "WARN") || !contains(output, "deprecated") {
-		t.Errorf("Expected deprecation warning, got: %s", output)
-	}
-
-	// Check value was still loaded
-	if !cfg.DisableStateTx() {
-		t.Error("DisableStateTx should be true even though it's deprecated")
-	}
-}
-
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && hasSubstring(s, substr)
 }

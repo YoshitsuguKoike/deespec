@@ -10,6 +10,24 @@
 
 ---
 
+## \[v0.1.13] - 2025-09-27
+
+### 追加
+
+* **Journal 出力強化**: picker.go にjournal step entries の stdout 出力を追加（デバッグ用）
+* **ジャーナル監視**: 各 step（plan/implement/test/review/done）の詳細なトレース出力
+
+### 変更
+
+* **.gitignore 統一**: .deespec/ ディレクトリ全体を ignore に変更（一元管理）
+* **設定削除**: 開発用 .deespec 設定ファイル群の削除（agents.yaml, policies/, prompts/, templates/, test/fixtures/）
+
+### 修正
+
+* **プロジェクト整理**: tmp/ ディレクトリと legacy specs/ の削除
+
+---
+
 ## \[v0.1.12] - 2025-09-25
 
 ### 追加

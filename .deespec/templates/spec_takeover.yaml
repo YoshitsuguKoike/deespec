@@ -1,9 +1,0 @@
-id: "{assign_id}"
-title: "[TAKEOVER] {parent_id}"
-priority: {prio}
-deliverables:
-  - ".deespec/var/artifacts/turn{turn}/takeover_patch.diff"
-  - ".deespec/var/artifacts/turn{turn}/takeover_note.md"
-acceptance:
-  - "diffが適用可能 (git apply --check)"
-  - "note に修正理由が箇条書きである"

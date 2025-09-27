@@ -1,5 +1,0 @@
-agents:
-  - claude_cli
-  - system
-  - gpt4
-  - sonnet

@@ -264,8 +264,70 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 			continue
 		}
 
+		if step, ok := entry["step"].(string); ok && step == "plan" {
+			// Output plan step entry for debugging
+			fmt.Fprintf(os.Stdout, "[JOURNAL] step=plan: %s\n", line)
+
+			// Check for register type in artifacts
+			if artifacts, ok := entry["artifacts"].([]interface{}); ok {
+				for _, artifact := range artifacts {
+					if artifactMap, ok := artifact.(map[string]interface{}); ok {
+						if artifactType, ok := artifactMap["type"].(string); ok && artifactType == "register" {
+							if taskID, ok := artifactMap["id"].(string); ok {
+								fmt.Fprintf(os.Stdout, "[JOURNAL] Found registered task: %s\n", taskID)
+							}
+						}
+					}
+				}
+			}
+		}
+		if step, ok := entry["step"].(string); ok && step == "implement" {
+			// Output implement step entry for debugging
+			fmt.Fprintf(os.Stdout, "[JOURNAL] step=implement: %s\n", line)
+
+			// Extract decision if present
+			if decision, ok := entry["decision"].(string); ok && decision != "" {
+				fmt.Fprintf(os.Stdout, "[JOURNAL] implement decision: %s\n", decision)
+			}
+		}
+		if step, ok := entry["step"].(string); ok && step == "test" {
+			// Output test step entry for debugging
+			fmt.Fprintf(os.Stdout, "[JOURNAL] step=test: %s\n", line)
+
+			// Extract decision if present
+			if decision, ok := entry["decision"].(string); ok && decision != "" {
+				fmt.Fprintf(os.Stdout, "[JOURNAL] test decision: %s\n", decision)
+			}
+		}
+		if step, ok := entry["step"].(string); ok && step == "review" {
+			// Output review step entry for debugging
+			fmt.Fprintf(os.Stdout, "[JOURNAL] step=review: %s\n", line)
+
+			// Extract decision for review (OK or NEEDS_CHANGES)
+			if decision, ok := entry["decision"].(string); ok && decision != "" {
+				fmt.Fprintf(os.Stdout, "[JOURNAL] review decision: %s\n", decision)
+
+				// Check if task needs rework
+				if decision == "NEEDS_CHANGES" {
+					if artifacts, ok := entry["artifacts"].([]interface{}); ok {
+						for _, artifact := range artifacts {
+							if artifactMap, ok := artifact.(map[string]interface{}); ok {
+								if artifactType, ok := artifactMap["type"].(string); ok && artifactType == "pick" {
+									if taskID, ok := artifactMap["task_id"].(string); ok {
+										fmt.Fprintf(os.Stdout, "[JOURNAL] Task %s needs changes\n", taskID)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 		// Look for done steps
 		if step, ok := entry["step"].(string); ok && step == "done" {
+			// Output done step entry for debugging
+			fmt.Fprintf(os.Stdout, "[JOURNAL] step=done: %s\n", line)
+
 			// Extract task ID from artifacts
 			if artifacts, ok := entry["artifacts"].([]interface{}); ok {
 				for _, artifact := range artifacts {
@@ -273,6 +335,7 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 						if artifactType, ok := artifactMap["type"].(string); ok && artifactType == "pick" {
 							if taskID, ok := artifactMap["id"].(string); ok {
 								completed[taskID] = true
+								fmt.Fprintf(os.Stdout, "[JOURNAL] Task completed: %s\n", taskID)
 							}
 						}
 					}

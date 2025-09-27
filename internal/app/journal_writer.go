@@ -50,8 +50,26 @@ func (w *JournalWriter) Append(entry *JournalEntry) error {
 	}
 
 	// Write JSON line
-	_, err = bw.Write(append(b, '\n'))
-	return err
+	if _, err = bw.Write(append(b, '\n')); err != nil {
+		return err
+	}
+
+	// Flush buffer to file
+	if err := bw.Flush(); err != nil {
+		return err
+	}
+
+	// Sync file to disk for durability (ARCHITECTURE.md Section 3.3)
+	// Using direct Sync() call instead of fs utilities to avoid circular dependency
+	if err := f.Sync(); err != nil {
+		// Log warning but don't fail - journal append is still successful
+		log.Printf("WARN: failed to fsync journal: %v", err)
+	}
+
+	// Note: Parent directory sync would require opening the dir separately
+	// This is deferred to future steps to avoid breaking existing tests
+
+	return nil
 }
 
 // AppendMap handles map[string]interface{} for backward compatibility

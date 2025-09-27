@@ -19,7 +19,7 @@ DeeSpecは開発ワークフローを自動化するツールで、タスクの�
 
 ## 3. Transaction Management (TX)
 
-### 3.1 Lock Order Specification
+### 3.1 Lock Order Specification {#tx-lock-order}
 
 システム全体でのデッドロックを防止するため、以下のロック取得順序を厳守する：
 
@@ -34,12 +34,12 @@ state lock → run lock → txn lock
 - **解放順序**: 取得の逆順で解放（txn lock → run lock → state lock）
 - **違反時の挙動**: デッドロック検出時は即座に全ロック解放して再試行
 
-### 3.2 Lease Management
+### 3.2 Lease Management {#tx-lease}
 
 リース機構により、プロセス障害時の自動回復を実現する：
 
 **リース運用ルール:**
-- **デフォルトTTL**: 8分間（480秒）
+- **デフォルトTTL**: 10分間（600秒）
 - **延長条件**:
   - I/O処理中は自動延長
   - コミット処理中は自動延長
@@ -48,7 +48,7 @@ state lock → run lock → txn lock
   - 安全な前方回復（Forward Recovery）が可能な場合のみ再開
   - manifest/stageが不完全な場合は手動介入を要求
 
-### 3.3 fsync Policy
+### 3.3 fsync Policy {#tx-fsync}
 
 データの永続性を保証するため、以下のfsync方針を適用する：
 
@@ -64,7 +64,7 @@ fsync(file) → fsync(parent dir)
   - クラッシュ耐性を最優先
 - **ディレクトリ同期**: rename操作後は必ず親ディレクトリの`fsync(parent dir)`を実行
 
-### 3.4 TX Terminology
+### 3.4 TX Terminology {#tx-terminology}
 
 擬似トランザクション機構で使用する用語を以下に定義する：
 
@@ -76,7 +76,7 @@ fsync(file) → fsync(parent dir)
 - **commit**: stage→本番へのrename適用とjournal追記が完了した状態を示すマーカー（`status.commit`）
 - **undo**: 必要時のみ使用するbefore-imageによる巻き戻し機構（オプション）
 
-### 3.5 TX File Layout
+### 3.5 TX File Layout {#tx-layout}
 
 トランザクション関連ファイルの配置規則：
 
@@ -95,7 +95,7 @@ fsync(file) → fsync(parent dir)
 - **同一ファイルシステム要件**: rename操作の原子性を保証するため、すべて同一FS上に配置
 - **txn-id**: UUID v4またはタイムスタンプベースの一意識別子
 
-### 3.6 Recovery Rules
+### 3.6 Recovery Rules {#tx-recovery}
 
 システム起動時の復旧処理規則：
 
@@ -108,6 +108,21 @@ fsync(file) → fsync(parent dir)
   - stage不完全時 → エラーログ出力して手動対応を要求
 - **自動クリーンアップ**:
   - `commit`完了後のtxnディレクトリは次回起動時に削除
+
+### 3.7 Constraints and Non-Goals {#tx-constraints}
+
+**制約事項:**
+- **同一ファイルシステム要件**: rename操作の原子性を保証するため、全ファイルは同一FS上に配置
+- **プラットフォーム依存性**: fsyncの挙動はOSとファイルシステムに依存
+  - Linux/ext4: 完全なメタデータ同期
+  - macOS/APFS: ディレクトリfsyncは部分的サポート
+  - Windows/NTFS: FlushFileBuffers APIを内部使用
+
+**Non-Goals (対象外):**
+- 分散トランザクション（2PC/3PC）の実装
+- RDBMSレベルのACID保証
+- クロスファイルシステムでの原子性
+- ネットワークファイルシステム（NFS/SMB）での動作保証
 
 ## 4. Implementation References
 

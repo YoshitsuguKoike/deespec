@@ -232,11 +232,14 @@ func (r *Recovery) recoverTransaction(ctx context.Context, txnID TxnID) error {
 	// Since we have intent marker, all files were successfully staged
 	// We need to determine the correct destination root
 
-	// For recovery, we need to determine the destination root
-	// In production, this would be configurable or derived from context
-	destRoot := ".deespec"
-	if envRoot := os.Getenv("DEESPEC_TX_DEST_ROOT"); envRoot != "" {
-		destRoot = envRoot
+	// Determine destination root (prefer explicit env, then DEE_HOME, then local .deespec)
+	destRoot := os.Getenv("DEESPEC_TX_DEST_ROOT")
+	if destRoot == "" {
+		if home := os.Getenv("DEE_HOME"); home != "" {
+			destRoot = home
+		} else {
+			destRoot = ".deespec"
+		}
 	}
 
 	// Check context before expensive commit operation

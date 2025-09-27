@@ -261,9 +261,48 @@ func splitLines(s string) []string {
 }
 
 // NewScanner creates a test scanner (import from txn package needed in real code)
+// 簡易スキャナ（テスト専用の最小実装）
 func NewScanner(baseDir string) interface{ Scan() (*ScanResult, error) } {
-	// This would import from txn package in real implementation
-	return nil
+	return &testScanner{baseDir: baseDir}
+}
+
+type testScanner struct {
+	baseDir string
+}
+
+func (s *testScanner) Scan() (*ScanResult, error) {
+	// baseDir 配下のトランザクション・ディレクトリを走査し、
+	//  status.intent があり status.commit が無いものを intent-only として検出する
+	entries, err := os.ReadDir(s.baseDir)
+	if err != nil {
+		// ディレクトリが無い場合は clean state として扱う
+		if os.IsNotExist(err) {
+			return &ScanResult{TotalFound: 0, IntentOnly: nil}, nil
+		}
+		return nil, err
+	}
+	var intentOnly []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		id := e.Name()
+		dir := filepath.Join(s.baseDir, id)
+		_, hasIntent := statOK(filepath.Join(dir, "status.intent"))
+		_, hasCommit := statOK(filepath.Join(dir, "status.commit"))
+		if hasIntent && !hasCommit {
+			intentOnly = append(intentOnly, id)
+		}
+	}
+	return &ScanResult{
+		TotalFound: len(entries),
+		IntentOnly: intentOnly,
+	}, nil
+}
+
+func statOK(p string) (os.FileInfo, bool) {
+	fi, err := os.Stat(p)
+	return fi, err == nil
 }
 
 type ScanResult struct {

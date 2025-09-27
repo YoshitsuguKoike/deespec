@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/YoshitsuguKoike/deespec/internal/validator/common"
 	"github.com/YoshitsuguKoike/deespec/internal/validator/state"
@@ -32,12 +33,25 @@ func newStateVerifyCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&filePath, "path", ".deespec/var/state.json", "Path to state.json file")
+	// DEE_HOME があれば <DEE_HOME>/var/state.json を既定に、それ以外は従来どおり
+	defaultState := ".deespec/var/state.json"
+	if home := os.Getenv("DEE_HOME"); home != "" {
+		defaultState = filepath.Join(home, "var", "state.json")
+	}
+	cmd.Flags().StringVar(&filePath, "path", defaultState, "Path to state.json file (defaults to $DEE_HOME/var/state.json when set)")
 	cmd.Flags().StringVar(&format, "format", "", "Output format (json for CI integration)")
 	return cmd
 }
 
 func runStateVerify(filePath, format string) error {
+	// 互換のため：--path が ".deespec/..." の相対指定で来た場合は DEE_HOME に付け替え
+	if home := os.Getenv("DEE_HOME"); home != "" {
+		clean := filepath.Clean(filePath)
+		if clean == ".deespec/var/state.json" || clean == filepath.Join(".deespec", "var", "state.json") {
+			filePath = filepath.Join(home, "var", "state.json")
+		}
+	}
+
 	// Validate the state file
 	result, err := state.ValidateStateFile(filePath)
 	if err != nil {

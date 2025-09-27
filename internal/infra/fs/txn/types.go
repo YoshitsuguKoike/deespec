@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -102,16 +103,44 @@ func (f *FileOperation) Validate() error {
 		return fmt.Errorf("destination path is required")
 	}
 
-	// Destination must be a relative path
+	// --- Destination: 相対限定 + 逸脱禁止 + 基底名(.deespec/)禁止 ---
 	if filepath.IsAbs(f.Destination) {
 		return fmt.Errorf("destination must be relative path: %s", f.Destination)
 	}
+	dstClean := filepath.Clean(f.Destination)
+	sep := string(os.PathSeparator)
+	if dstClean == ".." || strings.HasPrefix(dstClean, ".."+sep) {
+		return fmt.Errorf("destination must not escape base: %s", f.Destination)
+	}
+	if strings.HasPrefix(dstClean, ".deespec"+sep) ||
+		strings.HasPrefix(dstClean, ".deespec/") ||
+		strings.HasPrefix(dstClean, ".deespec\\") {
+		return fmt.Errorf("destination must not start with .deespec/: %s", f.Destination)
+	}
+	// 正規化を反映（後段の処理が一貫するように）
+	f.Destination = dstClean
 
 	// For rename operations, source is required
 	if f.Type == "rename" && f.Source == "" {
 		return fmt.Errorf("source path is required for rename operation")
 	}
 
+	// --- Source（rename 用）にも同じ検査を適用 ---
+	if f.Type == "rename" {
+		if filepath.IsAbs(f.Source) {
+			return fmt.Errorf("source must be relative path: %s", f.Source)
+		}
+		srcClean := filepath.Clean(f.Source)
+		if srcClean == ".." || strings.HasPrefix(srcClean, ".."+sep) {
+			return fmt.Errorf("source must not escape base: %s", f.Source)
+		}
+		if strings.HasPrefix(srcClean, ".deespec"+sep) ||
+			strings.HasPrefix(srcClean, ".deespec/") ||
+			strings.HasPrefix(srcClean, ".deespec\\") {
+			return fmt.Errorf("source must not start with .deespec/: %s", f.Source)
+		}
+		f.Source = srcClean
+	}
 	// For create/update operations, checksum will be required (Step 11)
 	// but we don't enforce it yet to maintain backward compatibility
 

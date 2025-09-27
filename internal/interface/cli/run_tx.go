@@ -81,8 +81,22 @@ func SaveStateAndJournalTX(
 		return fmt.Errorf("state-tx intent: %w", err)
 	}
 
+	// Determine destination root for finalization
+	destRoot := os.Getenv("DEE_HOME")
+	if destRoot == "" {
+		// Prefer explicit home, else derive from paths.Var, else fallback local
+		if paths.Home != "" {
+			destRoot = filepath.Join(paths.Home, ".deespec")
+		} else if paths.Var != "" {
+			// If Var is <root>/.deespec/var, use its parent (<root>/.deespec)
+			destRoot = filepath.Dir(paths.Var)
+		} else {
+			destRoot = ".deespec"
+		}
+	}
+
 	// Commit with journal append
-	err = manager.Commit(tx, ".deespec", func() error {
+	err = manager.Commit(tx, destRoot, func() error {
 		// Append to journal atomically
 		return appendJournalEntryInTX(journalRec, paths.Journal)
 	})

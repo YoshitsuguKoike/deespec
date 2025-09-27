@@ -28,6 +28,25 @@ The startup sequence is automatically handled by:
 2. Lock acquisition for exclusive operation
 3. Normal workflow execution
 
+## Path Resolution and Environment Variables
+
+- Path base: DeeSpec resolves paths relative to `DEE_HOME` if set; otherwise it falls back to a local `.deespec` under the project. For TX commit/recovery dest root, the priority is:
+  1) `DEESPEC_TX_DEST_ROOT` → 2) `DEE_HOME` → 3) `.deespec`.
+
+- Environment variables:
+  - `DEE_HOME`: Base directory for DeeSpec (typically `<project>/.deespec`).
+  - `DEESPEC_TX_DEST_ROOT`: Explicit destination root for TX finalization (highest priority).
+  - `DEESPEC_DISABLE_RECOVERY`: Set `1` to skip startup recovery.
+  - `DEESPEC_DISABLE_STATE_TX`: Set `1` to disable TX mode for state/journal (legacy direct write).
+  - `DEESPEC_DISABLE_METRICS_ROTATION`: Set `1` to disable metrics rotation (stabilize tests).
+  - `DEESPEC_FSYNC_AUDIT`: Set `1` (and/or build tag `fsync_audit`) to enable fsync audit.
+  - `DEE_STRICT_FSYNC`: Set `1` to treat fsync failures as errors (default is WARN).
+
+## Atomic Writes and Temp Files
+
+- All atomic writes create a unique temporary file in the same directory as the destination using `os.CreateTemp(dir, pattern)`, then follow: write → `fsync(file)` → `close()` → `rename()` → `fsync(parent dir)`.
+- This avoids temp-name collisions under concurrency and guarantees same-filesystem atomicity.
+
 ### Development/Testing
 
 **Fsync Audit Mode**: For testing data durability guarantees:
@@ -255,4 +274,3 @@ deespec --help
 deespec init
 deespec run --once && deespec status --json
 ````
-

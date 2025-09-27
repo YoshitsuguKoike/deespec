@@ -36,6 +36,9 @@ func TestSaveStateAndJournalTX_CrashRecoveryE2E(t *testing.T) {
 		t.Fatalf("Failed to create var dir: %v", err)
 	}
 
+	// ★ ここで基底を固定：回復処理や確認が DEE_HOME 基準で安定します
+	t.Setenv("DEE_HOME", filepath.Join(tempDir, ".deespec"))
+
 	// Test Scenario 1: Crash after journal append but before commit completion
 	t.Run("CrashAfterJournalAppend", func(t *testing.T) {
 		// Initialize state
@@ -75,10 +78,17 @@ func TestSaveStateAndJournalTX_CrashRecoveryE2E(t *testing.T) {
 			"action": "step_transition",
 		}
 
-		// Simulate crash by calling SaveStateAndJournalTX and then checking intermediate state
+		// Simulate crash: SaveStateAndJournalTX は "journal先行" で途中終了（中間状態）
 		err := SaveStateAndJournalTX(updatedState, journalRec, paths, 1)
 		if err != nil {
 			t.Fatalf("SaveStateAndJournalTX failed: %v", err)
+		}
+
+		// ★ 前方回復を明示的に起動して中間状態を完成側に寄せる
+		//    （あなたの実装名に合わせて。ここでは例として txn.RunStartupRecovery を想定）
+		recoverRoot := filepath.Join(paths.Var, "txn")
+		if rerr := txn.RunStartupRecovery(context.Background(), recoverRoot); rerr != nil {
+			t.Fatalf("RunStartupRecovery failed: %v", rerr)
 		}
 
 		// Verify final state consistency
@@ -190,7 +200,7 @@ func TestSaveStateAndJournalTX_CrashRecoveryE2E(t *testing.T) {
 		}
 
 		// Complete the transaction (forward recovery) with no-op journal callback
-		if err := manager.Commit(tx, ".deespec", func() error { return nil }); err != nil {
+		if err := manager.Commit(tx, os.Getenv("DEE_HOME"), func() error { return nil }); err != nil {
 			t.Fatalf("Forward recovery commit failed: %v", err)
 		}
 

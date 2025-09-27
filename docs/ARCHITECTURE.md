@@ -163,6 +163,16 @@ main() → RunStartupRecovery() → AcquireLock() → Normal Operation
   - `commit`完了後のtxnディレクトリは次回起動時に削除
   - Step 8で実装予定：バッチ削除によりI/O負荷を軽減
 
+### 3.7.1 Destination Root Resolution (Recovery/Commit) {#tx-dest-root}
+
+TXの最終反映先（destRoot）は以下の優先順位で決定する：
+
+1. 環境変数 `DEESPEC_TX_DEST_ROOT`（明示的な絶対/基底パス）
+2. 環境変数 `DEE_HOME`（通常は `<project>/.deespec` を指す）
+3. カレントディレクトリ配下のローカル `".deespec"`
+
+復旧処理（RunStartupRecovery/Recovery.RecoverAll）および通常コミット時ともに同順序を適用する。これによりテスト環境やツール連携で基底パスを一貫させる。
+
 ### 3.8 Cleanup Policy {#tx-cleanup}
 
 トランザクション関連ファイルの削除方針：
@@ -304,6 +314,7 @@ WARN: Recovery backoff failed max_retries=3 total_delay=700ms
 - **同一ファイルシステム要件**: rename操作の原子性を保証するため、全ファイルは同一FS上に配置
   - EXDEV（cross-device link）エラーは明示的にハンドリング
   - 一時ファイルは必ず目的ファイルと同一ディレクトリに作成
+  - 一時ファイル名は `os.CreateTemp(dir, pattern)` を用いてユニーク化（固定名 `.tmp` は使用禁止）
 - **プラットフォーム依存性**: fsyncの挙動はOSとファイルシステムに依存
   - Linux/ext4: 完全なメタデータ同期
   - macOS/APFS: ディレクトリfsyncは部分的サポート（F_FULLFSYNC推奨）
@@ -620,6 +631,16 @@ internal/infra/fs/
   env:
     DEESPEC_FSYNC_AUDIT: "1"
 ```
+
+### 4.3 Environment Variables Reference
+
+- `DEE_HOME`: DeeSpec の基底ディレクトリ（通常は `<project>/.deespec`）。パス解決と `destRoot` のデフォルトに使用。
+- `DEESPEC_TX_DEST_ROOT`: TXの明示的な反映先ルート。設定時は最優先で使用。
+- `DEESPEC_DISABLE_RECOVERY`: `"1"` で起動時の自動リカバリを無効化。
+- `DEESPEC_DISABLE_STATE_TX`: `"1"` で state/journal のTXモードを無効化（直接書き込み）。
+- `DEESPEC_DISABLE_METRICS_ROTATION`: `"1"` でメトリクスのローテーションを無効化（テスト安定化用途）。
+- `DEESPEC_FSYNC_AUDIT`: `"1"` で fsync の監査ログを有効化（または build tag `fsync_audit`）。
+- `DEE_STRICT_FSYNC`: `"1"` で fsync 失敗時にエラー扱い（デフォルトは WARN で継続）。
 
 ### 5.5 Migration Timeline and Deprecation Policy {#migration-timeline}
 

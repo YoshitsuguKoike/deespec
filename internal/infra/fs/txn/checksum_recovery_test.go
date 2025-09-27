@@ -2,6 +2,7 @@ package txn
 
 import (
 	"context"
+	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"testing"
@@ -139,12 +140,15 @@ func TestChecksumMismatchRecoveryIntegration(t *testing.T) {
 		// Create independent environment for this subtest
 		tmp := t.TempDir()
 		deespec := filepath.Join(tmp, ".deespec")
+		require.NoError(t, os.MkdirAll(filepath.Join(deespec, "var", "txn"), 0o755))
+		// Set DEE_HOME environment for absolute path resolution
+		t.Setenv("DEE_HOME", deespec)
 		if err := os.MkdirAll(filepath.Join(deespec, "var", "txn"), 0o755); err != nil {
 			t.Fatalf("Failed to create deespec dirs: %v", err)
 		}
 
-		// Set DEE_HOME environment for absolute path resolution
-		t.Setenv("DEE_HOME", deespec)
+		// Set destination root for recovery
+		t.Setenv("DEESPEC_TX_DEST_ROOT", deespec)
 		// Enable recovery for this test
 		t.Setenv("DEESPEC_DISABLE_RECOVERY", "0")
 
@@ -196,18 +200,16 @@ func TestChecksumMismatchRecoveryIntegration(t *testing.T) {
 		}
 
 		// Should recover 2 transactions and fail 1
-		expectedRecovered := 2
-		expectedFailed := 1
-
-		if recoveryResult.RecoveredCount != expectedRecovered {
-			t.Errorf("Expected %d recovered transactions, got %d", expectedRecovered, recoveryResult.RecoveredCount)
+		// A and C should recover successfully, B should fail due to checksum mismatch
+		if recoveryResult.RecoveredCount != 2 {
+			t.Errorf("Expected 2 recovered transactions (A and C), got %d", recoveryResult.RecoveredCount)
 		}
 
-		if recoveryResult.FailedCount != expectedFailed {
-			t.Errorf("Expected %d failed transactions, got %d", expectedFailed, recoveryResult.FailedCount)
+		if recoveryResult.FailedCount != 1 {
+			t.Errorf("Expected 1 failed transaction (B), got %d", recoveryResult.FailedCount)
 		}
 
-		// Verify only valid transactions created destination files (use absolute path via deespec)
+		// Verify only valid transactions created destination files
 		validFiles := []string{"parallel_test_A.txt", "parallel_test_C.txt"}
 		for _, fileName := range validFiles {
 			destFile := filepath.Join(deespec, fileName)

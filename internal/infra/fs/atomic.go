@@ -7,31 +7,50 @@ import (
 	"path/filepath"
 )
 
+// AtomicWriteJSON writes JSON atomically with fsync(file) and fsync(parent dir),
+// using a unique temporary file in the same directory to avoid collisions.
 func AtomicWriteJSON(path string, v any) error {
-	tmp := path + ".tmp"
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	b, err := json.MarshalIndent(v, "", "  ")
+	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+
+	// Create unique temp file in same directory
+	tf, err := os.CreateTemp(dir, ".tmp.*")
 	if err != nil {
+		return fmt.Errorf("atomic json: create temp: %w", err)
+	}
+	tmp := tf.Name()
+	// Ensure cleanup in error cases (harmless if renamed)
+	defer os.Remove(tmp)
+
+	// Set desired permission (CreateTemp defaults 0600)
+	if err := os.Chmod(tmp, 0o644); err != nil {
+		tf.Close()
+		return fmt.Errorf("atomic json: chmod temp: %w", err)
+	}
+
+	if _, err := tf.Write(data); err != nil {
+		tf.Close()
+		return fmt.Errorf("atomic json: write temp: %w", err)
+	}
+	if err := FsyncFile(tf); err != nil {
+		tf.Close()
+		return fmt.Errorf("atomic json: fsync temp: %w", err)
+	}
+	if err := tf.Close(); err != nil {
+		return fmt.Errorf("atomic json: close temp: %w", err)
+	}
+
+	// Atomic rename to destination and fsync parent dir
+	if err := AtomicRename(tmp, path); err != nil {
 		return err
 	}
-	if _, err := f.Write(b); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return nil
 }
 
 // すでに存在したら失敗する簡易ロック（多重実行防止）

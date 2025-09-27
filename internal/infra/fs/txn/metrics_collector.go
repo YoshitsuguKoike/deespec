@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -32,6 +31,35 @@ type MetricsCollector struct {
 // GlobalMetrics is the global metrics instance
 var GlobalMetrics = &MetricsCollector{}
 
+// Clone creates a copy of the metrics collector
+func (m *MetricsCollector) Clone() *MetricsCollector {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return &MetricsCollector{
+		CommitSuccess: m.CommitSuccess,
+		CommitFailed:  m.CommitFailed,
+		CASConflicts:  m.CASConflicts,
+		RecoveryCount: m.RecoveryCount,
+		SchemaVersion: m.SchemaVersion,
+		LastUpdate:    m.LastUpdate,
+	}
+}
+
+// Merge combines two metrics collectors with monotonic increase
+func (m *MetricsCollector) Merge(other *MetricsCollector) *MetricsCollector {
+	if other == nil {
+		return m
+	}
+	return &MetricsCollector{
+		CommitSuccess: m.CommitSuccess + other.CommitSuccess,
+		CommitFailed:  m.CommitFailed + other.CommitFailed,
+		CASConflicts:  m.CASConflicts + other.CASConflicts,
+		RecoveryCount: m.RecoveryCount + other.RecoveryCount,
+		SchemaVersion: m.SchemaVersion,
+		LastUpdate:    time.Now().UTC().Format(time.RFC3339),
+	}
+}
+
 // acquireFileLock locks a file descriptor for exclusive access
 func acquireFileLock(fd int) error {
 	return syscall.Flock(fd, syscall.LOCK_EX)
@@ -40,6 +68,47 @@ func acquireFileLock(fd int) error {
 // releaseFileLock releases a file lock
 func releaseFileLock(fd int) error {
 	return syscall.Flock(fd, syscall.LOCK_UN)
+}
+
+// readMetricsJSONLocked reads metrics from a locked file
+func readMetricsJSONLocked(file *os.File) (*MetricsCollector, error) {
+	stat, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if stat.Size() == 0 {
+		return &MetricsCollector{}, nil
+	}
+
+	data := make([]byte, stat.Size())
+	if _, err := file.ReadAt(data, 0); err != nil {
+		return nil, err
+	}
+
+	var metrics MetricsCollector
+	if err := json.Unmarshal(data, &metrics); err != nil {
+		return nil, err
+	}
+	return &metrics, nil
+}
+
+// writeJSONAtomicLocked writes JSON to a locked file atomically
+func writeJSONAtomicLocked(file *os.File, metrics *MetricsCollector) error {
+	data, err := json.MarshalIndent(metrics, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if err := file.Truncate(0); err != nil {
+		return err
+	}
+	if _, err := file.Seek(0, 0); err != nil {
+		return err
+	}
+	if _, err := file.Write(data); err != nil {
+		return err
+	}
+	return file.Sync()
 }
 
 // LoadMetrics loads metrics from disk or creates new instance with file locking
@@ -93,83 +162,37 @@ func LoadMetrics(metricsPath string) (*MetricsCollector, error) {
 
 // SaveMetrics saves metrics to disk with file locking and monotonic guarantees
 func (m *MetricsCollector) SaveMetrics(metricsPath string) error {
-	// 1) Take snapshot of in-memory state (avoid lock nesting)
-	m.mu.RLock()
-	snap := MetricsCollector{
-		CommitSuccess: m.CommitSuccess,
-		CommitFailed:  m.CommitFailed,
-		CASConflicts:  m.CASConflicts,
-		RecoveryCount: m.RecoveryCount,
-		SchemaVersion: MetricsSchemaVersion,
-		LastUpdate:    time.Now().UTC().Format(time.RFC3339),
-	}
-	m.mu.RUnlock()
+	// Take snapshot of counters without holding lock during file I/O
+	snap := m.Clone()
+	snap.SchemaVersion = MetricsSchemaVersion
+	snap.LastUpdate = time.Now().UTC().Format(time.RFC3339)
 
-	// 2) File operations with exclusive lock only
+	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(metricsPath), 0755); err != nil {
 		return fmt.Errorf("create metrics dir: %w", err)
 	}
 
+	// Open file and acquire exclusive lock
 	file, err := os.OpenFile(metricsPath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("open metrics file: %w", err)
 	}
 	defer file.Close()
 
-	if err := lockFile(int(file.Fd()), syscall.LOCK_EX); err != nil {
-		return fmt.Errorf("acquire write lock: %w", err)
+	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
+		return fmt.Errorf("metrics flock EX: %w", err)
 	}
-	defer func() {
-		if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
-			log.Printf("WARN: metrics unlock failed: %v", err)
-		}
-	}()
+	defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
 
-	// 3) Read existing metrics for additive merge
-	var existingMetrics *MetricsCollector
-	stat, err := file.Stat()
-	if err == nil && stat.Size() > 0 {
-		data := make([]byte, stat.Size())
-		if _, err := file.ReadAt(data, 0); err != nil {
-			return fmt.Errorf("read existing metrics: %w", err)
-		}
+	// Read existing metrics and merge
+	disk, _ := readMetricsJSONLocked(file)
+	merged := snap.Merge(disk) // Monotonic increase
+	merged.SchemaVersion = MetricsSchemaVersion
+	merged.LastUpdate = time.Now().UTC().Format(time.RFC3339)
 
-		existing := &MetricsCollector{}
-		if err := json.Unmarshal(data, existing); err == nil {
-			existingMetrics = existing
-		}
-	}
-
-	// 4) Merge with additive behavior (monotonic increase)
-	merged := MetricsCollector{
-		CommitSuccess: snap.CommitSuccess,
-		CommitFailed:  snap.CommitFailed,
-		CASConflicts:  snap.CASConflicts,
-		RecoveryCount: snap.RecoveryCount,
-		SchemaVersion: snap.SchemaVersion,
-		LastUpdate:    snap.LastUpdate,
-	}
-	if existingMetrics != nil {
-		merged.CommitSuccess += existingMetrics.CommitSuccess
-		merged.CommitFailed += existingMetrics.CommitFailed
-		merged.CASConflicts += existingMetrics.CASConflicts
-		merged.RecoveryCount += existingMetrics.RecoveryCount
-	}
-
-	// 5) Write atomically
-	data, err := json.MarshalIndent(&merged, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal metrics: %w", err)
-	}
-
-	tempPath := metricsPath + ".tmp." + strconv.FormatInt(time.Now().UnixNano(), 10)
-	if err := os.WriteFile(tempPath, data, 0644); err != nil {
-		return fmt.Errorf("write temp metrics: %w", err)
-	}
-
-	if err := os.Rename(tempPath, metricsPath); err != nil {
-		os.Remove(tempPath)
-		return fmt.Errorf("rename metrics: %w", err)
+	// Write merged metrics atomically
+	if err := writeJSONAtomicLocked(file, merged); err != nil {
+		return fmt.Errorf("write metrics: %w", err)
 	}
 
 	return nil

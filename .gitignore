@@ -48,5 +48,7 @@ state.lock
 /.deespec/var/*
 !/.deespec/var/.keep
 
+.DS_Store
+**/.DS_Store
 tmp/
 .deespec/

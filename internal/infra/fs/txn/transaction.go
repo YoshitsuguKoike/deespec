@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
@@ -80,25 +81,8 @@ func (m *Manager) StageFile(tx *Transaction, dst string, content []byte) error {
 		return fmt.Errorf("cannot stage file: transaction status is %s", tx.Status)
 	}
 
-	// EARLY EXDEV DETECTION (Step 7 feedback): Verify stage and destination are on same filesystem
-	// This ensures we fail fast if rename would cross device boundaries, preventing late commit failures
+	// EXDEV 検出は Commit で destRoot を元に実施するため、ここでは行わない
 	stagePath := filepath.Join(tx.StageDir, dst)
-
-	// Create a test file in stage directory to check filesystem
-	testStagePath := filepath.Join(tx.StageDir, ".test_fs")
-	if err := os.WriteFile(testStagePath, []byte("test"), 0644); err == nil {
-		defer os.Remove(testStagePath)
-
-		// Try a test rename to detect EXDEV early
-		testDstPath := filepath.Join(m.baseDir, ".test_dst")
-		if err := os.Rename(testStagePath, testDstPath); err != nil {
-			if strings.Contains(err.Error(), "cross-device") || strings.Contains(err.Error(), "invalid cross-device") {
-				return fmt.Errorf("stage and destination on different filesystems (EXDEV): cannot stage file %s", dst)
-			}
-		} else {
-			os.Remove(testDstPath)
-		}
-	}
 
 	stageDir := filepath.Dir(stagePath)
 
@@ -209,6 +193,10 @@ func (m *Manager) MarkIntent(tx *Transaction) error {
 // it returns success immediately without any action (no-op return). This makes forward
 // recovery completely safe for double execution.
 func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() error) error {
+	// 0) 早期 EXDEV 検出（stage と最終反映先が別デバイスなら安全失敗）
+	if ok, err := sameDevice(tx.StageDir, destRoot); err == nil && !ok {
+		return fmt.Errorf("commit aborted: stage(%s) and destRoot(%s) are on different filesystems (EXDEV)", tx.StageDir, destRoot)
+	}
 	// IDEMPOTENT CHECK: If status.commit exists, this is a no-op (safe for forward recovery)
 	commitPath := filepath.Join(tx.BaseDir, "status.commit")
 	if _, err := os.Stat(commitPath); err == nil {
@@ -290,9 +278,19 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 			return fmt.Errorf("create final directory: %w", err)
 		}
 
+		// 親ディレクトリを永続化
+		if err := fs.FsyncDir(finalDir); err != nil {
+			return fmt.Errorf("fsync final directory (pre-rename): %w", err)
+		}
+
 		// Atomic rename
 		if err := fs.AtomicRename(stagePath, finalPath); err != nil {
 			return fmt.Errorf("rename %s to %s: %w", stagePath, finalPath, err)
+		}
+
+		// rename 後も親を fsync（ポリシーどおり“都度”）
+		if err := fs.FsyncDir(finalDir); err != nil {
+			return fmt.Errorf("fsync final directory (post-rename): %w", err)
 		}
 
 		// Verify final file checksum after rename
@@ -312,9 +310,8 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 			return fmt.Errorf("journal operation failed: %w", err)
 		}
 	} else {
-		if !isTestEnvironment() {
-			fmt.Fprintf(os.Stderr, "WARN: Forward recovery without journal callback for %s\n", tx.Manifest.ID)
-		}
+		// journal コールバック無し（前方回復シナリオ等）
+		fmt.Fprintf(os.Stderr, "WARN: Forward recovery without journal callback for %s\n", tx.Manifest.ID)
 	}
 
 	// Phase 4: Mark commit complete
@@ -479,13 +476,41 @@ func generateTxnID() TxnID {
 }
 
 // resolveAbsDst resolves destination to absolute path to eliminate cwd dependency
-func (m *Manager) resolveAbsDst(dst string) string {
+func (t *Transaction) resolveAbsDst(dst string) string {
+	// .deespec/ 前置きを誤って含むケースを除去（防御）
+	if strings.HasPrefix(dst, ".deespec"+string(os.PathSeparator)) {
+		dst = strings.TrimPrefix(dst, ".deespec"+string(os.PathSeparator))
+	}
+	// 絶対は使わない前提（Validateで弾く）。念のため残すならそのまま返す
 	if filepath.IsAbs(dst) {
 		return dst
 	}
+
 	if home := os.Getenv("DEE_HOME"); home != "" {
-		return filepath.Join(home, dst)
+		return filepath.Join(home, dst) // ← 期待する出力は常に tmp/.deespec/xxx
 	}
-	// Fall back to current directory if no DEE_HOME
+	// txn の作業ディレクトリ(BaseDir)は“作業用”なので最終物のフォールバックには使わない
+	// 最後の保険：cwd。テストでは必ず DEE_HOME を設定する想定
 	return filepath.Join(".", dst)
+}
+
+// sameDevice は 2 つのパスが同一デバイス上かを判定する
+func sameDevice(p1, p2 string) (bool, error) {
+	// 代表として各ディレクトリ自身を stat
+	s1, err1 := os.Stat(p1)
+	s2, err2 := os.Stat(p2)
+	if err1 != nil || err2 != nil {
+		// 判定不能な場合は true 扱い（安全側に倒すなら false にしてもよい）
+		if err1 != nil {
+			return true, err1
+		}
+		return true, err2
+	}
+	// Unix系: Stat_t.Dev を比較（Windows は true にフォールバック）
+	if st1, ok1 := s1.Sys().(*syscall.Stat_t); ok1 {
+		if st2, ok2 := s2.Sys().(*syscall.Stat_t); ok2 {
+			return st1.Dev == st2.Dev, nil
+		}
+	}
+	return true, nil
 }

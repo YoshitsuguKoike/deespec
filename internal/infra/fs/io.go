@@ -113,35 +113,41 @@ func WriteFileSync(path string, data []byte, perm os.FileMode) error {
 
 	// Write to temporary file first for atomicity
 	// Keep temp file in same directory to ensure same filesystem
-	tempFile := filepath.Join(dir, fmt.Sprintf(".tmp.%s.%d", filepath.Base(path), os.Getpid()))
+	// Use unique name to avoid collisions under concurrency
+	pattern := fmt.Sprintf(".tmp.%s.*", filepath.Base(path))
+	tf, err := os.CreateTemp(dir, pattern)
+	if err != nil {
+		return fmt.Errorf("write file sync %s: failed to create temp file: %w", path, err)
+	}
+	tempFile := tf.Name()
+	// Ensure cleanup of temp file path on exit (harmless if already renamed)
+	defer os.Remove(tempFile)
 
 	// Create and write to temp file
 	// Use provided permission or default to 0644
 	if perm == 0 {
 		perm = 0644
 	}
-	f, err := os.OpenFile(tempFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
-	if err != nil {
-		return fmt.Errorf("write file sync %s: failed to create temp file: %w", path, err)
+	// Ensure file mode as requested (CreateTemp sets 0600 by default)
+	if err := os.Chmod(tempFile, perm); err != nil {
+		tf.Close()
+		return fmt.Errorf("write file sync %s: failed to set temp perm: %w", path, err)
 	}
-	defer func() {
-		f.Close()
-		// Clean up temp file if it still exists (error case)
-		os.Remove(tempFile)
-	}()
 
 	// Write data
-	if _, err := f.Write(data); err != nil {
+	if _, err := tf.Write(data); err != nil {
+		tf.Close()
 		return fmt.Errorf("write file sync %s: failed to write data: %w", path, err)
 	}
 
 	// Sync file contents
-	if err := FsyncFile(f); err != nil {
+	if err := FsyncFile(tf); err != nil {
+		tf.Close()
 		return fmt.Errorf("write file sync %s: failed to sync file: %w", path, err)
 	}
 
 	// Close before rename
-	if err := f.Close(); err != nil {
+	if err := tf.Close(); err != nil {
 		return fmt.Errorf("write file sync %s: failed to close file: %w", path, err)
 	}
 

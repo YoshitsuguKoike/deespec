@@ -30,11 +30,11 @@ func TestLoadSettings(t *testing.T) {
 			name:      "Environment variables only",
 			setupFunc: nil,
 			envVars: map[string]string{
-				"DEE_HOME":        "/custom/home",
+				"DEE_HOME":        "custom/home",
 				"DEE_AGENT_BIN":   "custom-agent",
 				"DEE_TIMEOUT_SEC": "120",
 			},
-			wantHome:    "/custom/home",
+			wantHome:    "custom/home",
 			wantAgent:   "custom-agent",
 			wantTimeout: 120,
 			wantSource:  "env",
@@ -43,7 +43,7 @@ func TestLoadSettings(t *testing.T) {
 			name: "JSON file only",
 			setupFunc: func(t *testing.T, tmpDir string) {
 				settings := map[string]interface{}{
-					"home":        "/json/home",
+					"home":        "json/home",
 					"agent_bin":   "json-agent",
 					"timeout_sec": 180,
 				}
@@ -56,7 +56,7 @@ func TestLoadSettings(t *testing.T) {
 				}
 			},
 			envVars:     nil,
-			wantHome:    "/json/home",
+			wantHome:    "json/home",
 			wantAgent:   "json-agent",
 			wantTimeout: 180,
 			wantSource:  "json",
@@ -65,7 +65,7 @@ func TestLoadSettings(t *testing.T) {
 			name: "JSON with ENV override",
 			setupFunc: func(t *testing.T, tmpDir string) {
 				settings := map[string]interface{}{
-					"home":        "/json/home",
+					"home":        "json/home",
 					"agent_bin":   "json-agent",
 					"timeout_sec": 180,
 				}
@@ -80,7 +80,7 @@ func TestLoadSettings(t *testing.T) {
 			envVars: map[string]string{
 				"DEE_AGENT_BIN": "env-override-agent",
 			},
-			wantHome:    "/json/home",
+			wantHome:    "json/home",
 			wantAgent:   "env-override-agent", // ENV overrides JSON
 			wantTimeout: 180,
 			wantSource:  "json", // Source is still JSON since it was loaded

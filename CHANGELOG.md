@@ -33,6 +33,10 @@
 
 * **errcheck lint エラー**: CLI パッケージ内の未チェックエラーを修正
   - os.Chdir, os.WriteFile, json.Unmarshal, io.ReadAll のエラーチェック追加
+* **Windows ビルド対応**: syscall.Flock と syscall.Stat_t の OS 固有実装を分離
+  - flock_unix.go / flock_windows.go でファイルロックを抽象化
+  - device_unix.go / device_windows.go でデバイス比較を抽象化
+  - Windows でのクロスコンパイルが成功するように修正
 
 ---
 

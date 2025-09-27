@@ -107,16 +107,32 @@ func (m *Manager) StageFile(tx *Transaction, dst string, content []byte) error {
 		return fmt.Errorf("create stage parent directory: %w", err)
 	}
 
-	// Calculate checksum for content before writing
-	checksumInfo, err := CalculateDataChecksum(content, ChecksumSHA256)
+	// Optimized I/O: Write file and calculate checksum in single pass
+	file, err := os.Create(stagePath)
 	if err != nil {
-		return fmt.Errorf("calculate checksum: %w", err)
+		return fmt.Errorf("create staged file: %w", err)
+	}
+	defer file.Close()
+
+	// Create TeeHashWriter to calculate checksum during write
+	teeWriter, err := NewTeeHashWriter(file, ChecksumSHA256)
+	if err != nil {
+		return fmt.Errorf("create tee hash writer: %w", err)
 	}
 
-	// Write file to stage with fsync
-	if err := fs.WriteFileSync(stagePath, content, 0644); err != nil {
-		return fmt.Errorf("write staged file: %w", err)
+	// Write content to both file and hasher simultaneously
+	if _, err := teeWriter.Write(content); err != nil {
+		return fmt.Errorf("write staged file with checksum: %w", err)
 	}
+
+	// Sync file to disk
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("sync staged file: %w", err)
+	}
+
+	// Get checksum result (no additional I/O required)
+	checksumInfo := teeWriter.Checksum(ChecksumSHA256)
+	checksumInfo.Path = stagePath
 
 	// Verify staged file checksum (integrity check)
 	if err := ValidateFileChecksum(stagePath, checksumInfo); err != nil {
@@ -207,14 +223,58 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 		return fmt.Errorf("cannot commit: transaction status is %s", tx.Status)
 	}
 
-	// Phase 1: Validate staged file checksums before commit
-	for _, op := range tx.Manifest.Files {
-		stagePath := filepath.Join(tx.StageDir, op.Destination)
+	// Phase 1: Validate staged file checksums before commit (parallel for large transactions)
+	if len(tx.Manifest.Files) > 4 {
+		// Use parallel checksum validation for large transactions
+		var filePaths []string
+		checksumMap := make(map[string]*FileChecksum)
 
-		// Validate checksum if available
-		if op.ChecksumInfo != nil {
-			if err := ValidateFileChecksum(stagePath, op.ChecksumInfo); err != nil {
-				return fmt.Errorf("staged file checksum validation failed for %s: %w", op.Destination, err)
+		for _, op := range tx.Manifest.Files {
+			if op.ChecksumInfo != nil {
+				stagePath := filepath.Join(tx.StageDir, op.Destination)
+				filePaths = append(filePaths, stagePath)
+				checksumMap[stagePath] = op.ChecksumInfo
+			}
+		}
+
+		if len(filePaths) > 0 {
+			// Calculate checksums in parallel (worker count = min(files, 4))
+			workerCount := len(filePaths)
+			if workerCount > 4 {
+				workerCount = 4
+			}
+
+			fmt.Fprintf(os.Stderr, "INFO: Using parallel checksum validation txn.checksum.parallel=true txn.files=%d txn.workers=%d\n",
+				len(filePaths), workerCount)
+
+			results := CalculateChecksumsParallel(filePaths, ChecksumSHA256, workerCount)
+
+			// Validate results
+			for filePath, result := range results {
+				if result.Error != nil {
+					fmt.Fprintf(os.Stderr, "ERROR: Parallel checksum calculation failed op=commit file=%s error=%v\n", filePath, result.Error)
+					return fmt.Errorf("parallel checksum calculation failed for %s: %w", filePath, result.Error)
+				}
+
+				expected := checksumMap[filePath]
+				if !CompareFileChecksums(result.Checksum, expected) {
+					fmt.Fprintf(os.Stderr, "ERROR: Parallel checksum validation failed op=commit file=%s expected=%s actual=%s\n",
+						filePath, expected.Value, result.Checksum.Value)
+					return fmt.Errorf("parallel checksum validation failed for %s: expected %s, got %s",
+						filePath, expected.Value, result.Checksum.Value)
+				}
+			}
+		}
+	} else {
+		// Sequential validation for small transactions
+		for _, op := range tx.Manifest.Files {
+			stagePath := filepath.Join(tx.StageDir, op.Destination)
+
+			// Validate checksum if available
+			if op.ChecksumInfo != nil {
+				if err := ValidateFileChecksum(stagePath, op.ChecksumInfo); err != nil {
+					return fmt.Errorf("staged file checksum validation failed for %s: %w", op.Destination, err)
+				}
 			}
 		}
 	}

@@ -3,8 +3,10 @@ package txn
 import (
 	"crypto/sha256"
 	"fmt"
+	"hash"
 	"io"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -29,6 +31,54 @@ type FileChecksum struct {
 
 	// File path (for validation)
 	Path string `json:"path"`
+}
+
+// TeeHashWriter writes to an underlying writer while computing checksum
+type TeeHashWriter struct {
+	writer io.Writer
+	hasher hash.Hash
+	size   int64
+}
+
+// NewTeeHashWriter creates a new TeeHashWriter for stream checksum calculation
+func NewTeeHashWriter(w io.Writer, algorithm ChecksumAlgorithm) (*TeeHashWriter, error) {
+	var hasher hash.Hash
+	switch algorithm {
+	case ChecksumSHA256:
+		hasher = sha256.New()
+	default:
+		return nil, fmt.Errorf("unsupported checksum algorithm: %s", algorithm)
+	}
+
+	return &TeeHashWriter{
+		writer: w,
+		hasher: hasher,
+		size:   0,
+	}, nil
+}
+
+// Write implements io.Writer, writing to both the underlying writer and hasher
+func (t *TeeHashWriter) Write(p []byte) (n int, err error) {
+	n, err = t.writer.Write(p)
+	if err != nil {
+		return n, err
+	}
+
+	// Write to hasher for checksum calculation
+	t.hasher.Write(p[:n])
+	t.size += int64(n)
+
+	return n, nil
+}
+
+// Checksum returns the final checksum result
+func (t *TeeHashWriter) Checksum(algorithm ChecksumAlgorithm) *FileChecksum {
+	return &FileChecksum{
+		Algorithm: algorithm,
+		Value:     fmt.Sprintf("%x", t.hasher.Sum(nil)),
+		Size:      t.size,
+		Path:      "", // Set by caller if needed
+	}
 }
 
 // CalculateFileChecksum computes checksum for a file
@@ -107,8 +157,8 @@ func ValidateFileChecksum(filePath string, expected *FileChecksum) error {
 	// Validate checksum matches
 	if current.Value != expected.Value {
 		duration := time.Since(startTime)
-		fmt.Fprintf(os.Stderr, "ERROR: Checksum validation failed %s=%s %s=%dms error=%s\n",
-			MetricChecksumValidationFailed, filePath, MetricChecksumCalculationTime, duration.Milliseconds(), "checksum_mismatch")
+		fmt.Fprintf(os.Stderr, "ERROR: Checksum validation failed op=commit file=%s expected=%s actual=%s %s=%s %s=%dms\n",
+			filePath, expected.Value, current.Value, MetricChecksumValidationFailed, filePath, MetricChecksumCalculationTime, duration.Milliseconds())
 		return fmt.Errorf("checksum mismatch: expected %s, got %s",
 			expected.Value, current.Value)
 	}
@@ -184,4 +234,119 @@ func CompareFileChecksums(a, b *FileChecksum) bool {
 	return a.Algorithm == b.Algorithm &&
 		a.Value == b.Value &&
 		a.Size == b.Size
+}
+
+// ChecksumJob represents a checksum calculation job for parallel processing
+type ChecksumJob struct {
+	FilePath  string
+	Algorithm ChecksumAlgorithm
+	Result    chan ChecksumResult
+}
+
+// ChecksumResult contains the result of a checksum calculation
+type ChecksumResult struct {
+	FilePath string
+	Checksum *FileChecksum
+	Error    error
+}
+
+// ChecksumWorkerPool manages parallel checksum calculations
+type ChecksumWorkerPool struct {
+	workerCount int
+	jobs        chan ChecksumJob
+	wg          sync.WaitGroup
+}
+
+// NewChecksumWorkerPool creates a new worker pool for parallel checksum calculation
+func NewChecksumWorkerPool(workerCount int) *ChecksumWorkerPool {
+	if workerCount <= 0 {
+		workerCount = 4 // Default worker count
+	}
+
+	pool := &ChecksumWorkerPool{
+		workerCount: workerCount,
+		jobs:        make(chan ChecksumJob, workerCount*2), // Buffered channel
+	}
+
+	// Start workers
+	for i := 0; i < workerCount; i++ {
+		pool.wg.Add(1)
+		go pool.worker()
+	}
+
+	return pool
+}
+
+// worker processes checksum jobs
+func (p *ChecksumWorkerPool) worker() {
+	defer p.wg.Done()
+
+	for job := range p.jobs {
+		startTime := time.Now()
+		checksum, err := CalculateFileChecksum(job.FilePath, job.Algorithm)
+
+		if err != nil {
+			duration := time.Since(startTime)
+			fmt.Fprintf(os.Stderr, "WARN: Parallel checksum calculation failed %s=%s %s=%dms error=%v\n",
+				MetricChecksumCalculationFailed, job.FilePath, MetricChecksumCalculationTime, duration.Milliseconds(), err)
+		} else {
+			duration := time.Since(startTime)
+			fmt.Fprintf(os.Stderr, "INFO: Parallel checksum calculation completed %s=%s %s=%s %s=%dms\n",
+				MetricChecksumCalculationSuccess, job.FilePath, MetricChecksumAlgorithm, job.Algorithm, MetricChecksumCalculationTime, duration.Milliseconds())
+		}
+
+		job.Result <- ChecksumResult{
+			FilePath: job.FilePath,
+			Checksum: checksum,
+			Error:    err,
+		}
+	}
+}
+
+// CalculateChecksums calculates checksums for multiple files in parallel
+func (p *ChecksumWorkerPool) CalculateChecksums(filePaths []string, algorithm ChecksumAlgorithm) map[string]ChecksumResult {
+	results := make(map[string]ChecksumResult)
+
+	if len(filePaths) == 0 {
+		return results
+	}
+
+	// Create result channels
+	resultChans := make([]chan ChecksumResult, len(filePaths))
+	for i := range resultChans {
+		resultChans[i] = make(chan ChecksumResult, 1)
+	}
+
+	// Submit jobs
+	for i, filePath := range filePaths {
+		job := ChecksumJob{
+			FilePath:  filePath,
+			Algorithm: algorithm,
+			Result:    resultChans[i],
+		}
+		p.jobs <- job
+	}
+
+	// Collect results
+	for i, resultChan := range resultChans {
+		result := <-resultChan
+		results[filePaths[i]] = result
+		close(resultChan)
+	}
+
+	return results
+}
+
+// Close shuts down the worker pool
+func (p *ChecksumWorkerPool) Close() {
+	close(p.jobs)
+	p.wg.Wait()
+}
+
+// CalculateChecksumsParallel is a convenience function for parallel checksum calculation
+func CalculateChecksumsParallel(filePaths []string, algorithm ChecksumAlgorithm, workerCount int) map[string]ChecksumResult {
+	pool := NewChecksumWorkerPool(workerCount)
+	defer pool.Close()
+
+	return pool.CalculateChecksums(filePaths, algorithm)
 }

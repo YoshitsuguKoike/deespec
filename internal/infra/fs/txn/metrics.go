@@ -56,8 +56,10 @@ const (
 	MetricWriteFileSync  = "fsync.write.file.sync"
 
 	// Checksum validation metrics (Step 11)
-	MetricChecksumValidationSuccess = "txn.checksum.validation.success"
-	MetricChecksumValidationFailed  = "txn.checksum.validation.failed"
-	MetricChecksumCalculationTime   = "txn.checksum.calculation.duration_ms"
-	MetricChecksumAlgorithm         = "txn.checksum.algorithm"
+	MetricChecksumValidationSuccess  = "txn.checksum.validation.success"
+	MetricChecksumValidationFailed   = "txn.checksum.validation.failed"
+	MetricChecksumCalculationTime    = "txn.checksum.calculation.duration_ms"
+	MetricChecksumAlgorithm          = "txn.checksum.algorithm"
+	MetricChecksumCalculationSuccess = "txn.checksum.calculation.success"
+	MetricChecksumCalculationFailed  = "txn.checksum.calculation.failed"
 )

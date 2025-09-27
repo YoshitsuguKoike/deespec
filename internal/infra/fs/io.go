@@ -1,3 +1,6 @@
+//go:build !fsync_audit
+// +build !fsync_audit
+
 package fs
 
 import (

@@ -91,7 +91,10 @@ func registerWithTransaction(
 	return nil
 }
 
-// appendJournalEntryTX appends a journal entry within a transaction
+// appendJournalEntryTX appends a journal entry with full durability guarantees.
+// DURABILITY: Uses O_APPEND + fsync(file) + fsync(parent dir) to ensure atomic,
+// durable writes. This is called within Commit's withJournal callback, ensuring
+// journal durability before the transaction is marked as committed.
 func appendJournalEntryTX(journalEntry map[string]interface{}) error {
 	journalDir := ".deespec/var"
 	journalPath := filepath.Join(journalDir, "journal.ndjson")

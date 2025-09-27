@@ -2,11 +2,17 @@ package txn
 
 // Metrics keys reserved for Step 12 doctor/metrics integration
 // These keys provide a standard interface for monitoring and diagnostics
+// METRICS KEYS (Step 7 feedback): Fixed key names for Step 12 integration
 const (
 	// Transaction commit metrics
 	MetricCommitSuccess    = "txn.commit.success"
 	MetricCommitFailed     = "txn.commit.failed"
 	MetricCommitIdempotent = "txn.commit.idempotent"
+
+	// Transaction rollback metrics (Step 7 feedback)
+	MetricRegisterRollbackCount = "txn.register.rollback.count"
+	MetricRollbackSuccess       = "txn.rollback.success"
+	MetricRollbackFailed        = "txn.rollback.failed"
 
 	// Transaction recovery metrics
 	MetricRecoverForwardCount   = "txn.recover.forward.count"

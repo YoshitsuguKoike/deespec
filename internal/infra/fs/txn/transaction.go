@@ -80,8 +80,8 @@ func (m *Manager) StageFile(tx *Transaction, dst string, content []byte) error {
 		return fmt.Errorf("cannot stage file: transaction status is %s", tx.Status)
 	}
 
-	// Early EXDEV detection: verify stage and destination are on same filesystem
-	// This prevents late failures during commit
+	// EARLY EXDEV DETECTION (Step 7 feedback): Verify stage and destination are on same filesystem
+	// This ensures we fail fast if rename would cross device boundaries, preventing late commit failures
 	stagePath := filepath.Join(tx.StageDir, dst)
 
 	// Create a test file in stage directory to check filesystem
@@ -175,15 +175,18 @@ func (m *Manager) MarkIntent(tx *Transaction) error {
 
 // Commit commits the transaction
 // The destRoot parameter specifies the root directory for final file destinations
-// This method is idempotent - if already committed, it returns success without action
+//
+// IDEMPOTENCY GUARANTEE: This method is fully idempotent. If status.commit already exists,
+// it returns success immediately without any action (no-op return). This makes forward
+// recovery completely safe for double execution.
 func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() error) error {
-	// Check if already committed (idempotent)
+	// IDEMPOTENT CHECK: If status.commit exists, this is a no-op (safe for forward recovery)
 	commitPath := filepath.Join(tx.BaseDir, "status.commit")
 	if _, err := os.Stat(commitPath); err == nil {
-		// Already committed - this is safe, just update status and return
+		// Already committed - no-op return for complete idempotency
 		tx.Status = StatusCommit
 		// Log for metrics tracking (Step 12 preparation)
-		fmt.Fprintf(os.Stderr, "INFO: Transaction already committed txn.commit.idempotent=true txn.id=%s\n", tx.Manifest.ID)
+		fmt.Fprintf(os.Stderr, "INFO: Transaction already committed (no-op) txn.commit.idempotent=true txn.id=%s\n", tx.Manifest.ID)
 		return nil
 	}
 
@@ -209,6 +212,9 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 	}
 
 	// Phase 2: Execute journal operation
+	// CLEANUP ORDER (Step 7 feedback): Journal must be successfully appended BEFORE
+	// creating status.commit marker. This ensures journal durability before marking
+	// the transaction as complete.
 	if withJournal != nil {
 		if err := withJournal(); err != nil {
 			return fmt.Errorf("journal operation failed: %w", err)
@@ -216,6 +222,7 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 	}
 
 	// Phase 3: Mark commit complete
+	// This creates status.commit AFTER successful journal append
 	commit := &Commit{
 		TxnID:       tx.Manifest.ID,
 		CommittedAt: time.Now().UTC(),
@@ -248,6 +255,9 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 }
 
 // Cleanup removes transaction work directory
+// CLEANUP ORDER (Step 7 feedback): This method should only be called AFTER
+// successful journal append and commit marker creation. For failed transactions,
+// cleanup happens through Step 8's recovery flow.
 func (m *Manager) Cleanup(tx *Transaction) error {
 	// Only cleanup committed or aborted transactions
 	if tx.Status != StatusCommit && tx.Status != StatusAborted {

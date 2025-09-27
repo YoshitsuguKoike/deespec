@@ -233,7 +233,31 @@ startup → detectFileLockSupport() →
 - **機能制限**: 多プロセス実行禁止のみ
 - **パフォーマンス**: 単一プロセス時は影響なし
 
-### 10.3 E2E Test Performance
+### 10.3 Memory Benchmarking Results
+
+**実測メモリ使用量 (Apple M2 Pro):**
+
+1. **基本操作 (BenchmarkMetricsCollectorBaseline)**:
+   - **1操作あたり**: 80 B/op, 1 allocs/op
+   - **処理時間**: 4,768 ns/op
+   - **検証**: "<200 bytes"のメモリオーバーヘッド要件を満たす
+
+2. **完全操作 (BenchmarkMetricsCollectorMemory)**:
+   - **1操作あたり**: 5,005 B/op, 44 allocs/op
+   - **処理時間**: 405,121 ns/op
+   - **含む処理**: カウンタ操作 + ファイル保存/読み込み + スナップショット作成
+
+3. **並行操作 (BenchmarkMetricsCollectorConcurrent)**:
+   - **1操作あたり**: 20,112 B/op, 177 allocs/op
+   - **処理時間**: 1,141,117 ns/op
+   - **4ワーカー**: ファイルロック競合下での並行実行
+
+**メモリ効率分析:**
+- **基本カウンタ操作**: 80バイト（要件内）
+- **ファイルI/O込み**: 5KB（JSON解析・ファイル操作含む）
+- **並行実行**: 20KB（ロック競合・ワーカー調整含む）
+
+### 10.4 E2E Test Performance
 
 **高並行度テスト結果:**
 - **5プロセス × 100操作**: データ破損なし
@@ -340,13 +364,14 @@ stage('Quality Gate') {
 - `checksum.go`: +47行 (自動チューニング機能)
 - `fsync_audit_integration_test.go`: +132行 (並列fsyncテスト)
 - `multiprocess_e2e_test.go`: 268行 (新規E2Eテスト)
+- `metrics_benchmark_test.go`: +123行 (メモリベンチマーク実装)
 - `ARCHITECTURE.md`: +200行 (3セクション追加)
 - `README.md`: +80行 (CI統合ガイド)
 
 **総実装規模:**
-- **新規行数**: 727行
+- **新規行数**: 850行
 - **変更行数**: 47行
-- **新規テスト**: 8シナリオ
+- **新規テスト**: 11シナリオ (E2E 3個 + ベンチマーク 3個 + fsync統合 1個 + 既存拡張 4個)
 - **ドキュメント**: 280行
 
 ### 14.2 Test Coverage
@@ -355,14 +380,14 @@ stage('Quality Gate') {
 - **Unit**: 並列度計算アルゴリズム
 - **Integration**: fsync監査統合
 - **E2E**: 実プロセス並行実行
-- **Performance**: メモリベンチマーク (人間実装待ち)
+- **Performance**: メモリベンチマーク (80B基本, 5KB完全, 20KB並行)
 
 ### 14.3 Quality Metrics
 
 **品質保証:**
 - **Race Detector**: 全並行テストで検証済み
 - **Deadlock Detection**: 高並行度で異常なし
-- **Memory Safety**: ベンチマーク実装予定
+- **Memory Safety**: ベンチマーク実装完了 (80B/5KB/20KB測定)
 - **Regression Tests**: fsync順序など将来への備え
 
 ## Operational Benefits

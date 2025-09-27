@@ -37,6 +37,8 @@
   - flock_unix.go / flock_windows.go でファイルロックを抽象化
   - device_unix.go / device_windows.go でデバイス比較を抽象化
   - Windows でのクロスコンパイルが成功するように修正
+* **テストの移植性向上**: settings_test.go で絶対パスを相対パスに変更
+  - testutil の絶対パスバリデーションをパス
 
 ---
 

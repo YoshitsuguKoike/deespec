@@ -1,0 +1,264 @@
+package txn
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
+)
+
+// Manager handles transaction lifecycle
+type Manager struct {
+	baseDir string // Base directory for all transactions (.deespec/var/txn)
+}
+
+// NewManager creates a new transaction manager
+func NewManager(baseDir string) *Manager {
+	return &Manager{
+		baseDir: baseDir,
+	}
+}
+
+// Begin starts a new transaction
+func (m *Manager) Begin(ctx context.Context) (*Transaction, error) {
+	// Generate unique transaction ID
+	txnID := generateTxnID()
+
+	// Create transaction directories
+	txnDir := filepath.Join(m.baseDir, string(txnID))
+	stageDir := filepath.Join(txnDir, "stage")
+	undoDir := filepath.Join(txnDir, "undo")
+
+	// Create directories with proper permissions
+	if err := os.MkdirAll(stageDir, 0755); err != nil {
+		return nil, fmt.Errorf("create stage directory: %w", err)
+	}
+
+	if err := os.MkdirAll(undoDir, 0755); err != nil {
+		return nil, fmt.Errorf("create undo directory: %w", err)
+	}
+
+	// Fsync parent directory to ensure directories are persisted
+	if err := fs.FsyncDir(m.baseDir); err != nil {
+		// Log warning but continue (as per architecture doc)
+		fmt.Fprintf(os.Stderr, "WARN: fsync base directory failed: %v\n", err)
+	}
+
+	// Create initial manifest
+	manifest := &Manifest{
+		ID:          txnID,
+		Description: "Transaction " + string(txnID),
+		Files:       []FileOperation{},
+		CreatedAt:   time.Now().UTC(),
+	}
+
+	// Create transaction object
+	tx := &Transaction{
+		Manifest: manifest,
+		Status:   StatusPending,
+		BaseDir:  txnDir,
+		StageDir: stageDir,
+		UndoDir:  undoDir,
+	}
+
+	// Save initial manifest
+	if err := m.saveManifest(tx); err != nil {
+		return nil, fmt.Errorf("save manifest: %w", err)
+	}
+
+	return tx, nil
+}
+
+// StageFile stages a file for the transaction
+func (m *Manager) StageFile(tx *Transaction, dst string, content []byte) error {
+	if tx.Status != StatusPending {
+		return fmt.Errorf("cannot stage file: transaction status is %s", tx.Status)
+	}
+
+	// Create relative path for staging
+	stagePath := filepath.Join(tx.StageDir, dst)
+	stageDir := filepath.Dir(stagePath)
+
+	// Create parent directories if needed
+	if err := os.MkdirAll(stageDir, 0755); err != nil {
+		return fmt.Errorf("create stage parent directory: %w", err)
+	}
+
+	// Write file to stage with fsync
+	if err := fs.WriteFileSync(stagePath, content, 0644); err != nil {
+		return fmt.Errorf("write staged file: %w", err)
+	}
+
+	// Update manifest with file operation
+	op := FileOperation{
+		Type:        "create",
+		Destination: dst,
+		Size:        int64(len(content)),
+		Mode:        0644,
+	}
+
+	tx.Manifest.Files = append(tx.Manifest.Files, op)
+
+	// Save updated manifest
+	if err := m.saveManifest(tx); err != nil {
+		return fmt.Errorf("update manifest: %w", err)
+	}
+
+	return nil
+}
+
+// MarkIntent marks the transaction as ready to commit
+func (m *Manager) MarkIntent(tx *Transaction) error {
+	if tx.Status != StatusPending {
+		return fmt.Errorf("cannot mark intent: transaction status is %s", tx.Status)
+	}
+
+	// Validate manifest before marking intent
+	if err := tx.Manifest.Validate(); err != nil {
+		return fmt.Errorf("invalid manifest: %w", err)
+	}
+
+	// Create intent marker
+	intent := &Intent{
+		TxnID:     tx.Manifest.ID,
+		MarkedAt:  time.Now().UTC(),
+		Checksums: make(map[string]string),
+		Ready:     true,
+	}
+
+	// TODO: Calculate checksums for staged files (Step 11)
+	// For now, we'll use empty checksums
+	for _, op := range tx.Manifest.Files {
+		intent.Checksums[op.Destination] = ""
+	}
+
+	// Save intent marker
+	intentPath := filepath.Join(tx.BaseDir, "status.intent")
+	intentData, err := json.MarshalIndent(intent, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal intent: %w", err)
+	}
+
+	if err := fs.WriteFileSync(intentPath, intentData, 0644); err != nil {
+		return fmt.Errorf("write intent marker: %w", err)
+	}
+
+	// Update transaction state
+	tx.Status = StatusIntent
+	tx.Intent = intent
+
+	return nil
+}
+
+// Commit commits the transaction
+// The destRoot parameter specifies the root directory for final file destinations
+func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() error) error {
+	if tx.Status != StatusIntent {
+		return fmt.Errorf("cannot commit: transaction status is %s", tx.Status)
+	}
+
+	// Phase 1: Rename staged files to final destinations
+	for _, op := range tx.Manifest.Files {
+		stagePath := filepath.Join(tx.StageDir, op.Destination)
+		finalPath := filepath.Join(destRoot, op.Destination)
+
+		// Ensure parent directory exists
+		finalDir := filepath.Dir(finalPath)
+		if err := os.MkdirAll(finalDir, 0755); err != nil {
+			return fmt.Errorf("create final directory: %w", err)
+		}
+
+		// Atomic rename
+		if err := fs.AtomicRename(stagePath, finalPath); err != nil {
+			return fmt.Errorf("rename %s to %s: %w", stagePath, finalPath, err)
+		}
+	}
+
+	// Phase 2: Execute journal operation
+	if withJournal != nil {
+		if err := withJournal(); err != nil {
+			return fmt.Errorf("journal operation failed: %w", err)
+		}
+	}
+
+	// Phase 3: Mark commit complete
+	commit := &Commit{
+		TxnID:       tx.Manifest.ID,
+		CommittedAt: time.Now().UTC(),
+		CommittedFiles: func() []string {
+			files := make([]string, len(tx.Manifest.Files))
+			for i, op := range tx.Manifest.Files {
+				files[i] = op.Destination
+			}
+			return files
+		}(),
+		Success: true,
+	}
+
+	// Save commit marker
+	commitPath := filepath.Join(tx.BaseDir, "status.commit")
+	commitData, err := json.MarshalIndent(commit, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal commit: %w", err)
+	}
+
+	if err := fs.WriteFileSync(commitPath, commitData, 0644); err != nil {
+		return fmt.Errorf("write commit marker: %w", err)
+	}
+
+	// Update transaction state
+	tx.Status = StatusCommit
+	tx.Commit = commit
+
+	return nil
+}
+
+// Cleanup removes transaction work directory
+func (m *Manager) Cleanup(tx *Transaction) error {
+	// Only cleanup committed or aborted transactions
+	if tx.Status != StatusCommit && tx.Status != StatusAborted {
+		return fmt.Errorf("cannot cleanup: transaction status is %s", tx.Status)
+	}
+
+	// Remove entire transaction directory
+	if err := os.RemoveAll(tx.BaseDir); err != nil {
+		return fmt.Errorf("remove transaction directory: %w", err)
+	}
+
+	// Fsync parent to ensure removal is persisted
+	if err := fs.FsyncDir(m.baseDir); err != nil {
+		// Log warning but continue
+		fmt.Fprintf(os.Stderr, "WARN: fsync after cleanup failed: %v\n", err)
+	}
+
+	return nil
+}
+
+// saveManifest saves the transaction manifest to disk
+func (m *Manager) saveManifest(tx *Transaction) error {
+	manifestPath := filepath.Join(tx.BaseDir, "manifest.json")
+	data, err := json.MarshalIndent(tx.Manifest, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal manifest: %w", err)
+	}
+
+	if err := fs.WriteFileSync(manifestPath, data, 0644); err != nil {
+		return fmt.Errorf("write manifest: %w", err)
+	}
+
+	return nil
+}
+
+// generateTxnID generates a unique transaction ID
+func generateTxnID() TxnID {
+	// Format: txn_<timestamp>_<random>
+	// For simplicity, using timestamp + nanoseconds
+	now := time.Now().UTC()
+	return TxnID(fmt.Sprintf("txn_%d_%d",
+		now.Unix(),
+		now.Nanosecond()))
+}

@@ -190,7 +190,7 @@ steps:
 
 // TestDoctorPromptSizeAndEncoding tests size limit and encoding validation (SBI-DR-002)
 func TestDoctorPromptSizeAndEncoding(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name           string
 		workflowYAML   string
 		setupFiles     map[string][]byte // path -> content (as bytes for binary data)

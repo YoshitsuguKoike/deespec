@@ -1,6 +1,7 @@
 package txn
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -14,20 +15,46 @@ type Status string
 
 const (
 	// StatusPending indicates transaction is initialized but not started
-	StatusPending Status = "pending"
+	StatusPending Status = "PENDING"
 
 	// StatusIntent indicates all files are staged and ready to commit
-	StatusIntent Status = "intent"
+	StatusIntent Status = "INTENT"
 
 	// StatusCommit indicates transaction has been successfully committed
-	StatusCommit Status = "commit"
+	StatusCommit Status = "COMMIT"
 
 	// StatusAborted indicates transaction was explicitly aborted
-	StatusAborted Status = "aborted"
+	StatusAborted Status = "ABORTED"
 
 	// StatusFailed indicates transaction failed during execution
-	StatusFailed Status = "failed"
+	StatusFailed Status = "FAILED"
 )
+
+// IsValid checks if the status value is valid
+func (s Status) IsValid() bool {
+	switch s {
+	case StatusPending, StatusIntent, StatusCommit, StatusAborted, StatusFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+// UnmarshalJSON validates status values during JSON deserialization
+func (s *Status) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return fmt.Errorf("invalid status format: %w", err)
+	}
+
+	status := Status(str)
+	if !status.IsValid() {
+		return fmt.Errorf("invalid status value: %q", str)
+	}
+
+	*s = status
+	return nil
+}
 
 // FileOperation represents a single file operation within a transaction.
 type FileOperation struct {
@@ -50,6 +77,37 @@ type FileOperation struct {
 	Mode uint32 `json:"mode,omitempty"`
 }
 
+// Validate checks if the file operation has valid required fields
+func (f *FileOperation) Validate() error {
+	// Type is required
+	if f.Type == "" {
+		return fmt.Errorf("file operation type is required")
+	}
+
+	// Validate operation type
+	switch f.Type {
+	case "create", "update", "delete", "rename":
+		// valid
+	default:
+		return fmt.Errorf("invalid file operation type: %q", f.Type)
+	}
+
+	// Destination is required for all operations
+	if f.Destination == "" {
+		return fmt.Errorf("destination path is required")
+	}
+
+	// For rename operations, source is required
+	if f.Type == "rename" && f.Source == "" {
+		return fmt.Errorf("source path is required for rename operation")
+	}
+
+	// For create/update operations, checksum will be required (Step 11)
+	// but we don't enforce it yet to maintain backward compatibility
+
+	return nil
+}
+
 // Manifest represents the transaction plan.
 // It describes what changes will be made atomically.
 type Manifest struct {
@@ -70,6 +128,33 @@ type Manifest struct {
 
 	// Metadata for tracking (e.g., user, source command)
 	Meta map[string]interface{} `json:"meta,omitempty"`
+}
+
+// Validate checks if the manifest has valid required fields
+func (m *Manifest) Validate() error {
+	// ID is required
+	if m.ID == "" {
+		return fmt.Errorf("transaction ID is required")
+	}
+
+	// At least one file operation is required
+	if len(m.Files) == 0 {
+		return fmt.Errorf("at least one file operation is required")
+	}
+
+	// Validate each file operation
+	for i, op := range m.Files {
+		if err := op.Validate(); err != nil {
+			return fmt.Errorf("file operation[%d]: %w", i, err)
+		}
+	}
+
+	// CreatedAt should not be zero
+	if m.CreatedAt.IsZero() {
+		return fmt.Errorf("creation timestamp is required")
+	}
+
+	return nil
 }
 
 // Intent represents the ready-to-commit state marker.

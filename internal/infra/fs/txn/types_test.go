@@ -1,6 +1,7 @@
 package txn
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -17,17 +18,75 @@ func TestTxnStatus(t *testing.T) {
 	}
 
 	expectedValues := []string{
-		"pending",
-		"intent",
-		"commit",
-		"aborted",
-		"failed",
+		"PENDING",
+		"INTENT",
+		"COMMIT",
+		"ABORTED",
+		"FAILED",
 	}
 
 	for i, status := range statuses {
 		if string(status) != expectedValues[i] {
 			t.Errorf("Status mismatch: got %s, want %s", status, expectedValues[i])
 		}
+	}
+}
+
+func TestStatusIsValid(t *testing.T) {
+	tests := []struct {
+		name   string
+		status Status
+		want   bool
+	}{
+		{"Valid PENDING", StatusPending, true},
+		{"Valid INTENT", StatusIntent, true},
+		{"Valid COMMIT", StatusCommit, true},
+		{"Valid ABORTED", StatusAborted, true},
+		{"Valid FAILED", StatusFailed, true},
+		{"Invalid empty", Status(""), false},
+		{"Invalid unknown", Status("UNKNOWN"), false},
+		{"Invalid lowercase", Status("pending"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.status.IsValid(); got != tt.want {
+				t.Errorf("Status.IsValid() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStatusUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		json    string
+		want    Status
+		wantErr bool
+	}{
+		{"Valid PENDING", `"PENDING"`, StatusPending, false},
+		{"Valid INTENT", `"INTENT"`, StatusIntent, false},
+		{"Valid COMMIT", `"COMMIT"`, StatusCommit, false},
+		{"Valid ABORTED", `"ABORTED"`, StatusAborted, false},
+		{"Valid FAILED", `"FAILED"`, StatusFailed, false},
+		{"Invalid unknown", `"UNKNOWN"`, Status(""), true},
+		{"Invalid lowercase", `"pending"`, Status(""), true},
+		{"Invalid format", `123`, Status(""), true},
+		{"Invalid empty", `""`, Status(""), true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got Status
+			err := json.Unmarshal([]byte(tt.json), &got)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Status.UnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != tt.want {
+				t.Errorf("Status.UnmarshalJSON() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -60,6 +119,71 @@ func TestFileOperation(t *testing.T) {
 
 	if renameOp.Source != "testdata/old/path.txt" {
 		t.Errorf("Source mismatch: got %s, want testdata/old/path.txt", renameOp.Source)
+	}
+}
+
+func TestFileOperationValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		op      FileOperation
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "Valid create operation",
+			op: FileOperation{
+				Type:        "create",
+				Destination: "/path/to/file.txt",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Valid rename operation",
+			op: FileOperation{
+				Type:        "rename",
+				Source:      "/old/path.txt",
+				Destination: "/new/path.txt",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "Missing type",
+			op:      FileOperation{Destination: "/path/to/file.txt"},
+			wantErr: true,
+			errMsg:  "file operation type is required",
+		},
+		{
+			name:    "Invalid type",
+			op:      FileOperation{Type: "invalid", Destination: "/path"},
+			wantErr: true,
+			errMsg:  "invalid file operation type",
+		},
+		{
+			name:    "Missing destination",
+			op:      FileOperation{Type: "create"},
+			wantErr: true,
+			errMsg:  "destination path is required",
+		},
+		{
+			name:    "Rename missing source",
+			op:      FileOperation{Type: "rename", Destination: "/new/path.txt"},
+			wantErr: true,
+			errMsg:  "source path is required for rename operation",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.op.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FileOperation.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && tt.errMsg != "" && err != nil {
+				if err.Error() != tt.errMsg && !contains(err.Error(), tt.errMsg) {
+					t.Errorf("FileOperation.Validate() error = %v, want containing %v", err, tt.errMsg)
+				}
+			}
+		})
 	}
 }
 
@@ -98,6 +222,86 @@ func TestManifest(t *testing.T) {
 	}
 	if manifest.Meta["user"] != "testuser" {
 		t.Errorf("Meta user mismatch: got %v, want testuser", manifest.Meta["user"])
+	}
+}
+
+func TestManifestValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		m       Manifest
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "Valid manifest",
+			m: Manifest{
+				ID:          TxnID("txn_valid"),
+				Description: "Valid transaction",
+				Files: []FileOperation{
+					{Type: "create", Destination: "/path/to/file"},
+				},
+				CreatedAt: time.Now(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "Missing ID",
+			m: Manifest{
+				Files: []FileOperation{
+					{Type: "create", Destination: "/path/to/file"},
+				},
+				CreatedAt: time.Now(),
+			},
+			wantErr: true,
+			errMsg:  "transaction ID is required",
+		},
+		{
+			name: "No file operations",
+			m: Manifest{
+				ID:        TxnID("txn_empty"),
+				Files:     []FileOperation{},
+				CreatedAt: time.Now(),
+			},
+			wantErr: true,
+			errMsg:  "at least one file operation is required",
+		},
+		{
+			name: "Invalid file operation",
+			m: Manifest{
+				ID: TxnID("txn_invalid_op"),
+				Files: []FileOperation{
+					{Type: "", Destination: "/path"},
+				},
+				CreatedAt: time.Now(),
+			},
+			wantErr: true,
+			errMsg:  "file operation type is required",
+		},
+		{
+			name: "Zero timestamp",
+			m: Manifest{
+				ID: TxnID("txn_no_time"),
+				Files: []FileOperation{
+					{Type: "create", Destination: "/path"},
+				},
+			},
+			wantErr: true,
+			errMsg:  "creation timestamp is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.m.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Manifest.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && tt.errMsg != "" && err != nil {
+				if !contains(err.Error(), tt.errMsg) {
+					t.Errorf("Manifest.Validate() error = %v, want containing %v", err, tt.errMsg)
+				}
+			}
+		})
 	}
 }
 

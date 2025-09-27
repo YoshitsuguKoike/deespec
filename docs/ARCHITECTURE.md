@@ -82,7 +82,16 @@ fsync(file) → fsync(parent dir)
 - **commit**: stage→本番へのrename適用とjournal追記が完了した状態を示すマーカー（`status.commit`）
 - **undo**: 必要時のみ使用するbefore-imageによる巻き戻し機構（オプション）
 
-### 3.5 TX File Layout {#tx-layout}
+### 3.5 Data Format Standards {#tx-data-format}
+
+トランザクションデータの形式仕様：
+
+**時刻表現:**
+- すべてのIntent/Commitおよび関連する時刻データはUTC/RFC3339形式で統一
+- 例: `2025-09-27T05:00:00Z` または `2025-09-27T05:00:00.123456Z`
+- ログ出力や監査トレースの一貫性を確保
+
+### 3.6 TX File Layout {#tx-layout}
 
 トランザクション関連ファイルの配置規則：
 
@@ -101,7 +110,7 @@ fsync(file) → fsync(parent dir)
 - **同一ファイルシステム要件**: rename操作の原子性を保証するため、すべて同一FS上に配置
 - **txn-id**: UUID v4またはタイムスタンプベースの一意識別子
 
-### 3.6 Recovery Rules {#tx-recovery}
+### 3.7 Recovery Rules {#tx-recovery}
 
 システム起動時の復旧処理規則：
 
@@ -115,7 +124,7 @@ fsync(file) → fsync(parent dir)
 - **自動クリーンアップ**:
   - `commit`完了後のtxnディレクトリは次回起動時に削除
 
-### 3.7 Constraints and Non-Goals {#tx-constraints}
+### 3.8 Constraints and Non-Goals {#tx-constraints}
 
 **制約事項:**
 - **同一ファイルシステム要件**: rename操作の原子性を保証するため、全ファイルは同一FS上に配置

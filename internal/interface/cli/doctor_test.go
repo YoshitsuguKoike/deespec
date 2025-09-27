@@ -29,6 +29,8 @@ func TestDoctorPromptValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Enable test mode to skip path cache
+	t.Setenv("DEESPEC_TEST_MODE", "true")
 	// Set DEE_HOME for testing
 	t.Setenv("DEE_HOME", deespecDir)
 
@@ -188,24 +190,7 @@ steps:
 
 // TestDoctorPromptSizeAndEncoding tests size limit and encoding validation (SBI-DR-002)
 func TestDoctorPromptSizeAndEncoding(t *testing.T) {
-	// Create temp directory for test
-	tmpDir := t.TempDir()
-	deespecDir := filepath.Join(tmpDir, ".deespec")
-	etcDir := filepath.Join(deespecDir, "etc")
-	promptsDir := filepath.Join(deespecDir, "prompts", "system")
-
-	// Create directory structure
-	if err := os.MkdirAll(etcDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(promptsDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	// Set DEE_HOME for testing
-	t.Setenv("DEE_HOME", deespecDir)
-
-	tests := []struct {
+	tests := []struct{
 		name           string
 		workflowYAML   string
 		setupFiles     map[string][]byte // path -> content (as bytes for binary data)
@@ -297,6 +282,27 @@ steps:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create independent temp directory for each subtest
+			tmpDir := t.TempDir()
+			deespecDir := filepath.Join(tmpDir, ".deespec")
+			etcDir := filepath.Join(deespecDir, "etc")
+			promptsDir := filepath.Join(deespecDir, "prompts", "system")
+
+			// Create directory structure
+			if err := os.MkdirAll(etcDir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(promptsDir, 0755); err != nil {
+				t.Fatal(err)
+			}
+
+			// Enable test mode to skip path cache
+			t.Setenv("DEESPEC_TEST_MODE", "true")
+			// Set DEE_HOME for testing (workflow loader will use this)
+			t.Setenv("DEE_HOME", deespecDir)
+			// Set DEESPEC_WORKFLOW to point to our test workflow
+			t.Setenv("DEESPEC_WORKFLOW", filepath.Join(etcDir, "workflow.yaml"))
+
 			// Setup test environment
 			workflowPath := filepath.Join(etcDir, "workflow.yaml")
 			if err := os.WriteFile(workflowPath, []byte(tt.workflowYAML), 0644); err != nil {

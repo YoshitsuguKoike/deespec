@@ -73,9 +73,19 @@ func ResolvePaths() Paths {
 var cachedPaths *Paths
 
 func GetPaths() Paths {
+	// Skip cache if in test mode
+	if os.Getenv("DEESPEC_TEST_MODE") == "true" {
+		return ResolvePaths()
+	}
+
 	if cachedPaths == nil {
 		paths := ResolvePaths()
 		cachedPaths = &paths
 	}
 	return *cachedPaths
+}
+
+// ClearPathsCache clears the cached paths (useful for testing)
+func ClearPathsCache() {
+	cachedPaths = nil
 }

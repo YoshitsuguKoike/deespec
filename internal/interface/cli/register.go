@@ -502,8 +502,8 @@ func validateSpecWithConfig(spec *RegisterSpec, config *ResolvedConfig) Validati
 		return result
 	}
 	if config.TitleMaxLen > 0 && len(spec.Title) > config.TitleMaxLen {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("title truncated from %d to %d characters", len(spec.Title), config.TitleMaxLen))
-		spec.Title = spec.Title[:config.TitleMaxLen]
+		result.Err = fmt.Errorf("title length exceeds maximum of %d characters", config.TitleMaxLen)
+		return result
 	}
 
 	// Validate Labels
@@ -519,12 +519,12 @@ func validateSpecWithConfig(spec *RegisterSpec, config *ResolvedConfig) Validati
 		var validLabels []string
 		for _, label := range spec.Labels {
 			if config.LabelsPattern != nil && !config.LabelsPattern.MatchString(label) {
-				result.Warnings = append(result.Warnings, fmt.Sprintf("invalid label removed: %s (must match %s)", label, config.LabelsPattern.String()))
-				continue
+				result.Err = fmt.Errorf("invalid label format: %s (must match %s)", label, config.LabelsPattern.String())
+				return result
 			}
 			if labelMap[label] {
 				if config.LabelsWarnOnDuplicates {
-					result.Warnings = append(result.Warnings, fmt.Sprintf("duplicate label removed: %s", label))
+					result.Warnings = append(result.Warnings, fmt.Sprintf("duplicate label: %s", label))
 				}
 				continue
 			}

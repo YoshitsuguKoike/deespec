@@ -332,6 +332,7 @@ func TestResolveCollision(t *testing.T) {
 
 			config := GetDefaultPolicy()
 			config.Collision.DefaultMode = tt.mode
+			config.Path.DenySymlinkComponents = false // Disable symlink check for test
 			resolvedConfig, _ := ResolveRegisterConfig("", config)
 			resultPath, warning, err := resolveCollisionWithConfig(tt.path, resolvedConfig)
 			if (err != nil) != tt.expectErr {
@@ -363,6 +364,7 @@ func TestCollisionSuffixExhaustion(t *testing.T) {
 	// Should find _11
 	config := GetDefaultPolicy()
 	config.Collision.DefaultMode = CollisionSuffix
+	config.Path.DenySymlinkComponents = false // Disable symlink check for test
 	resolvedConfig, _ := ResolveRegisterConfig("", config)
 	resultPath, warning, err := resolveCollisionWithConfig(basePath, resolvedConfig)
 	if err != nil {

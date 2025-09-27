@@ -488,8 +488,8 @@ func TestValidateSpecWithConfig(t *testing.T) {
 			config: &ResolvedConfig{
 				TitleMaxLen: 20,
 			},
-			expectError: false,
-			warnCount:   1,
+			expectError: true,
+			errorMsg:    "exceeds maximum",
 		},
 		{
 			name: "duplicate labels",
@@ -514,8 +514,8 @@ func TestValidateSpecWithConfig(t *testing.T) {
 			config: &ResolvedConfig{
 				LabelsPattern: regexp.MustCompile("^[a-z]+$"),
 			},
-			expectError: false,
-			warnCount:   1,
+			expectError: true,
+			errorMsg:    "invalid label format",
 		},
 	}
 

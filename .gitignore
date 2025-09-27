@@ -52,3 +52,4 @@ state.lock
 **/.DS_Store
 tmp/
 .deespec/
+deespec

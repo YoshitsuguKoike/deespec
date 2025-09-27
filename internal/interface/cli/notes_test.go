@@ -15,7 +15,11 @@ func TestAppendNote(t *testing.T) {
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(originalDir)
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore directory: %v", err)
+		}
+	}()
 
 	// Create .deespec/var/artifacts directory
 	artifactsDir := filepath.Join(".deespec", "var", "artifacts")
@@ -134,7 +138,11 @@ func TestAppendNote_MultipleAppends(t *testing.T) {
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(originalDir)
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore directory: %v", err)
+		}
+	}()
 
 	// Create .deespec/var/artifacts directory
 	artifactsDir := filepath.Join(".deespec", "var", "artifacts")
@@ -285,7 +293,11 @@ func TestNoAbsolutePathsInNotes(t *testing.T) {
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(originalDir)
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore directory: %v", err)
+		}
+	}()
 
 	// The note paths should be relative
 	notePaths := []string{

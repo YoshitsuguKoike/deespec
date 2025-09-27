@@ -120,7 +120,9 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 	input, err := readInputWithConfig(stdinFlag, fileFlag, config)
 	if err != nil {
 		report := buildErrorReport(err, "failed to read input", config, policyFileFound, policyPath, policySHA256, startTime)
-		outputReport(report, format, compact)
+		if err := outputReport(report, format, compact); err != nil {
+			return fmt.Errorf("failed to output report: %w", err)
+		}
 		return err
 	}
 
@@ -128,7 +130,9 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 	var spec RegisterSpec
 	if err := decodeStrict(input, &spec, fileFlag); err != nil {
 		report := buildErrorReport(err, fmt.Sprintf("invalid input: %v", err), config, policyFileFound, policyPath, policySHA256, startTime)
-		outputReport(report, format, compact)
+		if err := outputReport(report, format, compact); err != nil {
+			return fmt.Errorf("failed to output report: %w", err)
+		}
 		return err
 	}
 
@@ -219,7 +223,7 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 	)
 
 	// Output report
-	outputReport(report, format, compact)
+	_ = outputReport(report, format, compact)
 
 	// Return error if validation failed
 	if validationResult.Err != nil {

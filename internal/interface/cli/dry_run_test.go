@@ -91,7 +91,9 @@ collision:
   default_mode: "error"
   suffix_limit: 5
 `
-	os.WriteFile(policyPath, []byte(policyContent), 0644)
+	if err := os.WriteFile(policyPath, []byte(policyContent), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Load policy
 	policy, _ := LoadRegisterPolicy(policyPath)
@@ -419,7 +421,9 @@ title: Schema Test
 
 		// Parse and re-marshal to normalize
 		var report DryRunReport
-		json.Unmarshal(stdout, &report)
+		if err := json.Unmarshal(stdout, &report); err != nil {
+			t.Fatal(err)
+		}
 
 		// Clear timestamp fields for comparison
 		report.Meta.TsUTC = "NORMALIZED"
@@ -439,7 +443,9 @@ title: Schema Test
 
 	// Verify schema version is present
 	var report DryRunReport
-	json.Unmarshal([]byte(outputs[0]), &report)
+	if err := json.Unmarshal([]byte(outputs[0]), &report); err != nil {
+		t.Fatal(err)
+	}
 	if report.Meta.SchemaVersion != 1 {
 		t.Errorf("Expected schema_version 1, got: %d", report.Meta.SchemaVersion)
 	}
@@ -456,7 +462,9 @@ func TestDryRun_StderrLevel(t *testing.T) {
 logging:
   stderr_level_default: "error"
 `
-	os.WriteFile(policyPath, []byte(policyContent), 0644)
+	if err := os.WriteFile(policyPath, []byte(policyContent), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Mock GetPolicyPath
 	oldGetPolicyPath := GetPolicyPath
@@ -489,7 +497,7 @@ title: Log Test
 	wErr.Close()
 	wOut.Close()
 	stderr, _ := io.ReadAll(rErr)
-	io.ReadAll(rOut) // Drain stdout
+	_, _ = io.ReadAll(rOut) // Drain stdout
 
 	// With stderr_level_default: error, INFO messages should not appear
 	if strings.Contains(string(stderr), "INFO:") {

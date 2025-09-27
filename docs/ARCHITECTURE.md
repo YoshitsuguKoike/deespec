@@ -233,7 +233,72 @@ main() → RunStartupRecovery() → AcquireLock() → Normal Operation
 - 競合率が5%を超える場合、リトライ機構導入を検討
 - 本実装は現行の安全失敗方針を継続し、将来の運用データに基づく判断を優先
 
-### 3.10 Constraints and Non-Goals {#tx-constraints}
+### 3.10 Recovery Backoff Strategy {#tx-recovery-backoff}
+
+**大規模トランザクション検証失敗時のバックオフ戦略:**
+
+**適用条件:**
+- 複数の大規模トランザクション（6ファイル以上）でのchecksum検証失敗
+- 並列checksum計算中の連続的な失敗検出
+- システム負荷が高い状況での復旧処理
+
+**指数バックオフアルゴリズム:**
+```go
+// Recovery backoff configuration
+type RecoveryBackoffConfig struct {
+    MaxRetries     int           // 最大リトライ回数 (デフォルト: 3)
+    BaseDelay      time.Duration // 基本遅延時間 (デフォルト: 100ms)
+    MaxDelay       time.Duration // 最大遅延時間 (デフォルト: 5秒)
+    BackoffFactor  float64       // バックオフ係数 (デフォルト: 2.0)
+}
+
+// Exponential backoff implementation
+for attempt := 0; attempt < config.MaxRetries; attempt++ {
+    if err := recoveryOperation(); err == nil {
+        break  // 成功
+    }
+
+    // checksum検証以外のエラーは即座に失敗
+    if !isChecksumValidationError(err) {
+        return err
+    }
+
+    // 指数バックオフ計算
+    delay := time.Duration(float64(config.BaseDelay) *
+             math.Pow(config.BackoffFactor, float64(attempt)))
+    if delay > config.MaxDelay {
+        delay = config.MaxDelay
+    }
+
+    fmt.Fprintf(os.Stderr, "WARN: Recovery retry attempt=%d delay=%s error=%v\n",
+                attempt+1, delay, err)
+    time.Sleep(delay)
+}
+```
+
+**バックオフ適用ケース:**
+1. **Checksum Mismatch Recovery**: 破損検出時の再計算リトライ
+2. **Parallel Validation Failure**: 並列処理中の部分失敗からの復旧
+3. **I/O Contention**: 高負荷時のファイルアクセス競合解決
+
+**失敗時の最終処理:**
+- 最大リトライ回数到達時は手動調査を要求
+- トランザクションディレクトリを保持（削除しない）
+- 詳細エラーログと調査手順をSTDERRに出力
+- メトリクス `txn.recovery.backoff.failed` を記録
+
+**メトリクス出力:**
+```bash
+INFO: Recovery backoff succeeded attempt=2 total_delay=300ms
+WARN: Recovery backoff failed max_retries=3 total_delay=700ms
+```
+
+**運用における考慮事項:**
+- バックオフは復旧可能なエラーのみに適用（データ破損等は対象外）
+- システム負荷が高い時間帯での自動復旧率向上が目的
+- 過度なリトライによるシステム負荷増大を防止するため上限設定
+
+### 3.11 Constraints and Non-Goals {#tx-constraints}
 
 **制約事項:**
 - **同一ファイルシステム要件**: rename操作の原子性を保証するため、全ファイルは同一FS上に配置
@@ -256,6 +321,181 @@ main() → RunStartupRecovery() → AcquireLock() → Normal Operation
 - RDBMSレベルのACID保証
 - クロスファイルシステムでの原子性
 - ネットワークファイルシステム（NFS/SMB）での動作保証
+
+### 3.12 File Lock Fallback Strategy {#tx-lock-fallback}
+
+**flock非対応ファイルシステム向けフォールバック戦略:**
+
+**検出機能:**
+- 起動時にflock機能のサポート状況を自動検出
+- テスト用一時ファイルでflock(LOCK_EX)を試行
+- 失敗時は自動的にフォールバック戦略を有効化
+
+**フォールバック戦略:**
+```go
+// File lock fallback detection
+func detectFileLockSupport() bool {
+    tempFile, err := os.CreateTemp("", "flock_test_*")
+    if err != nil {
+        return false  // Cannot test, assume unsupported
+    }
+    defer os.Remove(tempFile.Name())
+    defer tempFile.Close()
+
+    // Test flock support
+    err = syscall.Flock(int(tempFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+    if err != nil {
+        return false  // flock not supported
+    }
+
+    syscall.Flock(int(tempFile.Fd()), syscall.LOCK_UN)
+    return true  // flock supported
+}
+```
+
+**単プロセス運用への自動フォールバック:**
+1. **flock非対応検出時**: 警告メッセージを出力し、単プロセス運用に切り替え
+2. **プロセス多重起動防止**: PIDファイルベースの排他制御を代替利用
+3. **メトリクス同期**: ファイルベースの単純な読み書きに降格（競合リスクあり）
+
+**警告メッセージ例:**
+```bash
+WARN: File locking (flock) not supported on this filesystem
+INFO: Automatic fallback to single-process operation mode
+INFO: Multi-process concurrent execution is disabled for safety
+```
+
+**対象ファイルシステム:**
+- **非対応例**: 古いNFS v2/v3、一部のFUSE実装、コンテナ環境の特殊マウント
+- **対応例**: Linux ext4/xfs/btrfs、macOS APFS/HFS+、Windows NTFS
+- **不明時**: 安全側に倒してフォールバック動作を選択
+
+**運用時の制約:**
+- フォールバック時は複数プロセス同時実行を禁止
+- メトリクスの同期精度が低下（ベストエフォート）
+- データ整合性はPIDファイルロックにより保証
+- パフォーマンスへの影響は軽微（単純ファイル操作のため）
+
+**自動切り替えログ:**
+```bash
+INFO: File lock support detected=true mode=multi_process_safe
+WARN: File lock support detected=false mode=single_process_fallback
+```
+
+### 3.13 Metrics Snapshot Retention Policy {#metrics-snapshot-retention}
+
+**メトリクススナップショットの保有ポリシー:**
+
+**デフォルト保持設定:**
+- **保持期間**: 30日間（デフォルト）
+- **最大個数**: 1000個（ディスク容量保護）
+- **ディスク上限**: 100MB（大量スナップショット時の保護）
+- **クリーンアップ頻度**: 日次自動実行
+
+**ポリシー設定パラメータ:**
+```go
+type SnapshotRetentionPolicy struct {
+    // 保持期間（日数）
+    RetentionDays int `json:"retention_days"`    // デフォルト: 30
+
+    // 最大個数制限
+    MaxCount int `json:"max_count"`              // デフォルト: 1000
+
+    // ディスク使用量上限（MB）
+    MaxSizeMB int `json:"max_size_mb"`           // デフォルト: 100
+
+    // 自動クリーンアップ有効フラグ
+    AutoCleanup bool `json:"auto_cleanup"`       // デフォルト: true
+
+    // クリーンアップ間隔（時間）
+    CleanupIntervalHours int `json:"cleanup_interval_hours"` // デフォルト: 24
+}
+```
+
+**クリーンアップ実行条件:**
+1. **経過時間ベース**: `RetentionDays`より古いスナップショットを削除
+2. **個数制限**: `MaxCount`を超過時、古いものから削除
+3. **容量制限**: 合計サイズが`MaxSizeMB`超過時、古いものから削除
+4. **破損ファイル**: JSON解析失敗ファイルを即座削除
+
+**クリーンアップアルゴリズム:**
+```go
+func (p *SnapshotRetentionPolicy) CleanupSnapshots(snapshotDir string) error {
+    files, _ := readSnapshotFiles(snapshotDir)
+
+    // ソート: 新しいもの順
+    sort.Slice(files, func(i, j int) bool {
+        return files[i].ModTime.After(files[j].ModTime)
+    })
+
+    var toDelete []string
+
+    // 1. 期間制限チェック
+    cutoffTime := time.Now().AddDate(0, 0, -p.RetentionDays)
+    for _, file := range files {
+        if file.ModTime.Before(cutoffTime) {
+            toDelete = append(toDelete, file.Path)
+        }
+    }
+
+    // 2. 個数制限チェック
+    if len(files) > p.MaxCount {
+        for i := p.MaxCount; i < len(files); i++ {
+            toDelete = append(toDelete, files[i].Path)
+        }
+    }
+
+    // 3. 容量制限チェック
+    totalSize := calculateTotalSize(files)
+    if totalSize > p.MaxSizeMB*1024*1024 {
+        // 新しいものを残して古いものを削除
+        currentSize := int64(0)
+        for _, file := range files {
+            currentSize += file.Size
+            if currentSize > int64(p.MaxSizeMB*1024*1024) {
+                toDelete = append(toDelete, file.Path)
+            }
+        }
+    }
+
+    // 実際の削除実行
+    return executeCleanup(toDelete)
+}
+```
+
+**環境変数による設定オーバーライド:**
+```bash
+# 保持期間を7日に短縮
+export DEESPEC_SNAPSHOT_RETENTION_DAYS=7
+
+# 最大個数を100に制限
+export DEESPEC_SNAPSHOT_MAX_COUNT=100
+
+# 自動クリーンアップを無効化（デバッグ時）
+export DEESPEC_SNAPSHOT_AUTO_CLEANUP=false
+
+# ディスク使用量制限を10MBに設定
+export DEESPEC_SNAPSHOT_MAX_SIZE_MB=10
+```
+
+**運用時の考慮事項:**
+- **開発環境**: 短い保持期間（7日）でディスク使用量を抑制
+- **本番環境**: 標準保持期間（30日）でトレンド分析に活用
+- **CI環境**: 自動クリーンアップ無効化でテスト結果保存
+- **ディスク制約環境**: 容量上限を厳しく設定（10-50MB）
+
+**ログ出力例:**
+```bash
+INFO: Snapshot cleanup completed removed=15 retained=85 total_size_mb=45.2
+WARN: Snapshot directory exceeds size limit current=120mb limit=100mb
+INFO: Automatic cleanup disabled keeping_all_snapshots=true
+```
+
+**失敗時のフォールバック:**
+- クリーンアップ失敗は非致命的エラー（WARN ログのみ）
+- 次回実行時に再試行
+- 手動クリーンアップコマンドの提供
+- 緊急時のディスク容量不足対応手順をドキュメント化
 
 ## 4. Implementation References
 

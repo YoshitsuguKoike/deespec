@@ -6,6 +6,7 @@ import (
 	"hash"
 	"io"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -343,10 +344,50 @@ func (p *ChecksumWorkerPool) Close() {
 	p.wg.Wait()
 }
 
+// CalculateOptimalWorkerCount determines optimal worker count based on system resources
+func CalculateOptimalWorkerCount(fileCount int) int {
+	// Get CPU core count, fallback to 1 if unavailable
+	coreCount := runtime.GOMAXPROCS(0)
+	if coreCount <= 0 {
+		coreCount = 1
+	}
+
+	// Base worker count on file count and CPU cores
+	// Formula: min(fileCount, min(coreCount, 4))
+	// Rationale:
+	// - No point having more workers than files
+	// - Respect GOMAXPROCS setting for CPU-bound work
+	// - Cap at 4 to prevent excessive I/O contention
+	workerCount := fileCount
+	if workerCount > coreCount {
+		workerCount = coreCount
+	}
+	if workerCount > 4 {
+		workerCount = 4
+	}
+
+	// Minimum of 1 worker for any work
+	if workerCount < 1 {
+		workerCount = 1
+	}
+
+	return workerCount
+}
+
 // CalculateChecksumsParallel is a convenience function for parallel checksum calculation
 func CalculateChecksumsParallel(filePaths []string, algorithm ChecksumAlgorithm, workerCount int) map[string]ChecksumResult {
 	pool := NewChecksumWorkerPool(workerCount)
 	defer pool.Close()
 
 	return pool.CalculateChecksums(filePaths, algorithm)
+}
+
+// CalculateChecksumsOptimal calculates checksums with automatically optimized worker count
+func CalculateChecksumsOptimal(filePaths []string, algorithm ChecksumAlgorithm) map[string]ChecksumResult {
+	optimalWorkers := CalculateOptimalWorkerCount(len(filePaths))
+
+	fmt.Fprintf(os.Stderr, "INFO: Checksum calculation with optimal parallelism files=%d workers=%d cores=%d\n",
+		len(filePaths), optimalWorkers, runtime.GOMAXPROCS(0))
+
+	return CalculateChecksumsParallel(filePaths, algorithm, optimalWorkers)
 }

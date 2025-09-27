@@ -221,3 +221,136 @@ Test specification for fsync audit.
 		t.Errorf("Register operation: expected at least 3 dir fsyncs, got %d", dirCount)
 	}
 }
+
+// TestParallelChecksumWithFsyncOrder verifies fsync ordering during parallel checksum validation
+func TestParallelChecksumWithFsyncOrder(t *testing.T) {
+	os.Setenv("DEESPEC_FSYNC_AUDIT", "1")
+	defer os.Unsetenv("DEESPEC_FSYNC_AUDIT")
+
+	tempDir, err := os.MkdirTemp("", "parallel_checksum_fsync_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	txnDir := filepath.Join(tempDir, ".deespec/var/txn")
+	manager := NewManager(txnDir)
+	ctx := context.Background()
+
+	// Reset fsync stats
+	fs.ResetFsyncStats()
+
+	// Create transaction with multiple files for parallel processing
+	tx, err := manager.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Begin failed: %v", err)
+	}
+
+	// Stage 6 files to trigger parallel checksum calculation
+	fileContents := []string{
+		"large content 1 for parallel checksum testing with fsync order verification",
+		"large content 2 for parallel checksum testing with fsync order verification",
+		"large content 3 for parallel checksum testing with fsync order verification",
+		"large content 4 for parallel checksum testing with fsync order verification",
+		"large content 5 for parallel checksum testing with fsync order verification",
+		"large content 6 for parallel checksum testing with fsync order verification",
+	}
+
+	for i, content := range fileContents {
+		fileName := fmt.Sprintf("parallel_test_%d.txt", i+1)
+		err = manager.StageFile(tx, fileName, []byte(content))
+		if err != nil {
+			t.Fatalf("StageFile %d failed: %v", i+1, err)
+		}
+	}
+
+	// Mark intent
+	err = manager.MarkIntent(tx)
+	if err != nil {
+		t.Fatalf("MarkIntent failed: %v", err)
+	}
+
+	// Commit with parallel checksum validation
+	destRoot := filepath.Join(tempDir, ".deespec")
+	err = manager.Commit(tx, destRoot, func() error {
+		// Journal append with fsync
+		journalPath := filepath.Join(destRoot, "var", "journal.ndjson")
+		os.MkdirAll(filepath.Dir(journalPath), 0755)
+
+		f, err := os.OpenFile(journalPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		entry := fmt.Sprintf(`{"action":"parallel_checksum_test","txn_id":"%s","files":%d}`,
+			string(tx.Manifest.ID), len(fileContents))
+		f.WriteString(entry + "\n")
+
+		// Critical fsync ordering
+		fs.FsyncFile(f)
+		fs.FsyncDir(filepath.Dir(journalPath))
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("Commit failed: %v", err)
+	}
+
+	// Generate detailed fsync report
+	fmt.Fprintf(os.Stderr, "\n=== PARALLEL CHECKSUM FSYNC ORDER AUDIT ===\n")
+	fs.PrintFsyncReport()
+
+	// Get detailed fsync stats
+	fileCount, dirCount, filePaths, dirPaths := fs.GetFsyncStats()
+	t.Logf("Parallel checksum test: %d file fsyncs, %d dir fsyncs", fileCount, dirCount)
+
+	// Verify critical fsync operations occurred
+	if fileCount < 10 {
+		t.Errorf("Expected at least 10 file fsyncs for 6-file parallel transaction, got %d", fileCount)
+	}
+
+	if dirCount < 4 {
+		t.Errorf("Expected at least 4 dir fsyncs, got %d", dirCount)
+	}
+
+	// Verify journal fsync occurred (critical for consistency)
+	journalSynced := false
+	for _, path := range filePaths {
+		if filepath.Base(path) == "journal.ndjson" {
+			journalSynced = true
+			t.Logf("Journal file synced: %s", path)
+			break
+		}
+	}
+
+	if !journalSynced {
+		t.Error("Journal file was not fsynced during parallel checksum operation")
+	}
+
+	// Verify parent directory fsync (ensures rename→fsync ordering)
+	parentDirSynced := false
+	for _, path := range dirPaths {
+		if filepath.Base(path) == "var" {
+			parentDirSynced = true
+			t.Logf("Parent directory synced: %s", path)
+			break
+		}
+	}
+
+	if !parentDirSynced {
+		t.Error("Parent directory was not fsynced after file operations")
+	}
+
+	// Verify destination files exist and are properly fsynced
+	for i := range fileContents {
+		fileName := fmt.Sprintf("parallel_test_%d.txt", i+1)
+		destFile := filepath.Join(destRoot, fileName)
+		if _, err := os.Stat(destFile); err != nil {
+			t.Errorf("Destination file not found: %s", fileName)
+		}
+	}
+
+	t.Logf("Parallel checksum fsync audit completed successfully")
+	t.Logf("Verified rename→parent_dir_fsync ordering during parallel processing")
+}

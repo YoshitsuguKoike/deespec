@@ -146,7 +146,9 @@ func TestCleanupAfterCommit(t *testing.T) {
 	// Create a committed transaction
 	txnID := "txn_test_cleanup"
 	txDir := filepath.Join(txnDir, txnID)
-	os.MkdirAll(txDir, 0755)
+	if err := os.MkdirAll(txDir, 0755); err != nil {
+		t.Fatalf("mkdir %s failed: %v", txDir, err)
+	}
 
 	// Create commit marker
 	commit := Commit{
@@ -157,7 +159,9 @@ func TestCleanupAfterCommit(t *testing.T) {
 	}
 	commitData, _ := json.Marshal(commit)
 	commitPath := filepath.Join(txDir, "status.commit")
-	os.WriteFile(commitPath, commitData, 0644)
+	if err := os.WriteFile(commitPath, commitData, 0644); err != nil {
+		t.Fatalf("write commit file failed: %v", err)
+	}
 
 	// Run recovery (should cleanup committed transaction)
 	ctx := context.Background()

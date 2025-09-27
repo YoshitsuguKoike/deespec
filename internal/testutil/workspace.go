@@ -37,7 +37,9 @@ func NewTestWorkspace(t *testing.T) func() {
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			// Restore working directory before failing
-			os.Chdir(originalCwd)
+			if err := os.Chdir(originalCwd); err != nil {
+				t.Fatalf("chdir %q failed: %v", originalCwd, err)
+			}
 			t.Fatalf("Failed to create directory %s: %v", dir, err)
 		}
 	}

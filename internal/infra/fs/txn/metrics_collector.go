@@ -3,9 +3,11 @@ package txn
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -57,10 +59,14 @@ func LoadMetrics(metricsPath string) (*MetricsCollector, error) {
 	defer file.Close()
 
 	// Acquire shared lock for reading
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_SH); err != nil {
+	if err := lockFile(int(file.Fd()), syscall.LOCK_SH); err != nil {
 		return nil, fmt.Errorf("acquire read lock: %w", err)
 	}
-	defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+	defer func() {
+		if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
+			log.Printf("WARN: metrics unlock failed: %v", err)
+		}
+	}()
 
 	// Read file content
 	data, err := os.ReadFile(metricsPath)
@@ -103,10 +109,14 @@ func (m *MetricsCollector) SaveMetrics(metricsPath string) error {
 	defer file.Close()
 
 	// Acquire exclusive lock
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
+	if err := lockFile(int(file.Fd()), syscall.LOCK_EX); err != nil {
 		return fmt.Errorf("acquire write lock: %w", err)
 	}
-	defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+	defer func() {
+		if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
+			log.Printf("WARN: metrics unlock failed: %v", err)
+		}
+	}()
 
 	// Read existing metrics for monotonic merge
 	var existingMetrics *MetricsCollector
@@ -177,7 +187,9 @@ func (m *MetricsCollector) IncrementCommitSuccess() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.CommitSuccess++
-	fmt.Fprintf(os.Stderr, "INFO: Transaction committed successfully txn.state.commit.success=true txn.commit.total=%d\n", m.CommitSuccess)
+	if !isTestEnvironment() {
+		fmt.Fprintf(os.Stderr, "INFO: Transaction committed successfully txn.state.commit.success=true txn.commit.total=%d\n", m.CommitSuccess)
+	}
 }
 
 // IncrementCommitFailed increments the commit failure counter
@@ -185,7 +197,9 @@ func (m *MetricsCollector) IncrementCommitFailed() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.CommitFailed++
-	fmt.Fprintf(os.Stderr, "WARN: Transaction commit failed txn.state.commit.failed=true txn.failed.total=%d\n", m.CommitFailed)
+	if !isTestEnvironment() {
+		fmt.Fprintf(os.Stderr, "WARN: Transaction commit failed txn.state.commit.failed=true txn.failed.total=%d\n", m.CommitFailed)
+	}
 }
 
 // IncrementCASConflict increments the CAS conflict counter
@@ -193,7 +207,9 @@ func (m *MetricsCollector) IncrementCASConflict() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.CASConflicts++
-	fmt.Fprintf(os.Stderr, "WARN: CAS conflict detected txn.cas.conflict.count=%d\n", m.CASConflicts)
+	if !isTestEnvironment() {
+		fmt.Fprintf(os.Stderr, "WARN: CAS conflict detected txn.cas.conflict.count=%d\n", m.CASConflicts)
+	}
 }
 
 // IncrementRecovery increments the recovery operation counter
@@ -201,7 +217,9 @@ func (m *MetricsCollector) IncrementRecovery() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.RecoveryCount++
-	fmt.Fprintf(os.Stderr, "INFO: Recovery operation completed txn.recovery.count=%d\n", m.RecoveryCount)
+	if !isTestEnvironment() {
+		fmt.Fprintf(os.Stderr, "INFO: Recovery operation completed txn.recovery.count=%d\n", m.RecoveryCount)
+	}
 }
 
 // GetSnapshot returns a read-only snapshot of current metrics
@@ -344,4 +362,25 @@ func CleanupOldSnapshots(metricsPath string, retentionDays int) error {
 	}
 
 	return nil
+}
+
+// lockFile applies file locking with proper error handling
+func lockFile(fd int, how int) error {
+	if err := syscall.Flock(fd, how); err != nil {
+		return fmt.Errorf("flock(%d, %d): %w", fd, how, err)
+	}
+	return nil
+}
+
+// isTestEnvironment checks if we should suppress verbose logging
+func isTestEnvironment() bool {
+	// Check if we're running under go test
+	if strings.Contains(os.Args[0], ".test") || strings.HasSuffix(os.Args[0], ".test.exe") {
+		return true
+	}
+	// Check for TEST environment variable
+	if os.Getenv("DEESPEC_TEST_QUIET") != "" {
+		return true
+	}
+	return false
 }

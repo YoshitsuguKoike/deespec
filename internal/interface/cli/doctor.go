@@ -728,7 +728,10 @@ func runDoctorValidationJSON() error {
 		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		enc.Encode(result)
+		if err := enc.Encode(result); err != nil {
+			fmt.Fprintln(os.Stderr, "ERROR: failed to encode JSON response:", err)
+			os.Exit(1)
+		}
 		os.Exit(1)
 		return nil
 	}
@@ -749,7 +752,10 @@ func runDoctorValidationJSON() error {
 		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		enc.Encode(result)
+		if err := enc.Encode(result); err != nil {
+			fmt.Fprintln(os.Stderr, "ERROR: failed to encode JSON response:", err)
+			os.Exit(1)
+		}
 		os.Exit(1)
 		return nil
 	}

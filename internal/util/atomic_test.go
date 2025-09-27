@@ -207,7 +207,11 @@ func TestWriteFileAtomic(t *testing.T) {
 		if err := os.Chmod(roDir, 0555); err != nil {
 			t.Fatal(err)
 		}
-		defer os.Chmod(roDir, 0755) // Restore for cleanup
+		defer func() {
+			if err := os.Chmod(roDir, 0755); err != nil {
+				t.Fatalf("chmod %s failed: %v", roDir, err)
+			}
+		}() // Restore for cleanup
 
 		// Try atomic write (should fail)
 		content := []byte(`{"test":true}`)

@@ -205,7 +205,9 @@ func TestMultiProcessRegisterAndStateTransactions(t *testing.T) {
 				if err != nil {
 					errors <- fmt.Errorf("Process %d: Commit failed: %v", processID, err)
 					GlobalMetrics.IncrementCommitFailed()
-					GlobalMetrics.SaveMetrics(metricsPath)
+					if err := GlobalMetrics.SaveMetrics(metricsPath); err != nil {
+						t.Errorf("SaveMetrics failed: %v", err)
+					}
 					return
 				}
 

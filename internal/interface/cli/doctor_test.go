@@ -614,7 +614,10 @@ steps:
 	output := make(chan string)
 	go func() {
 		buf := new(bytes.Buffer)
-		io.Copy(buf, r)
+		n, err := io.Copy(buf, r)
+		if err != nil {
+			t.Errorf("copy failed: %v (copied=%d)", err, n)
+		}
 		output <- buf.String()
 	}()
 

@@ -13,15 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: '1.22' }
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
         with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          go-version: '1.22'
+          cache: true
 
       - name: Download dependencies
         run: go mod download
@@ -89,7 +83,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: '1.22' }
+        with:
+          go-version: '1.22'
+          cache: true
 
       - name: Build binary
         run: |
@@ -106,7 +102,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: '1.22' }
+        with:
+          go-version: '1.22'
+          cache: true
 
       - name: Run go vet
         run: go vet ./...
@@ -133,7 +131,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: '1.22' }
+        with:
+          go-version: '1.22'
+          cache: true
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
       - name: Build

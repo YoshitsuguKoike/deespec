@@ -189,8 +189,8 @@ func TestSaveStateAndJournalTX_CrashRecoveryE2E(t *testing.T) {
 			t.Errorf("Expected at least 1 recovered transaction, got %d", recoveryResult.RecoveredCount)
 		}
 
-		// Complete the transaction (forward recovery)
-		if err := manager.Commit(tx, ".deespec", nil); err != nil {
+		// Complete the transaction (forward recovery) with no-op journal callback
+		if err := manager.Commit(tx, ".deespec", func() error { return nil }); err != nil {
 			t.Fatalf("Forward recovery commit failed: %v", err)
 		}
 

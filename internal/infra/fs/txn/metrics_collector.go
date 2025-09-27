@@ -142,12 +142,12 @@ func (m *MetricsCollector) SaveMetrics(metricsPath string) error {
 
 	// 4) Merge with additive behavior (monotonic increase)
 	merged := MetricsCollector{
-		CommitSuccess:  snap.CommitSuccess,
-		CommitFailed:   snap.CommitFailed,
-		CASConflicts:   snap.CASConflicts,
-		RecoveryCount:  snap.RecoveryCount,
-		SchemaVersion:  snap.SchemaVersion,
-		LastUpdate:     snap.LastUpdate,
+		CommitSuccess: snap.CommitSuccess,
+		CommitFailed:  snap.CommitFailed,
+		CASConflicts:  snap.CASConflicts,
+		RecoveryCount: snap.RecoveryCount,
+		SchemaVersion: snap.SchemaVersion,
+		LastUpdate:    snap.LastUpdate,
 	}
 	if existingMetrics != nil {
 		merged.CommitSuccess += existingMetrics.CommitSuccess

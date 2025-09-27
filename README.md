@@ -28,12 +28,40 @@ The startup sequence is automatically handled by:
 2. Lock acquisition for exclusive operation
 3. Normal workflow execution
 
-## Path Resolution and Environment Variables
+## Configuration
 
-- Path base: DeeSpec resolves paths relative to `DEE_HOME` if set; otherwise it falls back to a local `.deespec` under the project. For TX commit/recovery dest root, the priority is:
-  1) `DEESPEC_TX_DEST_ROOT` → 2) `DEE_HOME` → 3) `.deespec`.
+### Configuration Priority
 
-- Environment variables:
+DeeSpec supports multiple configuration sources with the following priority (highest to lowest):
+1. **setting.json** - Configuration file (if exists)
+2. **Environment variables** - Override specific settings
+3. **Default values** - Built-in defaults
+
+### Using setting.json
+
+After running `deespec init`, a `setting.json` file is created in your `.deespec` directory. This file centralizes all configuration options:
+
+```json
+{
+  "home": ".deespec",
+  "agent_bin": "claude",
+  "timeout_sec": 60,
+  "artifacts_dir": ".deespec/var/artifacts",
+  "disable_recovery": false,
+  "fsync_audit": false,
+  "tx_dest_root": "",
+  ...
+}
+```
+
+You can edit this file to customize your DeeSpec configuration. Changes take effect on the next run.
+
+### Path Resolution and Environment Variables
+
+- Path base: DeeSpec resolves paths relative to `home` setting in `setting.json`, or `DEE_HOME` if set; otherwise it falls back to a local `.deespec` under the project. For TX commit/recovery dest root, the priority is:
+  1) `tx_dest_root` in setting.json → 2) `DEESPEC_TX_DEST_ROOT` → 3) `DEE_HOME` → 4) `.deespec`.
+
+- Environment variables (override setting.json if set):
   - `DEE_HOME`: Base directory for DeeSpec (typically `<project>/.deespec`).
   - `DEESPEC_TX_DEST_ROOT`: Explicit destination root for TX finalization (highest priority).
   - `DEESPEC_DISABLE_RECOVERY`: Set `1` to skip startup recovery.
@@ -217,6 +245,8 @@ make coverage-html
    # JSON形式で診断（自動化・監視向け）
    deespec doctor --json | jq .
    # exit code: 0=正常、2=警告（inactive/未設定）、1=重大（書込不可/agent不在）
+   # config_source と setting_path で設定の読み込み元を確認
+   # "config_source": "json" (setting.json使用) / "env" (環境変数) / "default" (デフォルト値)
 
    # メトリクス品質チェック（CI/CD統合用）
    deespec doctor --json | jq '.metrics.success_rate >= 90' -e

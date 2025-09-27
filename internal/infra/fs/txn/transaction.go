@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
@@ -506,11 +505,6 @@ func sameDevice(p1, p2 string) (bool, error) {
 		}
 		return true, err2
 	}
-	// Unix系: Stat_t.Dev を比較（Windows は true にフォールバック）
-	if st1, ok1 := s1.Sys().(*syscall.Stat_t); ok1 {
-		if st2, ok2 := s2.Sys().(*syscall.Stat_t); ok2 {
-			return st1.Dev == st2.Dev, nil
-		}
-	}
-	return true, nil
+	// OS-specific device comparison
+	return checkSameDevice(s1, s2)
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/embed"
+	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
 	"github.com/spf13/cobra"
 )
 
@@ -72,6 +73,23 @@ All files will be created under the .deespec/ directory.`,
 				}
 			}
 
+			// Create setting.json with default configuration (only if not exists or force)
+			settingPath := filepath.Join(deespecDir, "setting.json")
+			settingExists := fileExists(settingPath)
+			if force || !settingExists {
+				settingContent := config.CreateDefaultSettings()
+				if err := writeFileAtomic(settingPath, settingContent, 0644); err != nil {
+					return fmt.Errorf("failed to write setting.json: %w", err)
+				}
+				if force && settingExists {
+					fmt.Printf("WROTE (force): %s\n", settingPath)
+				} else {
+					fmt.Printf("WROTE: %s\n", settingPath)
+				}
+			} else {
+				fmt.Printf("SKIP: %s (exists; use --force to overwrite)\n", settingPath)
+			}
+
 			// Create health.json with initial state (only if not exists or force)
 			healthPath := filepath.Join(deespecDir, "var", "health.json")
 			healthExists := fileExists(healthPath)
@@ -101,6 +119,7 @@ All files will be created under the .deespec/ directory.`,
 
 			// Print success message
 			fmt.Printf("Initialized .deespec v0.1.14 structure in %s:\n", deespecDir)
+			fmt.Println("  ├── setting.json          # Configuration file (NEW)")
 			fmt.Println("  ├── etc/")
 			fmt.Println("  │   ├── workflow.yaml")
 			fmt.Println("  │   └── policies/")

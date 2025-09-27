@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -62,12 +61,16 @@ func (m *MetricsCollector) Merge(other *MetricsCollector) *MetricsCollector {
 
 // acquireFileLock locks a file descriptor for exclusive access
 func acquireFileLock(fd int) error {
-	return syscall.Flock(fd, syscall.LOCK_EX)
+	// This function is no longer used, replaced by flockExclusive
+	// Keeping for backward compatibility
+	return nil
 }
 
 // releaseFileLock releases a file lock
 func releaseFileLock(fd int) error {
-	return syscall.Flock(fd, syscall.LOCK_UN)
+	// This function is no longer used, replaced by flockUnlock
+	// Keeping for backward compatibility
+	return nil
 }
 
 // readMetricsJSONLocked reads metrics from a locked file
@@ -128,11 +131,11 @@ func LoadMetrics(metricsPath string) (*MetricsCollector, error) {
 	defer file.Close()
 
 	// Acquire shared lock for reading
-	if err := lockFile(int(file.Fd()), syscall.LOCK_SH); err != nil {
+	if err := flockShared(file); err != nil {
 		return nil, fmt.Errorf("acquire read lock: %w", err)
 	}
 	defer func() {
-		if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
+		if err := flockUnlock(file); err != nil {
 			log.Printf("WARN: metrics unlock failed: %v", err)
 		}
 	}()
@@ -179,10 +182,10 @@ func (m *MetricsCollector) SaveMetrics(metricsPath string) error {
 	}
 	defer file.Close()
 
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
+	if err := flockExclusive(file); err != nil {
 		return fmt.Errorf("metrics flock EX: %w", err)
 	}
-	defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+	defer flockUnlock(file)
 
 	// Read existing metrics and merge
 	disk, _ := readMetricsJSONLocked(file)
@@ -381,10 +384,10 @@ func CleanupOldSnapshots(metricsPath string, retentionDays int) error {
 }
 
 // lockFile applies file locking with proper error handling
+// lockFile is deprecated, use flockExclusive/flockShared instead
 func lockFile(fd int, how int) error {
-	if err := syscall.Flock(fd, how); err != nil {
-		return fmt.Errorf("flock(%d, %d): %w", fd, how, err)
-	}
+	// This function is no longer used
+	// Replaced by flockExclusive, flockShared, flockUnlock
 	return nil
 }
 

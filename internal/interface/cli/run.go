@@ -56,8 +56,8 @@ func newRunCmd() *cobra.Command {
 			if !once {
 				return fmt.Errorf("use --once for now (single-step mode)")
 			}
-			// Check environment variable for auto-fb
-			if os.Getenv("DEE_AUTO_FB") == "true" {
+			// Check config for auto-fb (config takes precedence over flag)
+			if globalConfig != nil && globalConfig.AutoFB() {
 				autoFB = true
 			}
 			return runOnce(autoFB)
@@ -71,8 +71,8 @@ func newRunCmd() *cobra.Command {
 func runOnce(autoFB bool) error {
 	startTime := time.Now()
 
-	// Get paths
-	paths := app.GetPaths()
+	// Get paths using config
+	paths := app.GetPathsWithConfig(globalConfig)
 
 	// 1) 排他ロック（WIP=1 enforcement）
 	releaseFsLock, err := fs.AcquireLock(paths.StateLock)

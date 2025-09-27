@@ -32,6 +32,8 @@ type DoctorJSON struct {
 	Next             string             `json:"next,omitempty"`
 	Errors           []string           `json:"errors"`
 	Metrics          *DoctorMetricsJSON `json:"metrics,omitempty"`
+	ConfigSource     string             `json:"config_source,omitempty"`
+	SettingPath      string             `json:"setting_path,omitempty"`
 }
 
 // DoctorMetricsJSON represents transaction metrics for doctor --json
@@ -635,13 +637,21 @@ func isValidIdentifier(s string) bool {
 
 func runDoctorJSON() error {
 	cfg := config.Load()
-	paths := app.GetPaths()
+	paths := app.GetPathsWithConfig(globalConfig)
 	result := DoctorJSON{
-		Runner:     "none",
-		Active:     false,
-		WorkingDir: "",
-		AgentBin:   cfg.AgentBin,
-		Errors:     []string{},
+		Runner:       "none",
+		Active:       false,
+		WorkingDir:   "",
+		AgentBin:     cfg.AgentBin,
+		Errors:       []string{},
+		ConfigSource: "",
+		SettingPath:  "",
+	}
+
+	// Add config source information if available
+	if globalConfig != nil {
+		result.ConfigSource = globalConfig.ConfigSource()
+		result.SettingPath = globalConfig.SettingPath()
 	}
 
 	// Load transaction metrics

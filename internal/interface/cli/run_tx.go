@@ -182,8 +182,12 @@ func marshalStableJSON(v interface{}) ([]byte, error) {
 }
 
 // UseTXForStateJournal returns true if transaction mode should be used
-// for state.json and journal updates. Can be controlled via environment variable.
+// for state.json and journal updates. Can be controlled via configuration.
 func UseTXForStateJournal() bool {
-	// Enable TX mode by default or via environment
+	// Use config if available, otherwise check env for backward compatibility
+	if globalConfig != nil {
+		return !globalConfig.DisableStateTx()
+	}
+	// Fallback to env for backward compatibility
 	return os.Getenv("DEESPEC_DISABLE_STATE_TX") != "1"
 }

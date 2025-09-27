@@ -67,7 +67,7 @@ func newStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show current workflow status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			paths := app.GetPaths()
+			paths := app.GetPathsWithConfig(globalConfig)
 			st, err := loadState(paths.State)
 			if err != nil {
 				if jsonOutput {

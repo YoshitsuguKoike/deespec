@@ -3,6 +3,8 @@ package app
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/YoshitsuguKoike/deespec/internal/app/config"
 )
 
 // Paths holds all resolved paths for deespec v1 structure
@@ -28,10 +30,21 @@ type Paths struct {
 // All paths are resolved to absolute paths with symlinks evaluated
 func ResolvePaths() Paths {
 	// Get base home directory
+	// Still check ENV for backward compatibility
 	home := os.Getenv("DEE_HOME")
 	if home == "" {
 		home = ".deespec"
 	}
+	return ResolvePathsWithHome(home)
+}
+
+// ResolvePathsWithConfig returns all paths based on Config
+func ResolvePathsWithConfig(cfg config.Config) Paths {
+	return ResolvePathsWithHome(cfg.Home())
+}
+
+// ResolvePathsWithHome returns all paths based on the given home directory
+func ResolvePathsWithHome(home string) Paths {
 
 	// Resolve home to absolute path with symlinks
 	homeAbs, err := filepath.Abs(home)
@@ -71,6 +84,7 @@ func ResolvePaths() Paths {
 
 // GetPaths is a convenience function that returns singleton paths
 var cachedPaths *Paths
+var pathsConfig config.Config
 
 func GetPaths() Paths {
 	// Skip cache if in test mode
@@ -80,6 +94,22 @@ func GetPaths() Paths {
 
 	if cachedPaths == nil {
 		paths := ResolvePaths()
+		cachedPaths = &paths
+	}
+	return *cachedPaths
+}
+
+// GetPathsWithConfig returns paths based on the provided config
+func GetPathsWithConfig(cfg config.Config) Paths {
+	// Skip cache if in test mode or if config changed
+	if cfg != nil && cfg.TestMode() {
+		return ResolvePathsWithConfig(cfg)
+	}
+
+	// Check if config changed
+	if cfg != pathsConfig {
+		pathsConfig = cfg
+		paths := ResolvePathsWithConfig(cfg)
 		cachedPaths = &paths
 	}
 	return *cachedPaths

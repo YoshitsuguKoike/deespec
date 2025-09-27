@@ -12,13 +12,19 @@ import (
 
 func newDoctorIntegratedCmd() *cobra.Command {
 	var format string
+	var jsonOutput bool
 
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Check environment & configuration (integrated validation)",
 		Long:  "Performs comprehensive validation of all deespec components",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			paths := app.GetPaths()
+			// Support legacy --json flag for config info
+			if jsonOutput {
+				return runDoctorJSON()
+			}
+
+			paths := app.GetPathsWithConfig(globalConfig)
 
 			// Configure validation paths
 			config := &integrated.DoctorConfig{
@@ -63,6 +69,7 @@ func newDoctorIntegratedCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&format, "format", "", "Output format (json for CI integration)")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output config info in JSON format (legacy)")
 
 	return cmd
 }

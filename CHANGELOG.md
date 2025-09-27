@@ -10,6 +10,32 @@
 
 ---
 
+## \[v0.1.16] - 2025-09-27
+
+### 追加
+
+* **setting.json 設定ファイル**: 環境変数に代わる統一的な設定管理システムを導入
+  - `deespec init` で自動生成される `setting.json` ファイル
+  - 設定優先順位: setting.json > 環境変数 > デフォルト値
+  - 21個の設定項目を網羅（home, agent_bin, timeout_sec など）
+* **Config インターフェース**: app層に設定アクセス用のインターフェースを追加（Clean Architecture）
+* **設定ソース表示**: `deespec doctor --json` に `config_source` と `setting_path` フィールドを追加
+  - 設定の読み込み元（json/env/default）を確認可能
+
+### 変更
+
+* **パス解決の改善**: `GetPathsWithConfig()` メソッドを追加し、Config経由でのパス解決に対応
+* **環境変数参照の削減**: 主要コマンドで直接のENV参照をConfig注入に置き換え
+  - run, status, doctor コマンドが Config を使用
+  - 後方互換性のため環境変数も引き続きサポート
+
+### 修正
+
+* **errcheck lint エラー**: CLI パッケージ内の未チェックエラーを修正
+  - os.Chdir, os.WriteFile, json.Unmarshal, io.ReadAll のエラーチェック追加
+
+---
+
 ## \[v0.1.15] - 2025-09-27
 
 ### 追加

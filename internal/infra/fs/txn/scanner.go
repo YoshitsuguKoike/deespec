@@ -70,7 +70,7 @@ func (s *Scanner) Scan() (*ScanResult, error) {
 	// Check if base directory exists
 	if _, err := os.Stat(s.BaseDir); os.IsNotExist(err) {
 		// No txn directory means no incomplete transactions
-		s.Logger.Printf("INFO: No transaction directory found at %s (clean state)", s.BaseDir)
+		s.Logger.Printf("INFO: No transaction directory found txn.base_dir=%s txn.state=clean txn.count=0", s.BaseDir)
 		return result, nil
 	}
 
@@ -98,16 +98,16 @@ func (s *Scanner) Scan() (*ScanResult, error) {
 			switch state {
 			case "intent_only":
 				result.IntentOnly = append(result.IntentOnly, txnID)
-				s.Logger.Printf("WARN: Found transaction %s with intent but no commit (needs forward recovery)", txnID)
+				s.Logger.Printf("WARN: Found transaction with intent but no commit txn.id=%s txn.state=intent_only txn.action=forward_recovery_needed", txnID)
 			case "committed":
 				result.Committed = append(result.Committed, txnID)
-				s.Logger.Printf("INFO: Found completed transaction %s (can be cleaned up)", txnID)
+				s.Logger.Printf("INFO: Found completed transaction txn.id=%s txn.state=committed txn.action=cleanup_ready", txnID)
 			case "incomplete":
 				result.Incomplete = append(result.Incomplete, txnID)
-				s.Logger.Printf("WARN: Found incomplete transaction %s (partial staging)", txnID)
+				s.Logger.Printf("WARN: Found incomplete transaction txn.id=%s txn.state=incomplete txn.staging=partial", txnID)
 			case "abandoned":
 				result.Abandoned = append(result.Abandoned, txnID)
-				s.Logger.Printf("WARN: Found abandoned transaction %s (no markers)", txnID)
+				s.Logger.Printf("WARN: Found abandoned transaction txn.id=%s txn.state=abandoned txn.markers=none", txnID)
 			}
 
 			// Don't descend into subdirectories
@@ -154,40 +154,48 @@ func (s *Scanner) checkTransactionState(txnDir string) string {
 	return "abandoned"
 }
 
-// logSummary logs a summary of the scan results.
+// logSummary logs a summary of the scan results with machine-readable keys.
 func (s *Scanner) logSummary(result *ScanResult) {
 	if result.TotalFound == 0 {
 		return
 	}
 
-	s.Logger.Printf("SUMMARY: Scanned %d transaction(s):", result.TotalFound)
+	// Main summary with machine-readable keys
+	s.Logger.Printf("SUMMARY: Transaction scan complete txn.scan.total=%d txn.scan.timestamp=%s",
+		result.TotalFound, result.ScannedAt.Format(time.RFC3339))
 
 	if len(result.IntentOnly) > 0 {
-		s.Logger.Printf("  - %d need forward recovery (intent without commit)", len(result.IntentOnly))
-		s.Logger.Printf("    IDs: %s", formatTxnIDs(result.IntentOnly))
+		s.Logger.Printf("  - Forward recovery needed txn.scan.intent_only_count=%d txn.scan.intent_only_ids=%s",
+			len(result.IntentOnly), formatTxnIDs(result.IntentOnly))
 	}
 
 	if len(result.Incomplete) > 0 {
-		s.Logger.Printf("  - %d incomplete (partial staging)", len(result.Incomplete))
-		s.Logger.Printf("    IDs: %s", formatTxnIDs(result.Incomplete))
+		s.Logger.Printf("  - Incomplete transactions txn.scan.incomplete_count=%d txn.scan.incomplete_ids=%s",
+			len(result.Incomplete), formatTxnIDs(result.Incomplete))
 	}
 
 	if len(result.Abandoned) > 0 {
-		s.Logger.Printf("  - %d abandoned (no markers)", len(result.Abandoned))
-		s.Logger.Printf("    IDs: %s", formatTxnIDs(result.Abandoned))
+		s.Logger.Printf("  - Abandoned transactions txn.scan.abandoned_count=%d txn.scan.abandoned_ids=%s",
+			len(result.Abandoned), formatTxnIDs(result.Abandoned))
 	}
 
 	if len(result.Committed) > 0 {
-		s.Logger.Printf("  - %d committed (ready for cleanup)", len(result.Committed))
-		s.Logger.Printf("    IDs: %s", formatTxnIDs(result.Committed))
+		s.Logger.Printf("  - Ready for cleanup txn.scan.committed_count=%d txn.scan.committed_ids=%s",
+			len(result.Committed), formatTxnIDs(result.Committed))
 	}
 
 	if len(result.Errors) > 0 {
-		s.Logger.Printf("  - %d errors encountered during scan", len(result.Errors))
+		s.Logger.Printf("  - Scan errors txn.scan.error_count=%d", len(result.Errors))
+	}
+
+	// Performance consideration for large numbers
+	if result.TotalFound > 100 {
+		s.Logger.Printf("WARN: Large number of transactions found txn.scan.performance=consider_batch_processing txn.count=%d", result.TotalFound)
 	}
 
 	// Step 5: Only log, no recovery action
-	s.Logger.Printf("NOTE: Step 5 - No recovery actions taken (logging only)")
+	// Step 8: Cleanup policy will be implemented for committed transactions
+	s.Logger.Printf("NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8")
 }
 
 // fileExists checks if a file exists.
@@ -208,22 +216,23 @@ func dirExists(path string) bool {
 	return info.IsDir()
 }
 
-// formatTxnIDs formats transaction IDs for logging.
+// formatTxnIDs formats transaction IDs for machine-readable logging.
 func formatTxnIDs(ids []TxnID) string {
 	if len(ids) == 0 {
-		return "none"
+		return "[]"
 	}
-	if len(ids) <= 3 {
+	if len(ids) <= 5 {
+		// For small lists, show all IDs in array format
 		strs := make([]string, len(ids))
 		for i, id := range ids {
 			strs[i] = string(id)
 		}
-		return strings.Join(strs, ", ")
+		return "[" + strings.Join(strs, ",") + "]"
 	}
-	// Show first 3 and count
+	// For large lists, show first 3 with total count
 	strs := make([]string, 3)
 	for i := 0; i < 3; i++ {
 		strs[i] = string(ids[i])
 	}
-	return fmt.Sprintf("%s... (%d total)", strings.Join(strs, ", "), len(ids))
+	return fmt.Sprintf("[%s...] (total:%d)", strings.Join(strs, ","), len(ids))
 }

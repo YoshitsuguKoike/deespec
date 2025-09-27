@@ -243,22 +243,22 @@ func TestFormatTxnIDs(t *testing.T) {
 		{
 			name:     "empty",
 			ids:      []TxnID{},
-			expected: "none",
+			expected: "[]",
 		},
 		{
 			name:     "single",
 			ids:      []TxnID{"txn_001"},
-			expected: "txn_001",
+			expected: "[txn_001]",
 		},
 		{
 			name:     "three",
 			ids:      []TxnID{"txn_001", "txn_002", "txn_003"},
-			expected: "txn_001, txn_002, txn_003",
+			expected: "[txn_001,txn_002,txn_003]",
 		},
 		{
 			name:     "many",
 			ids:      []TxnID{"txn_001", "txn_002", "txn_003", "txn_004", "txn_005"},
-			expected: "txn_001, txn_002, txn_003... (5 total)",
+			expected: "[txn_001,txn_002,txn_003,txn_004,txn_005]",
 		},
 	}
 

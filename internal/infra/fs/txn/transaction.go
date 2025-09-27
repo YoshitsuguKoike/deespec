@@ -80,9 +80,6 @@ func (m *Manager) StageFile(tx *Transaction, dst string, content []byte) error {
 		return fmt.Errorf("cannot stage file: transaction status is %s", tx.Status)
 	}
 
-	// Resolve destination to absolute path to eliminate cwd dependency
-	dst = m.resolveAbsDst(dst)
-
 	// EARLY EXDEV DETECTION (Step 7 feedback): Verify stage and destination are on same filesystem
 	// This ensures we fail fast if rename would cross device boundaries, preventing late commit failures
 	stagePath := filepath.Join(tx.StageDir, dst)
@@ -285,9 +282,7 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 	// Phase 2: Rename staged files to final destinations
 	for _, op := range tx.Manifest.Files {
 		stagePath := filepath.Join(tx.StageDir, op.Destination)
-		// Use absolute path resolution to eliminate cwd dependency
-		resolvedDst := m.resolveAbsDst(op.Destination)
-		finalPath := filepath.Join(destRoot, resolvedDst)
+		finalPath := filepath.Join(destRoot, op.Destination)
 
 		// Ensure parent directory exists
 		finalDir := filepath.Dir(finalPath)

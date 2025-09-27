@@ -229,7 +229,7 @@ func TestMetricsDeadlockDetection(t *testing.T) {
 	metricsPath := filepath.Join(tempDir, "metrics.json")
 
 	// Test scenario: concurrent save operations with read operations
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 
 	metrics := &MetricsCollector{

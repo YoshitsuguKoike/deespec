@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -99,6 +100,11 @@ func (f *FileOperation) Validate() error {
 	// Destination is required for all operations
 	if f.Destination == "" {
 		return fmt.Errorf("destination path is required")
+	}
+
+	// Destination must be a relative path
+	if filepath.IsAbs(f.Destination) {
+		return fmt.Errorf("destination must be relative path: %s", f.Destination)
 	}
 
 	// For rename operations, source is required

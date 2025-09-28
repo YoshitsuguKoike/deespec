@@ -757,7 +757,7 @@ func TestTurnConsistency_SBI_PICK_002(t *testing.T) {
 			"decision":   "PENDING",
 			"elapsed_ms": 1000,
 			"error":      "",
-			"artifacts": []interface{}{".deespec/var/artifacts/turn5/implement.md"},
+			"artifacts":  []interface{}{".deespec/var/artifacts/turn5/implement.md"},
 		},
 		{
 			"ts":         "2025-09-26T10:02:00Z",
@@ -766,7 +766,7 @@ func TestTurnConsistency_SBI_PICK_002(t *testing.T) {
 			"decision":   "PENDING",
 			"elapsed_ms": 500,
 			"error":      "",
-			"artifacts": []interface{}{".deespec/var/artifacts/turn5/test.md"},
+			"artifacts":  []interface{}{".deespec/var/artifacts/turn5/test.md"},
 		},
 	}
 

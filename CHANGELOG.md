@@ -10,6 +10,47 @@
 
 ---
 
+## \[v0.1.25] - 2025-09-28
+
+### 追加 (Added)
+
+* **中央集権的ログシステムの実装**:
+  - `Logger` インターフェースをapp/infra/cli各層に追加
+  - ログレベル制御機能（DEBUG/INFO/WARN/ERROR/FATAL）
+  - `--log-level` CLIフラグによる実行時ログレベル変更
+  - レイヤー間のログブリッジ機能
+
+### 変更 (Changed)
+
+* **ログレベルのデフォルト設定変更**:
+  - デフォルトログレベルを INFO から WARN に変更
+  - ユーザー体験の向上（不要な情報ログを非表示）
+  - `setting.json` の `stderr_level` デフォルト値を "warn" に設定
+  - diagnostic コマンド（effective-config）実行時は一時的に INFO レベルに変更
+
+* **fmt.Fprintf の完全置換**:
+  - 全ての `fmt.Fprintf(os.Stderr, ...)` 呼び出しを Logger メソッドに置換
+  - 統一されたログ出力フォーマット
+  - ログレベルによる適切なフィルタリング
+
+### 修正 (Fixed)
+
+* **NDJSON パースエラーの修正**:
+  - `strings.Split(data, "")` を `strings.Split(data, "\n")` に修正（4箇所）
+  - picker.go の `getCompletedTasksFromJournal` と `getLastJournalEntry`
+  - picker_test.go の `createJournal` と `TestTurnConsistency_SBI_PICK_002`
+  - run_tx_test.go の journal 読み込み処理
+
+* **改行処理の修正**:
+  - `NormalizeCRLFToLF` 関数で単独の CR 文字を正しく削除
+  - Windows (CRLF) と旧Mac (CR) の改行形式を適切に処理
+
+* **テストデータの整合性修正**:
+  - `WriteFileAtomic` テストのデータ不一致を修正
+  - picker テストの artifacts フィールドの型を統一
+
+---
+
 ## \[v0.1.18] - 2025-09-28
 
 ### 削除 (REMOVED)

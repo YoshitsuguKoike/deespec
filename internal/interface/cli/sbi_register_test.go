@@ -28,7 +28,7 @@ func TestNewSBIRegisterCommand(t *testing.T) {
 	}
 
 	// Test optional flags
-	flags := []string{"body", "json", "dry-run", "quiet"}
+	flags := []string{"body", "json", "dry-run", "quiet", "label", "labels"}
 	for _, flagName := range flags {
 		flag := cmd.Flag(flagName)
 		if flag == nil {
@@ -157,8 +157,9 @@ func TestHandleDryRun(t *testing.T) {
 		{
 			name: "Dry run with valid input",
 			input: usecaseSbi.RegisterSBIInput{
-				Title: "Test Title",
-				Body:  "Test Body",
+				Title:  "Test Title",
+				Body:   "Test Body",
+				Labels: []string{"test", "dry-run"},
 			},
 			flags: &sbiRegisterFlags{
 				jsonOut: false,
@@ -237,10 +238,7 @@ func TestOutputJSON(t *testing.T) {
 	// In a real test, we would need to capture stdout
 	// For now, we verify the function exists and can be called
 
-	output := &struct {
-		ID       string
-		SpecPath string
-	}{
+	output := &usecaseSbi.RegisterSBIOutput{
 		ID:       "SBI-TEST123",
 		SpecPath: ".deespec/specs/sbi/SBI-TEST123/spec.md",
 	}
@@ -249,4 +247,173 @@ func TestOutputJSON(t *testing.T) {
 	// We can't easily capture it in this test without refactoring
 	// The existence of the function is verified by compilation
 	_ = output
+}
+
+func TestProcessLabels(t *testing.T) {
+	tests := []struct {
+		name       string
+		labelArray []string
+		labelsStr  string
+		expected   []string
+	}{
+		{
+			name:       "Empty inputs",
+			labelArray: []string{},
+			labelsStr:  "",
+			expected:   []string{},
+		},
+		{
+			name:       "Single label from --label",
+			labelArray: []string{"label1"},
+			labelsStr:  "",
+			expected:   []string{"label1"},
+		},
+		{
+			name:       "Multiple labels from --label",
+			labelArray: []string{"label1", "label2", "label3"},
+			labelsStr:  "",
+			expected:   []string{"label1", "label2", "label3"},
+		},
+		{
+			name:       "Single label from --labels",
+			labelArray: []string{},
+			labelsStr:  "label1",
+			expected:   []string{"label1"},
+		},
+		{
+			name:       "Multiple labels from --labels (comma-separated)",
+			labelArray: []string{},
+			labelsStr:  "label1,label2,label3",
+			expected:   []string{"label1", "label2", "label3"},
+		},
+		{
+			name:       "Labels with spaces (should be trimmed)",
+			labelArray: []string{" label1 ", "  label2  "},
+			labelsStr:  " label3 , label4 ",
+			expected:   []string{"label1", "label2", "label3", "label4"},
+		},
+		{
+			name:       "Duplicate labels (should be deduplicated)",
+			labelArray: []string{"label1", "label2", "label1"},
+			labelsStr:  "label2,label3,label1",
+			expected:   []string{"label1", "label2", "label3"},
+		},
+		{
+			name:       "Mixed input from both flags",
+			labelArray: []string{"label1", "label2"},
+			labelsStr:  "label3,label4",
+			expected:   []string{"label1", "label2", "label3", "label4"},
+		},
+		{
+			name:       "Empty strings in input (should be filtered)",
+			labelArray: []string{"", "label1", ""},
+			labelsStr:  ",label2,,label3,",
+			expected:   []string{"label1", "label2", "label3"},
+		},
+		{
+			name:       "Whitespace-only labels (should be filtered)",
+			labelArray: []string{"   ", "label1", "\t\n"},
+			labelsStr:  "  ,label2,   ",
+			expected:   []string{"label1", "label2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := processLabels(tt.labelArray, tt.labelsStr)
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("processLabels() returned %d labels, expected %d", len(result), len(tt.expected))
+				t.Errorf("Got: %v, Expected: %v", result, tt.expected)
+				return
+			}
+
+			for i, label := range result {
+				if label != tt.expected[i] {
+					t.Errorf("processLabels()[%d] = %q, expected %q", i, label, tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestSBIRegisterWithLabels(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{
+			name: "Register with single --label",
+			args: []string{
+				"--title", "Test with Label",
+				"--body", "Test content",
+				"--label", "feature",
+				"--dry-run",
+				"--quiet",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Register with multiple --label flags",
+			args: []string{
+				"--title", "Test with Multiple Labels",
+				"--body", "Test content",
+				"--label", "feature",
+				"--label", "security",
+				"--label", "v1.0",
+				"--dry-run",
+				"--quiet",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Register with --labels (comma-separated)",
+			args: []string{
+				"--title", "Test with Comma Labels",
+				"--body", "Test content",
+				"--labels", "feature,security,v1.0",
+				"--dry-run",
+				"--quiet",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Register with both --label and --labels",
+			args: []string{
+				"--title", "Test with Mixed Labels",
+				"--body", "Test content",
+				"--label", "feature",
+				"--labels", "security,v1.0",
+				"--dry-run",
+				"--quiet",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Register with duplicate labels",
+			args: []string{
+				"--title", "Test with Duplicate Labels",
+				"--body", "Test content",
+				"--label", "feature",
+				"--label", "feature",
+				"--labels", "feature,security",
+				"--dry-run",
+				"--quiet",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := NewSBIRegisterCommand()
+			cmd.SetArgs(tt.args)
+
+			err := cmd.Execute()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }

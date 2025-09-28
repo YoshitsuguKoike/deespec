@@ -28,8 +28,8 @@ func (uc *RegisterSBIUseCase) Execute(ctx context.Context, in RegisterSBIInput) 
 	// Build the complete markdown content with guidelines and title
 	content := BuildSpecMarkdown(in.Title, in.Body)
 
-	// Create the SBI entity
-	entity, err := sbi.NewSBI(id, in.Title, content)
+	// Create the SBI entity with labels
+	entity, err := sbi.NewSBI(id, in.Title, content, in.Labels)
 	if err != nil {
 		return nil, err
 	}

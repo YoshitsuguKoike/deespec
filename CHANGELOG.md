@@ -21,12 +21,15 @@
   - Interface 層: `sbi register` CLI コマンド実装
   - 仕様書フォーマット: ガイドラインブロック自動挿入機能
   - 保存パス: `.deespec/specs/sbi/<SBI-ID>/spec.md`
+  - メタデータ管理: `meta.yml` ファイルによる仕様書メタ情報保存
 
 * **CLI コマンド機能**:
   - `deespec sbi register`: 新規 SBI 仕様書の登録
   - フラグ: `--title` (必須), `--body` (オプション, stdin対応)
+  - ラベル管理: `--label` (複数指定可), `--labels` (カンマ区切り)
   - 出力制御: `--json`, `--quiet`, `--dry-run`
   - dry-run モード: MemMapFs による実行シミュレーション
+  - ラベルの重複排除と空白トリミング機能
 
 * **アーキテクチャドキュメント**:
   - Clean Architecture + DDD 実装ガイドライン

@@ -9,6 +9,7 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/domain/sbi"
 	infraSbi "github.com/YoshitsuguKoike/deespec/internal/infra/repository/sbi"
 	"github.com/spf13/afero"
+	"gopkg.in/yaml.v3"
 )
 
 func TestFileSBIRepository_Save(t *testing.T) {
@@ -34,8 +35,8 @@ This is the test body content.`,
 			},
 			wantPath: ".deespec/specs/sbi/SBI-01J8X5YNFZ4TQ5H5N5RQNT5P78/spec.md",
 			wantErr:  false,
-			checkFile: func(t *testing.T, fs afero.Fs, path string) {
-				content, err := afero.ReadFile(fs, path)
+			checkFile: func(t *testing.T, fs afero.Fs, specPath string) {
+				content, err := afero.ReadFile(fs, specPath)
 				if err != nil {
 					t.Errorf("Failed to read saved file: %v", err)
 					return
@@ -62,8 +63,8 @@ This is the test body content.`,
 			},
 			wantPath: ".deespec/specs/sbi/SBI-01J8X5YNFZ4TQ5H5N5RQNT5P79/spec.md",
 			wantErr:  false,
-			checkFile: func(t *testing.T, fs afero.Fs, path string) {
-				content, err := afero.ReadFile(fs, path)
+			checkFile: func(t *testing.T, fs afero.Fs, specPath string) {
+				content, err := afero.ReadFile(fs, specPath)
 				if err != nil {
 					t.Errorf("Failed to read saved file: %v", err)
 					return
@@ -83,8 +84,8 @@ This is the test body content.`,
 			},
 			wantPath: ".deespec/specs/sbi/SBI-01J8X5YNFZ4TQ5H5N5RQNT5P80/spec.md",
 			wantErr:  false,
-			checkFile: func(t *testing.T, fs afero.Fs, path string) {
-				content, err := afero.ReadFile(fs, path)
+			checkFile: func(t *testing.T, fs afero.Fs, specPath string) {
+				content, err := afero.ReadFile(fs, specPath)
 				if err != nil {
 					t.Errorf("Failed to read saved file: %v", err)
 					return
@@ -105,8 +106,8 @@ This is the test body content.`,
 			},
 			wantPath: ".deespec/specs/sbi/SBI-01J8X5YNFZ4TQ5H5N5RQNT5P81/spec.md",
 			wantErr:  false,
-			checkFile: func(t *testing.T, fs afero.Fs, path string) {
-				content, err := afero.ReadFile(fs, path)
+			checkFile: func(t *testing.T, fs afero.Fs, specPath string) {
+				content, err := afero.ReadFile(fs, specPath)
 				if err != nil {
 					t.Errorf("Failed to read saved file: %v", err)
 					return
@@ -171,6 +172,47 @@ This is the test body content.`,
 				}
 				if !dirInfo.IsDir() {
 					t.Error("Expected directory but got file")
+				}
+
+				// Check meta.yml exists and has correct content
+				metaPath := filepath.Join(expectedDir, "meta.yml")
+				metaExists, err := afero.Exists(fs, metaPath)
+				if err != nil {
+					t.Errorf("Failed to check meta.yml existence: %v", err)
+				}
+				if !metaExists {
+					t.Errorf("meta.yml was not created at %s", metaPath)
+				} else {
+					// Read and verify meta.yml content
+					metaContent, err := afero.ReadFile(fs, metaPath)
+					if err != nil {
+						t.Errorf("Failed to read meta.yml: %v", err)
+					}
+
+					var meta sbi.Meta
+					if err := yaml.Unmarshal(metaContent, &meta); err != nil {
+						t.Errorf("Failed to parse meta.yml: %v", err)
+					}
+
+					// Verify meta fields
+					if meta.ID != tt.sbi.ID {
+						t.Errorf("Meta ID mismatch: got %s, want %s", meta.ID, tt.sbi.ID)
+					}
+					if meta.Title != tt.sbi.Title {
+						t.Errorf("Meta Title mismatch: got %s, want %s", meta.Title, tt.sbi.Title)
+					}
+					if meta.Labels == nil {
+						t.Error("Meta Labels should not be nil")
+					}
+					if len(meta.Labels) != 0 {
+						t.Errorf("Meta Labels should be empty by default, got %v", meta.Labels)
+					}
+					if meta.CreatedAt.IsZero() {
+						t.Error("Meta CreatedAt should not be zero")
+					}
+					if meta.UpdatedAt.IsZero() {
+						t.Error("Meta UpdatedAt should not be zero")
+					}
 				}
 			}
 		})

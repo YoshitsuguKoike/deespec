@@ -12,6 +12,7 @@ func TestNewSBI(t *testing.T) {
 		id      string
 		title   string
 		body    string
+		labels  []string
 		wantErr bool
 	}{
 		{
@@ -19,6 +20,7 @@ func TestNewSBI(t *testing.T) {
 			id:      "SBI-01J8X5YNFZ4TQ5H5N5RQNT5P78",
 			title:   "Test Specification",
 			body:    "This is the body content",
+			labels:  []string{"test", "unit"},
 			wantErr: false,
 		},
 		{
@@ -26,6 +28,7 @@ func TestNewSBI(t *testing.T) {
 			id:      "SBI-01J8X5YNFZ4TQ5H5N5RQNT5P79",
 			title:   "",
 			body:    "This is the body content",
+			labels:  nil,
 			wantErr: true,
 		},
 		{
@@ -33,13 +36,22 @@ func TestNewSBI(t *testing.T) {
 			id:      "SBI-01J8X5YNFZ4TQ5H5N5RQNT5P80",
 			title:   "Test Specification",
 			body:    "",
+			labels:  []string{},
+			wantErr: false,
+		},
+		{
+			name:    "Nil labels should be allowed",
+			id:      "SBI-01J8X5YNFZ4TQ5H5N5RQNT5P81",
+			title:   "Test Specification",
+			body:    "Content",
+			labels:  nil,
 			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := sbi.NewSBI(tt.id, tt.title, tt.body)
+			result, err := sbi.NewSBI(tt.id, tt.title, tt.body, tt.labels)
 
 			if tt.wantErr {
 				if err == nil {
@@ -63,6 +75,13 @@ func TestNewSBI(t *testing.T) {
 				}
 				if result.Body != tt.body {
 					t.Errorf("Body mismatch: got %s, want %s", result.Body, tt.body)
+				}
+				// Check labels (should be non-nil even if empty)
+				if result.Labels == nil {
+					t.Error("Labels should not be nil")
+				}
+				if tt.labels != nil && len(result.Labels) != len(tt.labels) {
+					t.Errorf("Labels count mismatch: got %d, want %d", len(result.Labels), len(tt.labels))
 				}
 			}
 		})

@@ -14,7 +14,7 @@
 
 ### 追加 (Added)
 
-* **SBI 仕様登録機能の実装 (Step 1-3)**:
+* **SBI 仕様登録機能の実装 (完全版)**:
   - Domain 層: SBI エンティティとリポジトリインターフェース
   - UseCase 層: RegisterSBIUseCase と ULID ベースの ID 生成
   - Infrastructure 層: FileSBIRepository とアトミックファイル書き込み
@@ -45,6 +45,8 @@
   - Domain 層: エンティティ検証テスト
   - UseCase 層: モックリポジトリを使用した統合テスト
   - Infrastructure 層: 並行書き込み、エラーケーステスト
+  - Interface 層: CLI コマンドテスト、フラグ検証
+  - E2E テスト: 実際のファイル作成、stdin入力、JSON出力
   - 100% のテスト成功率
 
 ---

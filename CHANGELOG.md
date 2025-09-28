@@ -14,12 +14,19 @@
 
 ### 追加 (Added)
 
-* **SBI 仕様登録機能の実装 (Step 1-2)**:
+* **SBI 仕様登録機能の実装 (Step 1-3)**:
   - Domain 層: SBI エンティティとリポジトリインターフェース
   - UseCase 層: RegisterSBIUseCase と ULID ベースの ID 生成
   - Infrastructure 層: FileSBIRepository とアトミックファイル書き込み
+  - Interface 層: `sbi register` CLI コマンド実装
   - 仕様書フォーマット: ガイドラインブロック自動挿入機能
   - 保存パス: `.deespec/specs/sbi/<SBI-ID>/spec.md`
+
+* **CLI コマンド機能**:
+  - `deespec sbi register`: 新規 SBI 仕様書の登録
+  - フラグ: `--title` (必須), `--body` (オプション, stdin対応)
+  - 出力制御: `--json`, `--quiet`, `--dry-run`
+  - dry-run モード: MemMapFs による実行シミュレーション
 
 * **アーキテクチャドキュメント**:
   - Clean Architecture + DDD 実装ガイドライン

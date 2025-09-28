@@ -259,9 +259,13 @@ func TestStateJournalConsistencyCheck(t *testing.T) {
 	t.Logf("Last journal entry: turn=%v", lastEntry["turn"])
 
 	// State turn should match last journal entry
-	if float64(finalState.Turn) != lastEntry["turn"].(float64) {
-		t.Errorf("State/Journal mismatch: state turn=%d, journal turn=%v",
-			finalState.Turn, lastEntry["turn"])
+	if lastEntry["turn"] != nil {
+		if float64(finalState.Turn) != lastEntry["turn"].(float64) {
+			t.Errorf("State/Journal mismatch: state turn=%d, journal turn=%v",
+				finalState.Turn, lastEntry["turn"])
+		}
+	} else {
+		t.Errorf("Last journal entry has no turn field")
 	}
 
 	// State version should be 101 (1 initial + 100 updates)

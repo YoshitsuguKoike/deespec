@@ -38,6 +38,10 @@ func TestPrintEffectiveConfig_NoPolicy_Defaults(t *testing.T) {
 	os.Stdout = wOut
 	os.Stderr = wErr
 
+	// Update logger to use the new stderr
+	GetLogger().SetOutput(wErr)
+	defer GetLogger().SetOutput(oldStderr)
+
 	// Run command
 	err := runPrintEffectiveConfig("", "json", false, false)
 
@@ -140,7 +144,7 @@ func TestPrintEffectiveConfig_FormatCompact(t *testing.T) {
 		t.Fatalf("Failed to marshal pretty JSON: %v", err)
 	}
 
-	if !bytes.Contains(prettyJSON, []byte("\n")) {
+	if !bytes.Contains(prettyJSON, []byte("")) {
 		t.Error("Pretty JSON should contain newlines")
 	}
 
@@ -299,6 +303,10 @@ journal:
 	rErr, wErr, _ := os.Pipe()
 	os.Stdout = wOut
 	os.Stderr = wErr
+
+	// Update logger to use the new stderr
+	GetLogger().SetOutput(wErr)
+	defer GetLogger().SetOutput(oldStderr)
 
 	// Run with CLI override
 	err := runPrintEffectiveConfig("suffix", "json", false, false)

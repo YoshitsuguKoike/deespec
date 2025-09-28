@@ -94,10 +94,10 @@ func printTextResult(result *journal.ValidationResult) {
 			switch issue.Type {
 			case "error":
 				if issue.Field != "" {
-					fmt.Fprintf(os.Stderr, "ERROR: journal line=%d field=%s %s\n",
+					Error("journal line=%d field=%s %s\n",
 						lineResult.Line, issue.Field, issue.Message)
 				} else {
-					fmt.Fprintf(os.Stderr, "ERROR: journal line=%d %s\n",
+					Error("journal line=%d %s\n",
 						lineResult.Line, issue.Message)
 				}
 			case "warn":

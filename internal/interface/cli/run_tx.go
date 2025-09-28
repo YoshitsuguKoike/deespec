@@ -25,7 +25,7 @@ func SaveStateAndJournalTX(
 	metricsPath := filepath.Join(paths.Var, "metrics.json")
 	metrics, err := txn.LoadMetrics(metricsPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "WARN: Failed to load metrics: %v\n", err)
+		Warn("Failed to load metrics: %v\n", err)
 		metrics = &txn.MetricsCollector{} // Use fresh metrics on error
 	}
 
@@ -119,7 +119,7 @@ func SaveStateAndJournalTX(
 	// Clean up transaction directory after successful commit
 	if err := manager.Cleanup(tx); err != nil {
 		// Non-fatal: just log warning
-		fmt.Fprintf(os.Stderr, "WARN: failed to cleanup transaction: %v\n", err)
+		Warn("failed to cleanup transaction: %v\n", err)
 	}
 
 	return nil
@@ -159,10 +159,10 @@ func appendJournalEntryInTX(journalRec map[string]interface{}, journalPath strin
 	// This ensures journal durability before transaction is marked as committed
 	if err := fs.FsyncFile(file); err != nil {
 		// Log warning but continue (as per architecture)
-		fmt.Fprintf(os.Stderr, "WARN: journal fsync failed: %v\n", err)
+		Warn("journal fsync failed: %v\n", err)
 	}
 	if err := fs.FsyncDir(journalDir); err != nil {
-		fmt.Fprintf(os.Stderr, "WARN: journal dir fsync failed: %v\n", err)
+		Warn("journal dir fsync failed: %v\n", err)
 	}
 
 	return nil

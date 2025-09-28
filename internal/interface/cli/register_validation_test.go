@@ -199,7 +199,7 @@ func validateSpec(s *TestSpec, existingSpecs []TestSpec) *TestValidationResult {
 		result.OK = false
 		result.Fatal = true
 		result.Errors = append(result.Errors, "ID cannot be empty")
-		os.Stderr.WriteString("ERROR: ID cannot be empty\n")
+		os.Stderr.WriteString("ERROR: ID cannot be empty")
 	}
 
 	// Check for duplicate labels (warning)
@@ -207,7 +207,7 @@ func validateSpec(s *TestSpec, existingSpecs []TestSpec) *TestValidationResult {
 	for _, label := range s.Labels {
 		if seen[label] {
 			result.Warnings = append(result.Warnings, "Duplicate label: "+label)
-			os.Stderr.WriteString("WARN: Duplicate label: " + label + "\n")
+			os.Stderr.WriteString("WARN: Duplicate label: " + label + "")
 		}
 		seen[label] = true
 	}

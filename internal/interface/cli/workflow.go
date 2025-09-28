@@ -54,7 +54,7 @@ func runWorkflowVerify(cmd *cobra.Command, args []string) error {
 			} else {
 				for _, issue := range file.Issues {
 					if issue.Type == "error" {
-						fmt.Fprintf(os.Stderr, "ERROR: %s%s %s\n", file.File, issue.Field, issue.Message)
+						Error("%s%s %s\n", file.File, issue.Field, issue.Message)
 					} else if issue.Type == "warning" {
 						fmt.Printf("WARN: %s%s %s\n", file.File, issue.Field, issue.Message)
 					}

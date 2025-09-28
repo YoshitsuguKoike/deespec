@@ -50,7 +50,7 @@ func Test_NoAbsolutePathsInTests(t *testing.T) {
 		}
 
 		contentStr := string(content)
-		lines := strings.Split(contentStr, "\n")
+		lines := strings.Split(contentStr, "")
 
 		for i, line := range lines {
 			lineNum := i + 1

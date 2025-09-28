@@ -123,7 +123,7 @@ func ValidateFileChecksum(filePath string, expected *FileChecksum) error {
 	startTime := time.Now()
 
 	if expected == nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Checksum validation failed %s=%s error=%s\n",
+		GetLogger().Error("Checksum validation failed %s=%s error=%s\n",
 			MetricChecksumValidationFailed, filePath, "no_expected_checksum")
 		return fmt.Errorf("no expected checksum provided")
 	}
@@ -132,7 +132,7 @@ func ValidateFileChecksum(filePath string, expected *FileChecksum) error {
 	current, err := CalculateFileChecksum(filePath, expected.Algorithm)
 	if err != nil {
 		duration := time.Since(startTime)
-		fmt.Fprintf(os.Stderr, "ERROR: Checksum validation failed %s=%s %s=%dms error=%v\n",
+		GetLogger().Error("Checksum validation failed %s=%s %s=%dms error=%v\n",
 			MetricChecksumValidationFailed, filePath, MetricChecksumCalculationTime, duration.Milliseconds(), err)
 		return fmt.Errorf("calculate current checksum: %w", err)
 	}
@@ -140,7 +140,7 @@ func ValidateFileChecksum(filePath string, expected *FileChecksum) error {
 	// Validate algorithm matches
 	if current.Algorithm != expected.Algorithm {
 		duration := time.Since(startTime)
-		fmt.Fprintf(os.Stderr, "ERROR: Checksum validation failed %s=%s %s=%dms error=%s\n",
+		GetLogger().Error("Checksum validation failed %s=%s %s=%dms error=%s\n",
 			MetricChecksumValidationFailed, filePath, MetricChecksumCalculationTime, duration.Milliseconds(), "algorithm_mismatch")
 		return fmt.Errorf("checksum algorithm mismatch: expected %s, got %s",
 			expected.Algorithm, current.Algorithm)
@@ -149,7 +149,7 @@ func ValidateFileChecksum(filePath string, expected *FileChecksum) error {
 	// Validate size matches
 	if current.Size != expected.Size {
 		duration := time.Since(startTime)
-		fmt.Fprintf(os.Stderr, "ERROR: Checksum validation failed %s=%s %s=%dms error=%s expected_size=%d actual_size=%d\n",
+		GetLogger().Error("Checksum validation failed %s=%s %s=%dms error=%s expected_size=%d actual_size=%d\n",
 			MetricChecksumValidationFailed, filePath, MetricChecksumCalculationTime, duration.Milliseconds(), "size_mismatch", expected.Size, current.Size)
 		return fmt.Errorf("file size mismatch: expected %d bytes, got %d bytes",
 			expected.Size, current.Size)
@@ -158,7 +158,7 @@ func ValidateFileChecksum(filePath string, expected *FileChecksum) error {
 	// Validate checksum matches
 	if current.Value != expected.Value {
 		duration := time.Since(startTime)
-		fmt.Fprintf(os.Stderr, "ERROR: Checksum validation failed op=commit file=%s expected=%s actual=%s %s=%s %s=%dms\n",
+		GetLogger().Error("Checksum validation failed op=commit file=%s expected=%s actual=%s %s=%s %s=%dms\n",
 			filePath, expected.Value, current.Value, MetricChecksumValidationFailed, filePath, MetricChecksumCalculationTime, duration.Milliseconds())
 		return fmt.Errorf("checksum mismatch: expected %s, got %s",
 			expected.Value, current.Value)
@@ -166,7 +166,7 @@ func ValidateFileChecksum(filePath string, expected *FileChecksum) error {
 
 	// Log successful validation
 	duration := time.Since(startTime)
-	fmt.Fprintf(os.Stderr, "INFO: Checksum validation successful %s=%s %s=%s %s=%dms\n",
+	GetLogger().Info("Checksum validation successful %s=%s %s=%s %s=%dms\n",
 		MetricChecksumValidationSuccess, filePath, MetricChecksumAlgorithm, expected.Algorithm, MetricChecksumCalculationTime, duration.Milliseconds())
 
 	return nil
@@ -288,11 +288,11 @@ func (p *ChecksumWorkerPool) worker() {
 
 		if err != nil {
 			duration := time.Since(startTime)
-			fmt.Fprintf(os.Stderr, "WARN: Parallel checksum calculation failed %s=%s %s=%dms error=%v\n",
+			GetLogger().Warn("Parallel checksum calculation failed %s=%s %s=%dms error=%v\n",
 				MetricChecksumCalculationFailed, job.FilePath, MetricChecksumCalculationTime, duration.Milliseconds(), err)
 		} else {
 			duration := time.Since(startTime)
-			fmt.Fprintf(os.Stderr, "INFO: Parallel checksum calculation completed %s=%s %s=%s %s=%dms\n",
+			GetLogger().Info("Parallel checksum calculation completed %s=%s %s=%s %s=%dms\n",
 				MetricChecksumCalculationSuccess, job.FilePath, MetricChecksumAlgorithm, job.Algorithm, MetricChecksumCalculationTime, duration.Milliseconds())
 		}
 
@@ -386,7 +386,7 @@ func CalculateChecksumsParallel(filePaths []string, algorithm ChecksumAlgorithm,
 func CalculateChecksumsOptimal(filePaths []string, algorithm ChecksumAlgorithm) map[string]ChecksumResult {
 	optimalWorkers := CalculateOptimalWorkerCount(len(filePaths))
 
-	fmt.Fprintf(os.Stderr, "INFO: Checksum calculation with optimal parallelism files=%d workers=%d cores=%d\n",
+	GetLogger().Info("Checksum calculation with optimal parallelism files=%d workers=%d cores=%d\n",
 		len(filePaths), optimalWorkers, runtime.GOMAXPROCS(0))
 
 	return CalculateChecksumsParallel(filePaths, algorithm, optimalWorkers)

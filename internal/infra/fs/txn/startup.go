@@ -3,7 +3,6 @@ package txn
 import (
 	"context"
 	"fmt"
-	"os"
 )
 
 // RunStartupRecovery provides a convenience entrypoint to perform transaction
@@ -15,7 +14,7 @@ import (
 // The disableRecovery parameter can be used to skip recovery.
 func RunStartupRecovery(ctx context.Context, txnBaseDir string, destRoot string, disableRecovery bool) error {
 	if disableRecovery {
-		fmt.Fprintf(os.Stderr, "INFO: Transaction recovery disabled\n")
+		GetLogger().Info("Transaction recovery disabled")
 		return nil
 	}
 

@@ -101,11 +101,11 @@ func (r *Recovery) RecoverAll(ctx context.Context) (*RecoveryResult, error) {
 		if err := r.recoverTransactionWithRetry(totalCtx, txnID); err != nil {
 			result.FailedCount++
 			result.Errors = append(result.Errors, fmt.Errorf("failed to recover %s: %w", txnID, err))
-			fmt.Fprintf(os.Stderr, "ERROR: Failed to recover transaction %s=%s %s=%v\n",
+			GetLogger().Error("Failed to recover transaction %s=%s %s=%v\n",
 				MetricRecoverForwardFailed, txnID, "error", err)
 		} else {
 			result.RecoveredCount++
-			fmt.Fprintf(os.Stderr, "INFO: Recovered transaction %s=%s\n",
+			GetLogger().Info("Recovered transaction %s=%s\n",
 				MetricRecoverForwardSuccess, txnID)
 		}
 	}
@@ -114,11 +114,11 @@ func (r *Recovery) RecoverAll(ctx context.Context) (*RecoveryResult, error) {
 	for _, txnID := range scanResult.Committed {
 		if err := r.cleanupTransaction(string(txnID)); err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("failed to cleanup %s: %w", txnID, err))
-			fmt.Fprintf(os.Stderr, "WARN: Failed to cleanup transaction %s=%s %s=%v\n",
+			GetLogger().Warn("Failed to cleanup transaction %s=%s %s=%v\n",
 				MetricCleanupFailed, txnID, "error", err)
 		} else {
 			result.CleanedCount++
-			fmt.Fprintf(os.Stderr, "INFO: Cleaned up transaction %s=%s\n",
+			GetLogger().Info("Cleaned up transaction %s=%s\n",
 				MetricCleanupSuccess, txnID)
 		}
 	}
@@ -127,7 +127,7 @@ func (r *Recovery) RecoverAll(ctx context.Context) (*RecoveryResult, error) {
 	result.Duration = result.CompletedAt.Sub(startTime)
 
 	// Log summary metrics
-	fmt.Fprintf(os.Stderr, "INFO: Recovery complete %s=%d %s=%d %s=%d %s=%d\n",
+	GetLogger().Info("Recovery complete %s=%d %s=%d %s=%d %s=%d\n",
 		MetricRecoverForwardCount, len(scanResult.IntentOnly),
 		MetricRecoverForwardSuccess, result.RecoveredCount,
 		MetricCleanupSuccess, result.CleanedCount,
@@ -149,7 +149,7 @@ func (r *Recovery) recoverTransactionWithRetry(ctx context.Context, txnID TxnID)
 
 		if err == nil {
 			if attempt > 0 {
-				fmt.Fprintf(os.Stderr, "INFO: Transaction recovery succeeded on retry txn.id=%s txn.retry.attempt=%d\n",
+				GetLogger().Info("Transaction recovery succeeded on retry txn.id=%s txn.retry.attempt=%d\n",
 					txnID, attempt)
 			}
 			return nil
@@ -159,7 +159,7 @@ func (r *Recovery) recoverTransactionWithRetry(ctx context.Context, txnID TxnID)
 
 		// Check if context was cancelled (don't retry on timeout/cancellation)
 		if attemptCtx.Err() != nil || ctx.Err() != nil {
-			fmt.Fprintf(os.Stderr, "WARN: Transaction recovery timeout/cancelled txn.id=%s txn.retry.attempt=%d\n",
+			GetLogger().Warn("Transaction recovery timeout/cancelled txn.id=%s txn.retry.attempt=%d\n",
 				txnID, attempt)
 			break
 		}
@@ -172,7 +172,7 @@ func (r *Recovery) recoverTransactionWithRetry(ctx context.Context, txnID TxnID)
 				delay = r.maxDelay
 			}
 
-			fmt.Fprintf(os.Stderr, "WARN: Transaction recovery failed, retrying txn.id=%s txn.retry.attempt=%d txn.retry.delay_ms=%d error=%v\n",
+			GetLogger().Warn("Transaction recovery failed, retrying txn.id=%s txn.retry.attempt=%d txn.retry.delay_ms=%d error=%v\n",
 				txnID, attempt, delay.Milliseconds(), err)
 
 			// Wait for backoff delay
@@ -253,7 +253,7 @@ func (r *Recovery) recoverTransaction(ctx context.Context, txnID TxnID) error {
 	err = r.manager.Commit(tx, destRoot, func() error {
 		// Journal was likely already written before crash
 		// If not, we could reconstruct and append here
-		fmt.Fprintf(os.Stderr, "WARN: Forward recovery without journal callback for %s\n", txnID)
+		GetLogger().Warn("Forward recovery without journal callback for %s\n", txnID)
 		return nil
 	})
 

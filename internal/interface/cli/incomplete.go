@@ -349,7 +349,7 @@ func HandleAutoFBRegistration(journalPath string, turn int) error {
 		return nil // No journal yet
 	}
 
-	lines := strings.Split(string(data), "\n")
+	lines := strings.Split(string(data), "")
 	for _, line := range lines {
 		if line == "" {
 			continue
@@ -369,7 +369,7 @@ func HandleAutoFBRegistration(journalPath string, turn int) error {
 						if !isAlreadyRegistered(artifactMap["target_task_id"].(string), journalPath) {
 							// Register the draft
 							if err := registerFBDraft(artifactMap, journalPath, turn); err != nil {
-								fmt.Fprintf(os.Stderr, "WARN: Failed to auto-register FB draft: %v\n", err)
+								Warn("Failed to auto-register FB draft: %v\n", err)
 							}
 						}
 					}
@@ -388,7 +388,7 @@ func isAlreadyRegistered(targetTaskID string, journalPath string) bool {
 		return false
 	}
 
-	lines := strings.Split(string(data), "\n")
+	lines := strings.Split(string(data), "")
 	for _, line := range lines {
 		if line == "" {
 			continue
@@ -420,7 +420,7 @@ func isAlreadyRegistered(targetTaskID string, journalPath string) bool {
 func registerFBDraft(draftInfo map[string]interface{}, journalPath string, turn int) error {
 	targetTaskID, _ := draftInfo["target_task_id"].(string)
 
-	fmt.Fprintf(os.Stderr, "INFO: Auto-registering FB draft for %s\n", targetTaskID)
+	Info("Auto-registering FB draft for %s\n", targetTaskID)
 
 	// In a real implementation, this would call:
 	// cat artifacts/fb_sbi/<target-id>/draft.yaml | deespec sbi register --stdin
@@ -459,6 +459,6 @@ func registerFBDraft(draftInfo map[string]interface{}, journalPath string, turn 
 		return fmt.Errorf("write journal record: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "INFO: FB draft registered as %s\n", registeredArtifact["fb_id"])
+	Info("FB draft registered as %s\n", registeredArtifact["fb_id"])
 	return nil
 }

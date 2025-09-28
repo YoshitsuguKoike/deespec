@@ -202,8 +202,8 @@ func TestGetDefaultPolicy(t *testing.T) {
 	if policy.Journal.RecordInputBytes {
 		t.Errorf("Expected Journal record_input_bytes to be false")
 	}
-	if policy.Logging.StderrLevelDefault != "info" {
-		t.Errorf("Expected Logging stderr_level_default 'info', got '%s'", policy.Logging.StderrLevelDefault)
+	if policy.Logging.StderrLevelDefault != "warn" {
+		t.Errorf("Expected Logging stderr_level_default 'warn', got '%s'", policy.Logging.StderrLevelDefault)
 	}
 }
 

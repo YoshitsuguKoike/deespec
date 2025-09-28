@@ -72,7 +72,7 @@ func TestTransactionFsyncAudit(t *testing.T) {
 		}
 		defer f.Close()
 
-		f.WriteString(`{"action":"test","txn_id":"` + string(tx.Manifest.ID) + `"}` + "\n")
+		f.WriteString(`{"action":"test","txn_id":"` + string(tx.Manifest.ID) + `"}` + "")
 		fs.FsyncFile(f)
 		fs.FsyncDir(filepath.Dir(journalPath))
 		return nil
@@ -197,7 +197,7 @@ Test specification for fsync audit.
 		defer f.Close()
 
 		entry := fmt.Sprintf(`{"action":"register","spec_id":"test-001","timestamp":"%s"}`, tx.Manifest.CreatedAt.Format("2006-01-02T15:04:05Z"))
-		f.WriteString(entry + "\n")
+		f.WriteString(entry + "")
 
 		// Critical: fsync journal and its directory
 		fs.FsyncFile(f)
@@ -207,7 +207,7 @@ Test specification for fsync audit.
 	})
 
 	// Generate report
-	fmt.Fprintf(os.Stderr, "\n=== REGISTER OPERATION FSYNC AUDIT ===\n")
+	fmt.Fprintf(os.Stderr, "\n=== REGISTER OPERATION FSYNC AUDIT ===")
 	fs.PrintFsyncReport()
 
 	// Verify expected fsync pattern
@@ -295,7 +295,7 @@ func TestParallelChecksumWithFsyncOrder(t *testing.T) {
 
 		entry := fmt.Sprintf(`{"action":"parallel_checksum_test","txn_id":"%s","files":%d}`,
 			string(tx.Manifest.ID), len(fileContents))
-		f.WriteString(entry + "\n")
+		f.WriteString(entry + "")
 
 		// Critical fsync ordering
 		fs.FsyncFile(f)
@@ -308,7 +308,7 @@ func TestParallelChecksumWithFsyncOrder(t *testing.T) {
 	}
 
 	// Generate detailed fsync report
-	fmt.Fprintf(os.Stderr, "\n=== PARALLEL CHECKSUM FSYNC ORDER AUDIT ===\n")
+	fmt.Fprintf(os.Stderr, "\n=== PARALLEL CHECKSUM FSYNC ORDER AUDIT ===")
 	fs.PrintFsyncReport()
 
 	// Get detailed fsync stats

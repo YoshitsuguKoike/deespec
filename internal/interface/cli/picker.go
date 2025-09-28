@@ -87,25 +87,25 @@ func PickNextTask(cfg PickConfig) (*Task, string, error) {
 	// Detect incomplete instructions before picking
 	drafts, err := DetectIncomplete(picked, pickCtx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "WARN: Failed to detect incomplete for %s: %v\n", picked.ID, err)
+		Warn("Failed to detect incomplete for %s: %v", picked.ID, err)
 	}
 
 	// Process detected incomplete instructions
 	for _, draft := range drafts {
-		fmt.Fprintf(os.Stderr, "INFO: Detected incomplete instruction for %s: %s\n",
+		Info("Detected incomplete instruction for %s: %s",
 			draft.TargetTaskID, draft.ReasonCode)
 
 		// Persist FB draft
 		artifactsDir := ".deespec/var/artifacts"
 		draftPath, err := PersistFBDraft(draft, artifactsDir)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "WARN: Failed to persist FB draft: %v\n", err)
+			Warn("Failed to persist FB draft: %v", err)
 		} else {
-			fmt.Fprintf(os.Stderr, "INFO: FB draft saved to %s\n", draftPath)
+			Info("FB draft saved to %s", draftPath)
 
 			// Record in journal (use turn 0 for pick phase)
 			if err := RecordFBDraftInJournal(draft, cfg.JournalPath, 0); err != nil {
-				fmt.Fprintf(os.Stderr, "WARN: Failed to record FB draft in journal: %v\n", err)
+				Warn("Failed to record FB draft in journal: %v", err)
 			}
 		}
 	}
@@ -136,7 +136,7 @@ func loadAllTasks(specsDir string) ([]*Task, error) {
 			task, err := loadTaskFromMetaFile(path)
 			if err != nil {
 				// Log warning but continue
-				fmt.Fprintf(os.Stderr, "WARN: failed to load task from %s: %v\n", path, err)
+				Warn("failed to load task from %s: %v", path, err)
 				return nil
 			}
 			if task != nil {
@@ -207,7 +207,7 @@ func filterReadyTasks(tasks []*Task, journalPath string) []*Task {
 
 		// Skip if task is in a dependency cycle
 		if inCycle[task.ID] {
-			fmt.Fprintf(os.Stderr, "WARN: Task %s is part of a circular dependency, skipping\n", task.ID)
+			Warn("Task %s is part of a circular dependency, skipping", task.ID)
 			continue
 		}
 
@@ -216,7 +216,7 @@ func filterReadyTasks(tasks []*Task, journalPath string) []*Task {
 			// Check for unknown dependencies
 			for _, depID := range task.DependsOn {
 				if !taskExists(tasks, depID) && !completedTasks[depID] {
-					fmt.Fprintf(os.Stderr, "WARN: Task %s depends on unknown task %s, skipping\n", task.ID, depID)
+					Warn("Task %s depends on unknown task %s, skipping", task.ID, depID)
 				}
 			}
 			continue
@@ -266,7 +266,7 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 
 		if step, ok := entry["step"].(string); ok && step == "plan" {
 			// Output plan step entry for debugging
-			fmt.Fprintf(os.Stdout, "[JOURNAL] step=plan: %s\n", line)
+			Debug("[JOURNAL] step=plan: %s", line)
 
 			// Check for register type in artifacts
 			if artifacts, ok := entry["artifacts"].([]interface{}); ok {
@@ -274,7 +274,7 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 					if artifactMap, ok := artifact.(map[string]interface{}); ok {
 						if artifactType, ok := artifactMap["type"].(string); ok && artifactType == "register" {
 							if taskID, ok := artifactMap["id"].(string); ok {
-								fmt.Fprintf(os.Stdout, "[JOURNAL] Found registered task: %s\n", taskID)
+								Debug("[JOURNAL] Found registered task: %s", taskID)
 							}
 						}
 					}
@@ -283,29 +283,29 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 		}
 		if step, ok := entry["step"].(string); ok && step == "implement" {
 			// Output implement step entry for debugging
-			fmt.Fprintf(os.Stdout, "[JOURNAL] step=implement: %s\n", line)
+			Debug("[JOURNAL] step=implement: %s", line)
 
 			// Extract decision if present
 			if decision, ok := entry["decision"].(string); ok && decision != "" {
-				fmt.Fprintf(os.Stdout, "[JOURNAL] implement decision: %s\n", decision)
+				Debug("[JOURNAL] implement decision: %s", decision)
 			}
 		}
 		if step, ok := entry["step"].(string); ok && step == "test" {
 			// Output test step entry for debugging
-			fmt.Fprintf(os.Stdout, "[JOURNAL] step=test: %s\n", line)
+			Debug("[JOURNAL] step=test: %s", line)
 
 			// Extract decision if present
 			if decision, ok := entry["decision"].(string); ok && decision != "" {
-				fmt.Fprintf(os.Stdout, "[JOURNAL] test decision: %s\n", decision)
+				Debug("[JOURNAL] test decision: %s", decision)
 			}
 		}
 		if step, ok := entry["step"].(string); ok && step == "review" {
 			// Output review step entry for debugging
-			fmt.Fprintf(os.Stdout, "[JOURNAL] step=review: %s\n", line)
+			Debug("[JOURNAL] step=review: %s", line)
 
 			// Extract decision for review (OK or NEEDS_CHANGES)
 			if decision, ok := entry["decision"].(string); ok && decision != "" {
-				fmt.Fprintf(os.Stdout, "[JOURNAL] review decision: %s\n", decision)
+				Debug("[JOURNAL] review decision: %s", decision)
 
 				// Check if task needs rework
 				if decision == "NEEDS_CHANGES" {
@@ -314,7 +314,7 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 							if artifactMap, ok := artifact.(map[string]interface{}); ok {
 								if artifactType, ok := artifactMap["type"].(string); ok && artifactType == "pick" {
 									if taskID, ok := artifactMap["task_id"].(string); ok {
-										fmt.Fprintf(os.Stdout, "[JOURNAL] Task %s needs changes\n", taskID)
+										Debug("[JOURNAL] Task %s needs changes", taskID)
 									}
 								}
 							}
@@ -326,7 +326,7 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 		// Look for done steps
 		if step, ok := entry["step"].(string); ok && step == "done" {
 			// Output done step entry for debugging
-			fmt.Fprintf(os.Stdout, "[JOURNAL] step=done: %s\n", line)
+			Debug("[JOURNAL] step=done: %s", line)
 
 			// Extract task ID from artifacts
 			if artifacts, ok := entry["artifacts"].([]interface{}); ok {
@@ -335,7 +335,7 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 						if artifactType, ok := artifactMap["type"].(string); ok && artifactType == "pick" {
 							if taskID, ok := artifactMap["id"].(string); ok {
 								completed[taskID] = true
-								fmt.Fprintf(os.Stdout, "[JOURNAL] Task completed: %s\n", taskID)
+								Debug("[JOURNAL] Task completed: %s", taskID)
 							}
 						}
 					}
@@ -397,7 +397,7 @@ func detectCycles(tasks []*Task) map[string]bool {
 	for _, task := range tasks {
 		if !visited[task.ID] {
 			if dfs(task.ID) {
-				fmt.Fprintf(os.Stderr, "WARN: Circular dependency detected involving task %s\n", task.ID)
+				Warn("Circular dependency detected involving task %s", task.ID)
 			}
 		}
 	}
@@ -472,24 +472,24 @@ func ResumeIfInProgress(st *State, journalPath string) (bool, string, error) {
 		// Detect incomplete instructions during resume
 		drafts, err := DetectIncomplete(currentTask, pickCtx)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "WARN: Failed to detect incomplete during resume: %v\n", err)
+			Warn("Failed to detect incomplete during resume: %v", err)
 		}
 
 		for _, draft := range drafts {
-			fmt.Fprintf(os.Stderr, "INFO: Detected incomplete during resume for %s: %s\n",
+			Info("Detected incomplete during resume for %s: %s",
 				draft.TargetTaskID, draft.ReasonCode)
 
 			// Persist FB draft
 			artifactsDir := ".deespec/var/artifacts"
 			draftPath, err := PersistFBDraft(draft, artifactsDir)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "WARN: Failed to persist FB draft: %v\n", err)
+				Warn("Failed to persist FB draft: %v", err)
 			} else {
-				fmt.Fprintf(os.Stderr, "INFO: FB draft saved to %s\n", draftPath)
+				Info("FB draft saved to %s", draftPath)
 
 				// Record in journal
 				if err := RecordFBDraftInJournal(draft, journalPath, st.Turn); err != nil {
-					fmt.Fprintf(os.Stderr, "WARN: Failed to record FB draft in journal: %v\n", err)
+					Warn("Failed to record FB draft in journal: %v", err)
 				}
 			}
 		}

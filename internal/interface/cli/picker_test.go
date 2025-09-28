@@ -757,7 +757,7 @@ func TestTurnConsistency_SBI_PICK_002(t *testing.T) {
 			"decision":   "PENDING",
 			"elapsed_ms": 1000,
 			"error":      "",
-			"artifacts":  []string{".deespec/var/artifacts/turn5/implement.md"},
+			"artifacts": []interface{}{".deespec/var/artifacts/turn5/implement.md"},
 		},
 		{
 			"ts":         "2025-09-26T10:02:00Z",
@@ -766,7 +766,7 @@ func TestTurnConsistency_SBI_PICK_002(t *testing.T) {
 			"decision":   "PENDING",
 			"elapsed_ms": 500,
 			"error":      "",
-			"artifacts":  []string{".deespec/var/artifacts/turn5/test.md"},
+			"artifacts": []interface{}{".deespec/var/artifacts/turn5/test.md"},
 		},
 	}
 
@@ -781,15 +781,18 @@ func TestTurnConsistency_SBI_PICK_002(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	var turns []float64
 	for _, line := range lines {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		var entry map[string]interface{}
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			t.Fatal(err)
+			t.Fatalf("unmarshal failed for line %q: %v", line, err)
 		}
 		if turn, ok := entry["turn"].(float64); ok {
 			turns = append(turns, turn)
+		} else {
+			t.Fatalf("turn not found or not a number in entry: %v", entry)
 		}
 	}
 

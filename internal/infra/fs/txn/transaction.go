@@ -45,7 +45,7 @@ func (m *Manager) Begin(ctx context.Context) (*Transaction, error) {
 	// Fsync parent directory to ensure directories are persisted
 	if err := fs.FsyncDir(m.baseDir); err != nil {
 		// Log warning but continue (as per architecture doc)
-		fmt.Fprintf(os.Stderr, "WARN: fsync base directory failed: %v\n", err)
+		GetLogger().Warn("fsync base directory failed: %v\n", err)
 	}
 
 	// Create initial manifest
@@ -201,7 +201,7 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 		// Already committed - no-op return for complete idempotency
 		tx.Status = StatusCommit
 		// Log for metrics tracking (Step 12 preparation)
-		fmt.Fprintf(os.Stderr, "INFO: Transaction already committed (no-op) txn.commit.idempotent=true txn.id=%s\n", tx.Manifest.ID)
+		GetLogger().Info("Transaction already committed (no-op) txn.commit.idempotent=true txn.id=%s\n", tx.Manifest.ID)
 		return nil
 	}
 
@@ -230,7 +230,7 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 				workerCount = 4
 			}
 
-			fmt.Fprintf(os.Stderr, "INFO: Using parallel checksum validation txn.checksum.parallel=true txn.files=%d txn.workers=%d\n",
+			GetLogger().Info("Using parallel checksum validation txn.checksum.parallel=true txn.files=%d txn.workers=%d\n",
 				len(filePaths), workerCount)
 
 			results := CalculateChecksumsParallel(filePaths, ChecksumSHA256, workerCount)
@@ -238,13 +238,13 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 			// Validate results
 			for filePath, result := range results {
 				if result.Error != nil {
-					fmt.Fprintf(os.Stderr, "ERROR: Parallel checksum calculation failed op=commit file=%s error=%v\n", filePath, result.Error)
+					GetLogger().Error("Parallel checksum calculation failed op=commit file=%s error=%v\n", filePath, result.Error)
 					return fmt.Errorf("parallel checksum calculation failed for %s: %w", filePath, result.Error)
 				}
 
 				expected := checksumMap[filePath]
 				if !CompareFileChecksums(result.Checksum, expected) {
-					fmt.Fprintf(os.Stderr, "ERROR: Parallel checksum validation failed op=commit file=%s expected=%s actual=%s\n",
+					GetLogger().Error("Parallel checksum validation failed op=commit file=%s expected=%s actual=%s\n",
 						filePath, expected.Value, result.Checksum.Value)
 					return fmt.Errorf("parallel checksum validation failed for %s: expected %s, got %s",
 						filePath, expected.Value, result.Checksum.Value)
@@ -309,7 +309,7 @@ func (m *Manager) Commit(tx *Transaction, destRoot string, withJournal func() er
 		}
 	} else {
 		// journal コールバック無し（前方回復シナリオ等）
-		fmt.Fprintf(os.Stderr, "WARN: Forward recovery without journal callback for %s\n", tx.Manifest.ID)
+		GetLogger().Warn("Forward recovery without journal callback for %s\n", tx.Manifest.ID)
 	}
 
 	// Phase 4: Mark commit complete
@@ -351,12 +351,12 @@ func (m *Manager) Rollback(tx *Transaction, reason string) error {
 	startTime := time.Now()
 
 	// Log rollback attempt with metrics
-	fmt.Fprintf(os.Stderr, "INFO: Rolling back transaction %s=%s %s=%s\n",
+	GetLogger().Info("Rolling back transaction %s=%s %s=%s\n",
 		MetricRegisterRollbackCount, tx.Manifest.ID, "reason", reason)
 
 	// Check if transaction is already committed
 	if tx.Status == StatusCommit {
-		fmt.Fprintf(os.Stderr, "ERROR: Cannot rollback committed transaction %s=%s\n",
+		GetLogger().Error("Cannot rollback committed transaction %s=%s\n",
 			MetricRollbackFailed, tx.Manifest.ID)
 		return fmt.Errorf("cannot rollback committed transaction %s", tx.Manifest.ID)
 	}
@@ -366,7 +366,7 @@ func (m *Manager) Rollback(tx *Transaction, reason string) error {
 	if tx.Undo != nil && len(tx.Undo.RestoreOps) > 0 {
 		for _, restore := range tx.Undo.RestoreOps {
 			if err := m.performRestore(restore); err != nil {
-				fmt.Fprintf(os.Stderr, "WARN: Failed to restore %s during rollback: %v\n",
+				GetLogger().Warn("Failed to restore %s during rollback: %v\n",
 					restore.TargetPath, err)
 				// Continue with other restore operations
 			} else {
@@ -378,14 +378,14 @@ func (m *Manager) Rollback(tx *Transaction, reason string) error {
 	// Phase 2: Clean up transaction files (stage, undo, manifest)
 	if err := os.RemoveAll(tx.BaseDir); err != nil {
 		duration := time.Since(startTime)
-		fmt.Fprintf(os.Stderr, "ERROR: Failed to cleanup transaction during rollback %s=%s %s=%dms error=%v\n",
+		GetLogger().Error("Failed to cleanup transaction during rollback %s=%s %s=%dms error=%v\n",
 			MetricRollbackFailed, tx.Manifest.ID, "duration_ms", duration.Milliseconds(), err)
 		return fmt.Errorf("cleanup transaction directory: %w", err)
 	}
 
 	// Phase 3: Fsync parent directory to ensure cleanup is persisted
 	if err := fs.FsyncDir(m.baseDir); err != nil {
-		fmt.Fprintf(os.Stderr, "WARN: fsync after rollback cleanup failed: %v\n", err)
+		GetLogger().Warn("fsync after rollback cleanup failed: %v\n", err)
 	}
 
 	// Update transaction state
@@ -393,7 +393,7 @@ func (m *Manager) Rollback(tx *Transaction, reason string) error {
 
 	// Log successful rollback with metrics
 	duration := time.Since(startTime)
-	fmt.Fprintf(os.Stderr, "INFO: Transaction rollback completed %s=%s %s=%t %s=%dms\n",
+	GetLogger().Info("Transaction rollback completed %s=%s %s=%t %s=%dms\n",
 		MetricRollbackSuccess, tx.Manifest.ID, "undo_performed", undoPerformed,
 		"duration_ms", duration.Milliseconds())
 
@@ -442,7 +442,7 @@ func (m *Manager) Cleanup(tx *Transaction) error {
 	// Fsync parent to ensure removal is persisted
 	if err := fs.FsyncDir(m.baseDir); err != nil {
 		// Log warning but continue
-		fmt.Fprintf(os.Stderr, "WARN: fsync after cleanup failed: %v\n", err)
+		GetLogger().Warn("fsync after cleanup failed: %v\n", err)
 	}
 
 	return nil

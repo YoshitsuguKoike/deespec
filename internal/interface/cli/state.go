@@ -86,10 +86,10 @@ func printStateTextResult(result *common.ValidationResult) {
 				switch issue.Type {
 				case "error":
 					if issue.Field != "" {
-						fmt.Fprintf(os.Stderr, "ERROR: %s %s: %s\n",
+						Error("%s %s: %s\n",
 							getFileName(fileResult.File), issue.Field, issue.Message)
 					} else {
-						fmt.Fprintf(os.Stderr, "ERROR: %s %s\n",
+						Error("%s %s\n",
 							getFileName(fileResult.File), issue.Message)
 					}
 				case "warn":

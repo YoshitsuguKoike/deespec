@@ -183,7 +183,7 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 				finalPath = specPath
 				collisionResolution = "replace:would-delete"
 				if config.ShouldLog("warn") {
-					fmt.Fprintf(os.Stderr, "WARN: would replace existing directory: %s\n", specPath)
+					Warn("would replace existing directory: %s\n", specPath)
 				}
 			}
 		} else {
@@ -228,7 +228,7 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 	// Return error if validation failed
 	if validationResult.Err != nil {
 		if config.ShouldLog("error") {
-			fmt.Fprintf(os.Stderr, "ERROR: %v\n", validationResult.Err)
+			logBuf.Error("%v", validationResult.Err)
 		}
 		return validationResult.Err
 	}
@@ -236,13 +236,13 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 	// Log warnings
 	for _, warning := range validationResult.Warnings {
 		if config.ShouldLog("warn") {
-			fmt.Fprintf(os.Stderr, "WARN: %s\n", warning)
+			Warn("%s\n", warning)
 		}
 	}
 
 	// Log success info
 	if config.ShouldLog("info") {
-		fmt.Fprintf(os.Stderr, "INFO: dry-run completed successfully\n")
+		Info("dry-run completed successfully")
 	}
 
 	return nil
@@ -414,7 +414,7 @@ func outputReport(report *DryRunReport, format string, compact bool) error {
 		} else {
 			output, err = json.MarshalIndent(report, "", "  ")
 		}
-		if err == nil && !bytes.HasSuffix(output, []byte("\n")) {
+		if err == nil && !bytes.HasSuffix(output, []byte("")) {
 			output = append(output, '\n')
 		}
 	default:

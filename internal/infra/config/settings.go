@@ -173,7 +173,7 @@ func applyDefaults(settings *RawSettings) {
 		settings.PolicyPath = &v
 	}
 	if settings.StderrLevel == nil {
-		v := ""
+		v := "warn" // Default to WARN level
 		settings.StderrLevel = &v
 	}
 }

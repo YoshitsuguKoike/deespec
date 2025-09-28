@@ -207,7 +207,7 @@ func (m *MetricsCollector) IncrementCommitSuccess() {
 	defer m.mu.Unlock()
 	m.CommitSuccess++
 	if !isTestEnvironment() {
-		fmt.Fprintf(os.Stderr, "INFO: Transaction committed successfully txn.state.commit.success=true txn.commit.total=%d\n", m.CommitSuccess)
+		GetLogger().Info("Transaction committed successfully txn.state.commit.success=true txn.commit.total=%d\n", m.CommitSuccess)
 	}
 }
 
@@ -217,7 +217,7 @@ func (m *MetricsCollector) IncrementCommitFailed() {
 	defer m.mu.Unlock()
 	m.CommitFailed++
 	if !isTestEnvironment() {
-		fmt.Fprintf(os.Stderr, "WARN: Transaction commit failed txn.state.commit.failed=true txn.failed.total=%d\n", m.CommitFailed)
+		GetLogger().Warn("Transaction commit failed txn.state.commit.failed=true txn.failed.total=%d\n", m.CommitFailed)
 	}
 }
 
@@ -227,7 +227,7 @@ func (m *MetricsCollector) IncrementCASConflict() {
 	defer m.mu.Unlock()
 	m.CASConflicts++
 	if !isTestEnvironment() {
-		fmt.Fprintf(os.Stderr, "WARN: CAS conflict detected txn.cas.conflict.count=%d\n", m.CASConflicts)
+		GetLogger().Warn("CAS conflict detected txn.cas.conflict.count=%d\n", m.CASConflicts)
 	}
 }
 
@@ -237,7 +237,7 @@ func (m *MetricsCollector) IncrementRecovery() {
 	defer m.mu.Unlock()
 	m.RecoveryCount++
 	if !isTestEnvironment() {
-		fmt.Fprintf(os.Stderr, "INFO: Recovery operation completed txn.recovery.count=%d\n", m.RecoveryCount)
+		GetLogger().Info("Recovery operation completed txn.recovery.count=%d\n", m.RecoveryCount)
 	}
 }
 
@@ -308,7 +308,7 @@ func (m *MetricsCollector) CreateSnapshot(metricsPath string) error {
 		return fmt.Errorf("write snapshot: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "INFO: Metrics snapshot created path=%s\n", snapshotPath)
+	GetLogger().Info("Metrics snapshot created path=%s\n", snapshotPath)
 	return nil
 }
 
@@ -335,9 +335,9 @@ func (m *MetricsCollector) RotateMetrics(metricsPath string, resetCounters bool)
 			return fmt.Errorf("save reset metrics: %w", err)
 		}
 
-		fmt.Fprintf(os.Stderr, "INFO: Metrics rotated and reset counters=true\n")
+		GetLogger().Info("Metrics rotated and reset counters=true")
 	} else {
-		fmt.Fprintf(os.Stderr, "INFO: Metrics rotated and reset counters=false\n")
+		GetLogger().Info("Metrics rotated and reset counters=false")
 	}
 
 	return nil
@@ -368,7 +368,7 @@ func CleanupOldSnapshots(metricsPath string, retentionDays int) error {
 
 			if info.ModTime().Before(cutoffTime) {
 				if err := os.Remove(snapshotPath); err != nil {
-					fmt.Fprintf(os.Stderr, "WARN: Failed to remove old snapshot %s: %v\n", snapshotPath, err)
+					GetLogger().Warn("Failed to remove old snapshot %s: %v\n", snapshotPath, err)
 				} else {
 					cleaned++
 				}
@@ -377,7 +377,7 @@ func CleanupOldSnapshots(metricsPath string, retentionDays int) error {
 	}
 
 	if cleaned > 0 {
-		fmt.Fprintf(os.Stderr, "INFO: Cleaned up %d old metric snapshots older than %d days\n", cleaned, retentionDays)
+		GetLogger().Info("Cleaned up %d old metric snapshots older than %d days\n", cleaned, retentionDays)
 	}
 
 	return nil

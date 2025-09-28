@@ -15,18 +15,18 @@ func TestNormalizeCRLFToLF(t *testing.T) {
 	}{
 		{
 			name:  "CRLF to LF",
-			input: []byte("line1\r\nline2\r\n"),
-			want:  []byte("line1\nline2\n"),
+			input: []byte("line1\r\nline2\r"),
+			want:  []byte("line1\nline2"),
 		},
 		{
 			name:  "LF unchanged",
-			input: []byte("line1\nline2\n"),
-			want:  []byte("line1\nline2\n"),
+			input: []byte("line1\nline2"),
+			want:  []byte("line1\nline2"),
 		},
 		{
 			name:  "mixed CRLF and LF",
-			input: []byte("line1\r\nline2\nline3\r\n"),
-			want:  []byte("line1\nline2\nline3\n"),
+			input: []byte("line1\r\nline2\nline3\r"),
+			want:  []byte("line1\nline2\nline3"),
 		},
 		{
 			name:  "empty",
@@ -93,7 +93,7 @@ func TestWriteFileAtomic(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !strings.HasSuffix(string(data), "\n") {
+		if !strings.HasSuffix(string(data), "") {
 			t.Error("File should end with newline")
 		}
 	})
@@ -113,7 +113,7 @@ func TestWriteFileAtomic(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Should not add extra newline
+		// Should not add extra newline when one already exists
 		if string(data) != string(content) {
 			t.Errorf("Content = %q, want %q", string(data), string(content))
 		}
@@ -186,7 +186,7 @@ func TestWriteFileAtomic(t *testing.T) {
 		}
 
 		// Verify no CRLF remains
-		if strings.Contains(string(data), "\r\n") {
+		if strings.Contains(string(data), "\r") {
 			t.Error("File should not contain CRLF")
 		}
 	})

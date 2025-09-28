@@ -185,9 +185,9 @@ func newDoctorCmd() *cobra.Command {
 						fileInfo, err := os.Stat(step.ResolvedPromptPath)
 						if err != nil {
 							if os.IsNotExist(err) {
-								fmt.Fprintf(os.Stderr, "ERROR: prompt_path not found: %s\n", step.ResolvedPromptPath)
+								Error("prompt_path not found: %s\n", step.ResolvedPromptPath)
 							} else {
-								fmt.Fprintf(os.Stderr, "ERROR: prompt_path not accessible: %s (%v)\n", step.ResolvedPromptPath, err)
+								Error("prompt_path not accessible: %s (%v)\n", step.ResolvedPromptPath, err)
 							}
 							promptErrors++
 							continue
@@ -195,7 +195,7 @@ func newDoctorCmd() *cobra.Command {
 
 						// Check it's a regular file
 						if !fileInfo.Mode().IsRegular() {
-							fmt.Fprintf(os.Stderr, "ERROR: prompt_path not a regular file: %s\n", step.ResolvedPromptPath)
+							Error("prompt_path not a regular file: %s\n", step.ResolvedPromptPath)
 							promptErrors++
 							continue
 						}
@@ -203,7 +203,7 @@ func newDoctorCmd() *cobra.Command {
 						// Check size (SBI-DR-002)
 						fileSizeKB := (fileInfo.Size() + 1023) / 1024
 						if fileSizeKB > int64(maxPromptKB) {
-							fmt.Fprintf(os.Stderr, "ERROR: prompt_path (%s) exceeds max_prompt_kb=%d (found %d)\n", step.ID, maxPromptKB, fileSizeKB)
+							Error("prompt_path (%s) exceeds max_prompt_kb=%d (found %d)\n", step.ID, maxPromptKB, fileSizeKB)
 							promptErrors++
 							continue
 						}
@@ -211,14 +211,14 @@ func newDoctorCmd() *cobra.Command {
 						// Read file content for UTF-8 and format checks
 						content, err := os.ReadFile(step.ResolvedPromptPath)
 						if err != nil {
-							fmt.Fprintf(os.Stderr, "ERROR: prompt_path not readable: %s (%v)\n", step.ResolvedPromptPath, err)
+							Error("prompt_path not readable: %s (%v)\n", step.ResolvedPromptPath, err)
 							promptErrors++
 							continue
 						}
 
 						// Check UTF-8 validity (SBI-DR-002)
 						if !utf8.Valid(content) {
-							fmt.Fprintf(os.Stderr, "ERROR: prompt_path (%s) invalid UTF-8 encoding\n", step.ID)
+							Error("prompt_path (%s) invalid UTF-8 encoding\n", step.ID)
 							promptErrors++
 							continue
 						}
@@ -230,7 +230,7 @@ func newDoctorCmd() *cobra.Command {
 						}
 
 						// Check for CRLF (SBI-DR-002)
-						if bytes.Contains(content, []byte("\r\n")) {
+						if bytes.Contains(content, []byte("\r")) {
 							fmt.Printf("WARN: prompt_path (%s) contains CRLF; prefer LF\n", step.ID)
 							promptWarnings++
 						}
@@ -297,12 +297,12 @@ func newDoctorCmd() *cobra.Command {
 					fmt.Printf("ERROR: health.json validation failed: %v\n", err)
 				}
 			} else {
-				fmt.Printf("OK: health.json found and valid\n")
+				fmt.Printf("OK: health.json found and valid")
 			}
 
 			// Check journal (INFO if not exists, not ERROR)
 			if _, err := os.Stat(paths.Journal); err != nil {
-				fmt.Printf("INFO: journal.ndjson not found (first run not executed yet)\n")
+				fmt.Printf("INFO: journal.ndjson not found (first run not executed yet)")
 			} else {
 				// Validate NDJSON format
 				if err := checkJournalNDJSON(paths.Journal); err != nil {
@@ -324,39 +324,39 @@ func newDoctorCmd() *cobra.Command {
 			if err := checkWritable(paths.SpecsSBI); err != nil {
 				fmt.Printf("WARN: specs/sbi directory not writable: %v\n", err)
 			} else {
-				fmt.Printf("OK: specs/sbi directory is writable\n")
+				fmt.Printf("OK: specs/sbi directory is writable")
 			}
 
 			if err := checkWritable(paths.SpecsPBI); err != nil {
 				fmt.Printf("WARN: specs/pbi directory not writable: %v\n", err)
 			} else {
-				fmt.Printf("OK: specs/pbi directory is writable\n")
+				fmt.Printf("OK: specs/pbi directory is writable")
 			}
 
 			// Check optional templates (SBI-INIT-006 finalization)
 			templatesDir := filepath.Join(paths.Home, "templates")
 			if _, err := os.Stat(filepath.Join(templatesDir, "spec_feedback.yaml")); err != nil {
-				fmt.Printf("INFO: spec_feedback.yaml not found (will use built-in template)\n")
+				fmt.Printf("INFO: spec_feedback.yaml not found (will use built-in template)")
 			} else {
-				fmt.Printf("OK: spec_feedback.yaml template found\n")
+				fmt.Printf("OK: spec_feedback.yaml template found")
 			}
 
 			// Check takeover template (SBI-INIT-007 addition)
 			if _, err := os.Stat(filepath.Join(templatesDir, "spec_takeover.yaml")); err != nil {
-				fmt.Printf("INFO: spec_takeover.yaml not found (will use built-in template)\n")
+				fmt.Printf("INFO: spec_takeover.yaml not found (will use built-in template)")
 			} else {
-				fmt.Printf("OK: spec_takeover.yaml template found\n")
+				fmt.Printf("OK: spec_takeover.yaml template found")
 			}
 
 			// Check SBI meta template schema
 			if err := checkSBIMetaTemplate(filepath.Join(templatesDir, "spec_sbi_meta.yaml")); err != nil {
 				if os.IsNotExist(err) {
-					fmt.Printf("INFO: spec_sbi_meta.yaml not found (will use built-in template)\n")
+					fmt.Printf("INFO: spec_sbi_meta.yaml not found (will use built-in template)")
 				} else {
 					fmt.Printf("WARN: spec_sbi_meta.yaml template issue: %v\n", err)
 				}
 			} else {
-				fmt.Printf("OK: spec_sbi_meta.yaml template schema valid\n")
+				fmt.Printf("OK: spec_sbi_meta.yaml template schema valid")
 			}
 
 			// Check .gitignore for deespec block
@@ -628,7 +628,7 @@ func removeCodeBlocks(content string) string {
 
 // countLines counts the number of lines (newlines) in a string
 func countLines(s string) int {
-	return strings.Count(s, "\n")
+	return strings.Count(s, "")
 }
 
 // isValidIdentifier checks if a string is a valid identifier (alphanumeric and underscore)
@@ -871,7 +871,7 @@ func runDoctorValidationJSON() error {
 				}
 
 				// Check for CRLF (warning)
-				if bytes.Contains(content, []byte("\r\n")) {
+				if bytes.Contains(content, []byte("\r")) {
 					stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
 						Type:    "warn",
 						Message: "contains CRLF",
@@ -946,7 +946,7 @@ func checkLaunchdJSON(result *DoctorJSON) {
 		// Extract StartInterval from plist
 		cmd = exec.Command("plutil", "-p", plistPath)
 		if output, err := cmd.Output(); err == nil {
-			lines := strings.Split(string(output), "\n")
+			lines := strings.Split(string(output), "")
 			for _, line := range lines {
 				if strings.Contains(line, "StartInterval") {
 					parts := strings.Split(line, "=>")
@@ -1096,7 +1096,7 @@ func checkJournalNDJSON(path string) error {
 		return nil // Empty journal is valid
 	}
 
-	lines := strings.Split(string(data), "\n")
+	lines := strings.Split(string(data), "")
 	for i, line := range lines {
 		if line == "" {
 			continue // Skip empty lines

@@ -43,7 +43,7 @@ func newDoctorIntegratedCmd() *cobra.Command {
 
 			// Validate summary consistency
 			if err := integrated.ValidateSummaryConsistency(report); err != nil {
-				fmt.Fprintf(os.Stderr, "WARNING: Summary consistency check failed: %v\n", err)
+				Warn("Summary consistency check failed: %v", err)
 			}
 
 			// Output results
@@ -92,9 +92,9 @@ func outputTextReport(report *integrated.IntegratedReport, paths *app.Paths) {
 				case "error":
 					hasError = true
 					if issue.Field != "" {
-						fmt.Fprintf(os.Stderr, "ERROR: %s%s %s\n", file.File, issue.Field, issue.Message)
+						Error("%s%s %s\n", file.File, issue.Field, issue.Message)
 					} else {
-						fmt.Fprintf(os.Stderr, "ERROR: %s %s\n", file.File, issue.Message)
+						Error("%s %s\n", file.File, issue.Message)
 					}
 				case "warn":
 					hasWarn = true
@@ -120,7 +120,7 @@ func outputTextReport(report *integrated.IntegratedReport, paths *app.Paths) {
 
 	// Output integrated summary
 	status := integrated.GetComponentStatus(report)
-	fmt.Printf("\n=== INTEGRATED SUMMARY ===\n")
+	fmt.Printf("\n=== INTEGRATED SUMMARY ===")
 	fmt.Printf("SUMMARY: workflow=%s state=%s health=%s journal=%s prompts=%s total_error=%d\n",
 		status.Workflow,
 		status.State,

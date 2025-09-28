@@ -41,5 +41,8 @@ func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 // NormalizeCRLFToLF converts CRLF line endings to LF
 func NormalizeCRLFToLF(data []byte) []byte {
 	// Replace all CRLF with LF
-	return bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
+	data = bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
+	// Remove any remaining standalone CR characters
+	data = bytes.ReplaceAll(data, []byte("\r"), []byte(""))
+	return data
 }

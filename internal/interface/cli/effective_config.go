@@ -111,6 +111,11 @@ type EffectiveConfigPathInputs struct {
 
 // runPrintEffectiveConfig prints the effective configuration and exits
 func runPrintEffectiveConfig(cliCollisionMode, format string, compact, redactSecrets bool) error {
+	// For diagnostic command, temporarily set log level to INFO to show all diagnostic messages
+	originalLevel := GetLogger().GetLevel()
+	GetLogger().SetLevel(LogLevelInfo)
+	defer GetLogger().SetLevel(originalLevel)
+
 	// Load policy
 	policyPath := GetPolicyPath()
 	policy, err := LoadRegisterPolicy(policyPath)
@@ -119,21 +124,21 @@ func runPrintEffectiveConfig(cliCollisionMode, format string, compact, redactSec
 	policyFileFound := err == nil && policy != nil
 	if err != nil && !os.IsNotExist(err) {
 		// Policy file exists but has errors
-		fmt.Fprintf(os.Stderr, "ERROR: failed to load policy: %v\n", err)
+		Error("failed to load policy: %v\n", err)
 		return err
 	}
 
-	// Log policy load status
+	// Log policy load status (use Info for diagnostic command)
 	if policyFileFound {
-		fmt.Fprintf(os.Stderr, "INFO: policy loaded: %s\n", policyPath)
+		Info("policy loaded: %s", policyPath)
 	} else {
-		fmt.Fprintf(os.Stderr, "INFO: no policy file found, using defaults\n")
+		Info("no policy file found, using defaults")
 	}
 
 	// Resolve configuration with precedence
 	config, err := ResolveRegisterConfig(cliCollisionMode, policy)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: failed to resolve config: %v\n", err)
+		Error("failed to resolve config: %v\n", err)
 		return err
 	}
 
@@ -151,7 +156,7 @@ func runPrintEffectiveConfig(cliCollisionMode, format string, compact, redactSec
 	case "yaml":
 		output, err = yaml.Marshal(effective)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: failed to marshal to YAML: %v\n", err)
+			Error("failed to marshal to YAML: %v\n", err)
 			return err
 		}
 	case "json":
@@ -161,15 +166,15 @@ func runPrintEffectiveConfig(cliCollisionMode, format string, compact, redactSec
 			output, err = json.MarshalIndent(effective, "", "  ")
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: failed to marshal to JSON: %v\n", err)
+			Error("failed to marshal to JSON: %v\n", err)
 			return err
 		}
 		// Ensure newline at end
-		if !bytes.HasSuffix(output, []byte("\n")) {
+		if !bytes.HasSuffix(output, []byte("")) {
 			output = append(output, '\n')
 		}
 	default:
-		fmt.Fprintf(os.Stderr, "ERROR: unsupported format: %s\n", format)
+		Error("unsupported format: %s\n", format)
 		return fmt.Errorf("unsupported format: %s", format)
 	}
 

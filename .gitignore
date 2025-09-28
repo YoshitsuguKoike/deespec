@@ -53,3 +53,9 @@ state.lock
 tmp/
 .deespec/
 deespec
+
+# >>> deespec v1
+/.deespec/var/
+/.deespec/var/*
+!/.deespec/var/.keep
+# <<< deespec v1

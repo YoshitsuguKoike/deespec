@@ -89,11 +89,11 @@ func runOnce(autoFB bool) error {
 
 	if !acquired {
 		// Another instance is running - this is normal, not an error
-		fmt.Fprintf(os.Stderr, "INFO: another instance active\n")
+		Info("another instance active")
 
 		// Update health even on no-op
 		if err := app.WriteHealth(paths.Health, 0, "plan", true, ""); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to write %s: %v\n", paths.Health, err)
+			Warn("failed to write %s: %v\n", paths.Health, err)
 		}
 
 		return nil // Exit 0 - not an error condition
@@ -101,7 +101,7 @@ func runOnce(autoFB bool) error {
 	defer func() {
 		if releaseRunLock != nil {
 			if err := releaseRunLock(); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to release run lock: %v\n", err)
+				Warn("failed to release run lock: %v\n", err)
 			}
 		}
 	}()
@@ -109,7 +109,7 @@ func runOnce(autoFB bool) error {
 	// 2) 読み込み
 	st, err := loadState(paths.State)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: failed to read state: %v\n", err)
+		Error("failed to read state: %v", err)
 		return fmt.Errorf("read state: %w", err)
 	}
 	prevV := st.Version
@@ -120,7 +120,7 @@ func runOnce(autoFB bool) error {
 
 	// 3.5) Lease management - check for expired lease
 	if st.CurrentTaskID != "" && LeaseExpired(st) {
-		fmt.Fprintf(os.Stderr, "INFO: Lease expired for task %s, taking over\n", st.CurrentTaskID)
+		Info("Lease expired for task %s, taking over\n", st.CurrentTaskID)
 		// Lease expired, we can take over the task
 		// The task will be resumed in the next section
 	}
@@ -128,7 +128,7 @@ func runOnce(autoFB bool) error {
 	// Renew or set lease for current process
 	if st.CurrentTaskID != "" {
 		if RenewLease(st, DefaultLeaseTTL) {
-			fmt.Fprintf(os.Stderr, "INFO: Renewed lease for task %s until %s\n", st.CurrentTaskID, st.LeaseExpiresAt)
+			Info("Renewed lease for task %s until %s\n", st.CurrentTaskID, st.LeaseExpiresAt)
 		}
 	}
 
@@ -141,29 +141,29 @@ func runOnce(autoFB bool) error {
 
 		picked, reason, err := PickNextTask(cfg)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: failed to pick task: %v\n", err)
+			Error("failed to pick task: %v\n", err)
 			return fmt.Errorf("failed to pick task: %w", err)
 		}
 
 		// Handle auto-fb if enabled and FB drafts were created
 		if autoFB {
 			if err := HandleAutoFBRegistration(paths.Journal, currentTurn); err != nil {
-				fmt.Fprintf(os.Stderr, "WARN: Failed to auto-register FB drafts: %v\n", err)
+				Warn("Failed to auto-register FB drafts: %v\n", err)
 			}
 		}
 
 		if picked == nil {
-			fmt.Fprintf(os.Stderr, "INFO: %s\n", reason)
+			Info("%s\n", reason)
 			// No task to pick - update health and exit
 			if err := app.WriteHealth(paths.Health, currentTurn, "plan", true, ""); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to write %s: %v\n", paths.Health, err)
+				Warn("failed to write %s: %v\n", paths.Health, err)
 			}
 			return nil
 		}
 
 		// Record pick in journal
 		if err := RecordPickInJournal(picked, currentTurn, paths.Journal); err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: failed to record pick: %v\n", err)
+			Error("failed to record pick: %v\n", err)
 			return fmt.Errorf("failed to record pick: %w", err)
 		}
 
@@ -176,17 +176,17 @@ func runOnce(autoFB bool) error {
 
 		// Set lease for new task
 		RenewLease(st, DefaultLeaseTTL)
-		fmt.Fprintf(os.Stderr, "INFO: picked task %s: %s (lease until %s)\n", picked.ID, reason, st.LeaseExpiresAt)
+		Info("picked task %s: %s (lease until %s)\n", picked.ID, reason, st.LeaseExpiresAt)
 	} else {
 		// WIP exists - try to resume
 		resumed, reason, err := ResumeIfInProgress(st, paths.Journal)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: failed to resume: %v\n", err)
+			Error("failed to resume: %v\n", err)
 			return fmt.Errorf("failed to resume: %w", err)
 		}
 
 		if resumed {
-			fmt.Fprintf(os.Stderr, "INFO: %s\n", reason)
+			Info("%s\n", reason)
 		}
 	}
 
@@ -229,7 +229,7 @@ func runOnce(autoFB bool) error {
 			// Extract and append implementation note to rolling file
 			noteBody := ExtractNoteBody(result, "implement")
 			if noteErr := AppendNote("implement", "PENDING", noteBody, st.Turn, time.Now()); noteErr != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to append impl_note: %v\n", noteErr)
+				Warn("failed to append impl_note: %v\n", noteErr)
 			}
 		}
 		next = nextStep("implement", "OK")
@@ -258,7 +258,7 @@ func runOnce(autoFB bool) error {
 			// Extract and append review note to rolling file
 			noteBody := ExtractNoteBody(result, "review")
 			if noteErr := AppendNote("review", decision, noteBody, st.Turn, time.Now()); noteErr != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to append review_note: %v\n", noteErr)
+				Warn("failed to append review_note: %v\n", noteErr)
 			}
 		}
 		next = nextStep("review", decision)
@@ -291,7 +291,7 @@ func runOnce(autoFB bool) error {
 
 	outFile := filepath.Join(turnDir, fmt.Sprintf("%s.md", stepName))
 	if err := os.WriteFile(outFile, []byte(output), 0o644); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: failed to write artifact: %v\n", err)
+		Error("failed to write artifact: %v\n", err)
 		return fmt.Errorf("write artifact: %w", err)
 	}
 
@@ -349,23 +349,23 @@ func runOnce(autoFB bool) error {
 	if next == "done" {
 		st.CurrentTaskID = ""
 		ClearLease(st)
-		fmt.Fprintf(os.Stderr, "INFO: Task completed, WIP and lease cleared\n")
+		Info("Task completed, WIP and lease cleared")
 	}
 
 	// 8) health.json 更新（エラーに関わらず更新）
 	healthOk := errorMsg == ""
 	if err := app.WriteHealth(paths.Health, currentTurn, next, healthOk, errorMsg); err != nil {
 		// health.json書き込みエラーも無視（ワークフローは継続）
-		fmt.Fprintf(os.Stderr, "Warning: failed to write %s: %v\n", paths.Health, err)
+		Warn("failed to write %s: %v\n", paths.Health, err)
 	}
 
 	// 9) State and Journal atomic save with TX
 	// Always use TX mode: atomic update of state.json and journal
 	if err := SaveStateAndJournalTX(st, journalRec, paths, prevV); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: failed to save state and journal (TX): %v\n", err)
+		Error("failed to save state and journal (TX): %v\n", err)
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "DEBUG: state.json and journal saved atomically via TX\n")
+	Debug("state.json and journal saved atomically via TX")
 
 	return nil
 }

@@ -30,7 +30,7 @@ var audit = &FsyncAudit{
 func ConfigureFsyncAudit(enabled bool) {
 	audit.enabled = enabled
 	if enabled {
-		fmt.Fprintf(os.Stderr, "INFO: Fsync audit enabled\n")
+		GetLogger().Info("Fsync audit enabled")
 	}
 }
 
@@ -43,7 +43,7 @@ func FsyncFile(file *os.File) error {
 		audit.filePaths = append(audit.filePaths, file.Name())
 		audit.mu.Unlock()
 
-		fmt.Fprintf(os.Stderr, "AUDIT: File fsync completed fsync.file.path=%s fsync.file.count=%d\n",
+		GetLogger().Debug("AUDIT: File fsync completed fsync.file.path=%s fsync.file.count=%d\n",
 			file.Name(), atomic.LoadInt64(&audit.fileCount))
 	}
 
@@ -60,7 +60,7 @@ func FsyncDir(path string) error {
 		audit.dirPaths = append(audit.dirPaths, path)
 		audit.mu.Unlock()
 
-		fmt.Fprintf(os.Stderr, "AUDIT: Directory fsync completed fsync.dir.path=%s fsync.dir.count=%d\n",
+		GetLogger().Debug("AUDIT: Directory fsync completed fsync.dir.path=%s fsync.dir.count=%d\n",
 			path, atomic.LoadInt64(&audit.dirCount))
 	}
 
@@ -111,13 +111,13 @@ func ResetFsyncStats() {
 	audit.dirPaths = []string{}
 	audit.mu.Unlock()
 
-	fmt.Fprintf(os.Stderr, "AUDIT: Fsync stats reset fsync.stats.reset=true\n")
+	GetLogger().Debug("AUDIT: Fsync stats reset fsync.stats.reset=true")
 }
 
 // AtomicRename performs atomic rename with audit logging
 func AtomicRename(src, dst string) error {
 	if audit.enabled {
-		fmt.Fprintf(os.Stderr, "AUDIT: Atomic rename completed fsync.atomic.rename=true src=%s dst=%s\n", src, dst)
+		GetLogger().Debug("AUDIT: Atomic rename completed fsync.atomic.rename=true src=%s dst=%s\n", src, dst)
 	}
 
 	// Same implementation as non-audit version
@@ -132,7 +132,7 @@ func AtomicRename(src, dst string) error {
 // WriteFileSync writes file with sync and audit logging
 func WriteFileSync(path string, data []byte, perm os.FileMode) error {
 	if audit.enabled {
-		fmt.Fprintf(os.Stderr, "AUDIT: File write with sync completed fsync.write.file.sync=true path=%s size=%d\n", path, len(data))
+		GetLogger().Debug("AUDIT: File write with sync completed fsync.write.file.sync=true path=%s size=%d\n", path, len(data))
 	}
 
 	// Create temp file
@@ -175,22 +175,22 @@ func WriteFileSync(path string, data []byte, perm os.FileMode) error {
 func PrintFsyncReport() {
 	fileCount, dirCount, filePaths, dirPaths := GetFsyncStats()
 
-	fmt.Fprintf(os.Stderr, "\n=== FSYNC AUDIT REPORT ===\n")
-	fmt.Fprintf(os.Stderr, "Total file fsyncs: %d\n", fileCount)
-	fmt.Fprintf(os.Stderr, "Total dir fsyncs: %d\n", dirCount)
+	GetLogger().Debug("=== FSYNC AUDIT REPORT ===")
+	GetLogger().Debug("Total file fsyncs: %d\n", fileCount)
+	GetLogger().Debug("Total dir fsyncs: %d\n", dirCount)
 
 	if len(filePaths) > 0 {
-		fmt.Fprintf(os.Stderr, "\nFile fsync paths:\n")
+		GetLogger().Debug("File fsync paths:")
 		for i, path := range filePaths {
-			fmt.Fprintf(os.Stderr, "  %d. %s\n", i+1, path)
+			GetLogger().Debug("  %d. %s\n", i+1, path)
 		}
 	}
 
 	if len(dirPaths) > 0 {
-		fmt.Fprintf(os.Stderr, "\nDirectory fsync paths:\n")
+		GetLogger().Debug("Directory fsync paths:")
 		for i, path := range dirPaths {
-			fmt.Fprintf(os.Stderr, "  %d. %s\n", i+1, path)
+			GetLogger().Debug("  %d. %s", i+1, path)
 		}
 	}
-	fmt.Fprintf(os.Stderr, "========================\n\n")
+	GetLogger().Debug("========================")
 }

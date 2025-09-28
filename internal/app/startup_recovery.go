@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app/config"
@@ -31,7 +30,7 @@ func RunStartupRecoveryWithConfig(cfg config.Config) error {
 	}
 
 	if disableRecovery {
-		fmt.Fprintf(os.Stderr, "INFO: Transaction recovery disabled\n")
+		GetLogger().Info("Transaction recovery disabled")
 		return nil
 	}
 
@@ -50,14 +49,14 @@ func RunStartupRecoveryWithConfig(cfg config.Config) error {
 
 	// Log results
 	if result.RecoveredCount > 0 || result.CleanedCount > 0 {
-		fmt.Fprintf(os.Stderr, "INFO: Startup recovery completed: %d recovered, %d cleaned up\n",
+		GetLogger().Info("Startup recovery completed: %d recovered, %d cleaned up",
 			result.RecoveredCount, result.CleanedCount)
 	}
 
 	if len(result.Errors) > 0 {
-		fmt.Fprintf(os.Stderr, "WARN: Recovery completed with %d errors\n", len(result.Errors))
+		GetLogger().Warn("Recovery completed with %d errors", len(result.Errors))
 		for _, err := range result.Errors {
-			fmt.Fprintf(os.Stderr, "  - %v\n", err)
+			GetLogger().Warn("  - %v", err)
 		}
 	}
 

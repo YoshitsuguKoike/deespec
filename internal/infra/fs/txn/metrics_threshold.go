@@ -193,18 +193,18 @@ func CheckMetricsThresholds(metricsPath, configPath string) (*ThresholdResult, e
 
 	// Log result for CI/CD visibility
 	if result.Passed {
-		fmt.Fprintf(os.Stderr, "INFO: Metrics threshold check passed success_rate=%.2f%% total_commits=%d\n",
+		GetLogger().Info("Metrics threshold check passed success_rate=%.2f%% total_commits=%d\n",
 			result.SuccessRate, result.TotalCommits)
 	} else {
-		fmt.Fprintf(os.Stderr, "ERROR: Metrics threshold check failed checks=%d warnings=%d\n",
+		GetLogger().Error("Metrics threshold check failed checks=%d warnings=%d\n",
 			len(result.FailedChecks), len(result.Warnings))
 		for _, check := range result.FailedChecks {
-			fmt.Fprintf(os.Stderr, "ERROR: Threshold failure: %s\n", check)
+			GetLogger().Error("Threshold failure: %s\n", check)
 		}
 	}
 
 	for _, warning := range result.Warnings {
-		fmt.Fprintf(os.Stderr, "WARN: Threshold warning: %s\n", warning)
+		GetLogger().Warn("Threshold warning: %s\n", warning)
 	}
 
 	return result, nil

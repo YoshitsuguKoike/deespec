@@ -192,7 +192,7 @@ func GetDefaultPolicy() *RegisterPolicy {
 	policy.Journal.RecordInputBytes = false
 
 	// Logging defaults
-	policy.Logging.StderrLevelDefault = "info"
+	policy.Logging.StderrLevelDefault = "warn"
 
 	return policy
 }

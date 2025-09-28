@@ -91,7 +91,7 @@ func registerWithTransaction(
 	// Cleanup transaction directory after successful commit
 	if err := manager.Cleanup(tx); err != nil {
 		// Non-fatal: just log warning
-		fmt.Fprintf(os.Stderr, "WARN: failed to cleanup transaction: %v\n", err)
+		Warn("failed to cleanup transaction: %v\n", err)
 	}
 
 	return nil
@@ -134,10 +134,10 @@ func appendJournalEntryTX(journalEntry map[string]interface{}) error {
 	// Fsync file and parent directory
 	if err := fs.FsyncFile(file); err != nil {
 		// Log warning but continue (as per architecture)
-		fmt.Fprintf(os.Stderr, "WARN: journal fsync failed: %v\n", err)
+		Warn("journal fsync failed: %v\n", err)
 	}
 	if err := fs.FsyncDir(journalDir); err != nil {
-		fmt.Fprintf(os.Stderr, "WARN: journal dir fsync failed: %v\n", err)
+		Warn("journal dir fsync failed: %v\n", err)
 	}
 
 	return nil

@@ -128,7 +128,7 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 			Warnings: []string{},
 			Error:    fmt.Sprintf("failed to load policy: %v", err),
 		}
-		fmt.Fprintf(os.Stderr, "ERROR: failed to load policy: %v\n", err)
+		Error("failed to load policy: %v\n", err)
 		printJSONLine(result)
 		exitFunc(1)
 		return nil
@@ -144,7 +144,7 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 			Warnings: []string{},
 			Error:    fmt.Sprintf("failed to resolve config: %v", err),
 		}
-		fmt.Fprintf(os.Stderr, "ERROR: failed to resolve config: %v\n", err)
+		Error("failed to resolve config: %v\n", err)
 		printJSONLine(result)
 		exitFunc(1)
 		return nil
@@ -333,7 +333,7 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 		return nil
 	}
 	if config.ShouldLog("info") {
-		stderrLog.Printf("INFO: registration completed with transaction\n")
+		stderrLog.Printf("INFO: registration completed with transaction")
 	}
 
 	return nil

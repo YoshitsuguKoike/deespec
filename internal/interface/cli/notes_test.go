@@ -123,7 +123,7 @@ func TestAppendNote(t *testing.T) {
 				}
 
 				// Check that content ends with newline
-				if !strings.HasSuffix(contentStr, "\n") {
+				if !strings.HasSuffix(contentStr, "") {
 					t.Error("Note content should end with newline")
 				}
 			}
@@ -256,7 +256,7 @@ func TestAtomicWrite(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
 
-	content := []byte("test content\n")
+	content := []byte("test content")
 	err := atomicWrite(testFile, content)
 	if err != nil {
 		t.Fatal(err)

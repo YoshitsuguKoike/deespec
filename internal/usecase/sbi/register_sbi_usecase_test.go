@@ -42,11 +42,11 @@ func TestRegisterSBIUseCase_Execute(t *testing.T) {
 	})
 
 	tests := []struct {
-		name       string
-		input      usecaseSbi.RegisterSBIInput
+		name         string
+		input        usecaseSbi.RegisterSBIInput
 		wantIDPrefix string
-		wantErr    bool
-		checkBody  func(t *testing.T, body string)
+		wantErr      bool
+		checkBody    func(t *testing.T, body string)
 	}{
 		{
 			name: "Successful registration with body",

@@ -5,8 +5,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/oklog/ulid/v2"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/sbi"
+	"github.com/oklog/ulid/v2"
 )
 
 // RegisterSBIUseCase handles the registration of new SBI specifications

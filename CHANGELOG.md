@@ -10,6 +10,38 @@
 
 ---
 
+## \[v0.1.26] - 2025-09-28
+
+### 追加 (Added)
+
+* **SBI 仕様登録機能の実装 (Step 1-2)**:
+  - Domain 層: SBI エンティティとリポジトリインターフェース
+  - UseCase 層: RegisterSBIUseCase と ULID ベースの ID 生成
+  - Infrastructure 層: FileSBIRepository とアトミックファイル書き込み
+  - 仕様書フォーマット: ガイドラインブロック自動挿入機能
+  - 保存パス: `.deespec/specs/sbi/<SBI-ID>/spec.md`
+
+* **アーキテクチャドキュメント**:
+  - Clean Architecture + DDD 実装ガイドライン
+  - 理想的なディレクトリ構造テンプレート
+  - 各レイヤーの責務と依存関係の明確化
+
+### 変更 (Changed)
+
+* **依存パッケージの追加**:
+  - `github.com/oklog/ulid/v2`: ULID 生成用ライブラリ
+  - `github.com/spf13/afero`: ファイルシステム抽象化ライブラリ
+
+### テスト (Tests)
+
+* **包括的なテストカバレッジ**:
+  - Domain 層: エンティティ検証テスト
+  - UseCase 層: モックリポジトリを使用した統合テスト
+  - Infrastructure 層: 並行書き込み、エラーケーステスト
+  - 100% のテスト成功率
+
+---
+
 ## \[v0.1.25] - 2025-09-28
 
 ### 追加 (Added)

@@ -4,6 +4,32 @@
 
 ## \[Unreleased]
 
+### 追加 (Added)
+
+* **ヘルプドキュメント**: `clear` と `cleanup-locks` コマンドのヘルプ文書を追加
+* **テストカバレッジ改善**: CLI パッケージの包括的なテストを追加
+  - clear 機能のテスト (`clear_test.go`)
+  - cleanup-locks 機能のテスト (`cleanup_locks_test.go`)
+  - コマンド登録のテスト (`cmd_test.go`)
+  - ロガー機能のテスト (`logger_test.go`)
+  - ドメイン実行エンティティのテスト拡張
+
+### 修正 (Fixed)
+
+* **Clear コマンドロジック**: 期限切れリースでのクリア動作を改善
+  - WIP タスクがあってもリースが期限切れの場合はクリアを許可（警告付き）
+  - アクティブなリースがある場合のみクリアをブロック
+* **ファイル名対応**: メタファイル検索で `meta.yaml` と `meta.yml` の両方に対応
+
+### 非推奨 (Deprecated)
+
+* **ワークフロー機能**: workflow.yaml ベースの機能を非推奨に設定
+  - `LoadWorkflow()`, `ExpandPrompt()`, `BuildVarMapWithConfig()` 等の関数
+  - `Workflow`, `Step` 型定義
+  - ワークフロー検証機能 (`NewValidator()`, `Validate()`)
+  - ワークフローコマンド (`workflow verify`)
+  - 現在はシンプルなステータスベース（WIP/REVIEW/REVIEW&WIP）を使用
+
 ### 追加予定
 
 * `scripts/metrics.py`（レビューOK率・平均 `elapsed_ms` のローカル集計）

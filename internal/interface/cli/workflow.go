@@ -9,16 +9,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Deprecated: Workflow commands are not currently used in the main execution path.
+// These commands are kept for compatibility but may be removed in future versions.
 var workflowCmd = &cobra.Command{
 	Use:   "workflow",
-	Short: "Workflow-related commands",
-	Long:  "Commands for managing and validating workflow configurations",
+	Short: "Workflow-related commands (deprecated)",
+	Long:  "Commands for managing and validating workflow configurations (deprecated - not used in main execution)",
 }
 
+// Deprecated: Workflow verification is not currently used in the main execution path.
 var workflowVerifyCmd = &cobra.Command{
 	Use:   "verify",
-	Short: "Verify workflow.yaml structure",
-	Long:  "Validate the structure and schema of workflow.yaml files",
+	Short: "Verify workflow.yaml structure (deprecated)",
+	Long:  "Validate the structure and schema of workflow.yaml files (deprecated - not used in main execution)",
 	RunE:  runWorkflowVerify,
 }
 

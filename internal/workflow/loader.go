@@ -16,6 +16,10 @@ import (
 )
 
 // LoadWorkflow loads and validates a workflow from the specified path
+//
+// Deprecated: Workflow functionality is not currently used in the main execution path.
+// The current implementation uses simple status-based prompts (WIP/REVIEW/REVIEW&WIP).
+// This function is kept for compatibility but may be removed in future versions.
 func LoadWorkflow(ctx context.Context, wfPath string) (*Workflow, error) {
 	// Read workflow file
 	data, err := os.ReadFile(wfPath)

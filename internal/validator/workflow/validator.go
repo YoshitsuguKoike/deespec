@@ -59,10 +59,17 @@ type Validator struct {
 	basePath string
 }
 
+// NewValidator creates a new workflow validator
+//
+// Deprecated: Workflow validation is not currently used in the main execution path.
+// This is kept for compatibility with doctor command.
 func NewValidator(basePath string) *Validator {
 	return &Validator{basePath: basePath}
 }
 
+// Validate validates a workflow file
+//
+// Deprecated: Workflow validation is not currently used in the main execution path.
 func (v *Validator) Validate(path string) (*ValidationResult, error) {
 	result := &ValidationResult{
 		Version:     1,

@@ -19,6 +19,8 @@ type ExpandedPrompt struct {
 }
 
 // ExpandStepPrompt reads and expands a single step's prompt
+//
+// Deprecated: Workflow step prompt expansion is not currently used in the main execution path.
 func ExpandStepPrompt(ctx context.Context, step workflow.Step, vars map[string]string, limitKB int) (*ExpandedPrompt, error) {
 	// Read the prompt file with size limit
 	rawContent, err := ReadPromptWithLimit(step.ResolvedPromptPath, limitKB)
@@ -43,6 +45,8 @@ func ExpandStepPrompt(ctx context.Context, step workflow.Step, vars map[string]s
 }
 
 // ExpandWorkflowPrompts expands all prompts in a workflow
+//
+// Deprecated: Workflow prompt expansion is not currently used in the main execution path.
 func ExpandWorkflowPrompts(ctx context.Context, wf *workflow.Workflow, paths app.Paths) ([]*ExpandedPrompt, error) {
 	// Load state if it exists
 	st, err := state.LoadState(paths.State)
@@ -74,6 +78,8 @@ func ExpandWorkflowPrompts(ctx context.Context, wf *workflow.Workflow, paths app
 }
 
 // PrepareStepExecution prepares a step for execution by expanding its prompt
+//
+// Deprecated: Workflow step execution preparation is not currently used in the main execution path.
 func PrepareStepExecution(ctx context.Context, wf *workflow.Workflow, stepID string, paths app.Paths) (*ExpandedPrompt, error) {
 	// Find the step
 	var targetStep *workflow.Step

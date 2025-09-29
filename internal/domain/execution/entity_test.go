@@ -199,3 +199,75 @@ func TestGetFinalDecision(t *testing.T) {
 		})
 	}
 }
+
+func TestIsCompleted(t *testing.T) {
+	tests := []struct {
+		name     string
+		step     ExecutionStep
+		expected bool
+	}{
+		{"Not completed - Ready", StepReady, false},
+		{"Not completed - Implementation", StepImplementTry, false},
+		{"Not completed - Review", StepFirstReview, false},
+		{"Completed - Done", StepDone, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			now := time.Now()
+			exec := &SBIExecution{
+				Step: tt.step,
+			}
+			if tt.step == StepDone {
+				exec.CompletedAt = &now
+			}
+
+			if exec.IsCompleted() != tt.expected {
+				t.Errorf("IsCompleted() = %v, want %v", exec.IsCompleted(), tt.expected)
+			}
+		})
+	}
+}
+
+func TestAttemptIncrement(t *testing.T) {
+	exec := &SBIExecution{
+		Attempt: 0,
+	}
+
+	// Manually increment attempt field
+	exec.Attempt++
+	if exec.Attempt != 1 {
+		t.Errorf("Expected attempt 1, got %d", exec.Attempt)
+	}
+
+	exec.Attempt++
+	if exec.Attempt != 2 {
+		t.Errorf("Expected attempt 2, got %d", exec.Attempt)
+	}
+}
+
+func TestTimingFields(t *testing.T) {
+	exec := &SBIExecution{}
+
+	// Test setting start time
+	startTime := time.Now()
+	exec.StartedAt = startTime
+
+	if !exec.StartedAt.Equal(startTime) {
+		t.Error("Start time not set correctly")
+	}
+
+	// Test setting end time
+	time.Sleep(50 * time.Millisecond)
+	endTime := time.Now()
+	exec.CompletedAt = &endTime
+
+	if exec.CompletedAt == nil || !exec.CompletedAt.Equal(endTime) {
+		t.Error("End time not set correctly")
+	}
+
+	duration := exec.CompletedAt.Sub(exec.StartedAt)
+	if duration < 50*time.Millisecond {
+		t.Errorf("Duration calculation incorrect: %v", duration)
+	}
+}

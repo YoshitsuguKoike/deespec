@@ -73,14 +73,21 @@ func checkNoWIP(statePath string) error {
 		return fmt.Errorf("failed to load state: %w", err)
 	}
 
-	// Check for WIP
-	if st.WIP != "" {
-		return fmt.Errorf("cannot clear: task %s is currently in progress (WIP)", st.WIP)
+	// Check if lease exists and is still active
+	leaseActive := st.LeaseExpiresAt != "" && !LeaseExpired(st)
+
+	// If lease is active, block the clear
+	if leaseActive {
+		return fmt.Errorf("cannot clear: active lease exists until %s", st.LeaseExpiresAt)
 	}
 
-	// Check for active lease
-	if st.LeaseExpiresAt != "" && !LeaseExpired(st) {
-		return fmt.Errorf("cannot clear: active lease exists until %s", st.LeaseExpiresAt)
+	// If WIP exists but lease is expired or missing, allow clear with warning
+	if st.WIP != "" && !leaseActive {
+		if st.LeaseExpiresAt != "" {
+			Warn("Clearing with expired lease (WIP: %s was abandoned)\n", st.WIP)
+		} else {
+			Warn("Clearing with WIP but no lease (WIP: %s may be stale)\n", st.WIP)
+		}
 	}
 
 	return nil

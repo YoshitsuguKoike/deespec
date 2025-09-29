@@ -131,8 +131,8 @@ func loadAllTasks(specsDir string) ([]*Task, error) {
 			return err
 		}
 
-		// Look for meta.yaml files
-		if info.Name() == "meta.yaml" {
+		// Look for meta.yaml or meta.yml files
+		if info.Name() == "meta.yaml" || info.Name() == "meta.yml" {
 			task, err := loadTaskFromMetaFile(path)
 			if err != nil {
 				// Log warning but continue

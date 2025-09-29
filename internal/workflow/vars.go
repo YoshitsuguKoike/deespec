@@ -41,6 +41,8 @@ func BuildVarMap(ctx context.Context, p app.Paths, wfVars map[string]string, st 
 // 1. Config values (highest priority)
 // 2. Workflow vars
 // 3. Runtime defaults (lowest priority)
+//
+// Deprecated: Workflow variable expansion is not currently used in the main execution path.
 func BuildVarMapWithConfig(ctx context.Context, p app.Paths, wfVars map[string]string, st *state.State, cfg config.Config) map[string]string {
 	vars := map[string]string{}
 
@@ -139,6 +141,8 @@ func ValidatePlaceholders(text string, allowed []string) (unknown []string, used
 }
 
 // ExpandPrompt expands placeholders in the prompt text with provided variables
+//
+// Deprecated: Prompt placeholder expansion is not currently used in the main execution path.
 func ExpandPrompt(text string, vars map[string]string) (string, error) {
 	// First validate placeholders
 	unknown, _ := ValidatePlaceholders(text, Allowed)

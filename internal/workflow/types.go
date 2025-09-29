@@ -37,6 +37,8 @@ type Decision struct {
 }
 
 // Step represents a single step in the workflow
+//
+// Deprecated: Workflow step functionality is not currently used.
 type Step struct {
 	ID                 string         `yaml:"id"`
 	Agent              string         `yaml:"agent"`
@@ -47,6 +49,9 @@ type Step struct {
 }
 
 // Workflow represents the complete workflow configuration
+//
+// Deprecated: Workflow functionality is not currently used in the main execution path.
+// The current implementation uses simple status-based prompts instead of workflow steps.
 type Workflow struct {
 	Name        string            `yaml:"name"`
 	Steps       []Step            `yaml:"steps"`

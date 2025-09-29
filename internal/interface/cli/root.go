@@ -63,6 +63,8 @@ func NewRoot() *cobra.Command {
 	cmd.AddCommand(newHealthCmd())
 	cmd.AddCommand(workflowCmd)
 	cmd.AddCommand(NewSBICommand())
+	cmd.AddCommand(newClearCmd())
+	cmd.AddCommand(newCleanupLocksCmd())
 
 	// Add global log level flag
 	cmd.PersistentFlags().StringVar(&globalLogLevel, "log-level", "",

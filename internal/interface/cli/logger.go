@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Logger provides centralized logging with level control
@@ -71,7 +72,8 @@ func (l *Logger) Fatal(format string, args ...interface{}) {
 	output := l.output
 	l.mu.RUnlock()
 
-	fmt.Fprintf(output, "FATAL: %s\n", fmt.Sprintf(format, args...))
+	timestamp := time.Now().Format("15:04:05.000")
+	fmt.Fprintf(output, "[%s] FATAL: %s\n", timestamp, fmt.Sprintf(format, args...))
 	os.Exit(1)
 }
 
@@ -84,7 +86,8 @@ func (l *Logger) log(level LogLevel, prefix string, format string, args ...inter
 
 	if level >= minLevel {
 		msg := fmt.Sprintf(format, args...)
-		fmt.Fprintf(output, "%s: %s\n", prefix, msg)
+		timestamp := time.Now().Format("15:04:05.000")
+		fmt.Fprintf(output, "[%s] %s: %s\n", timestamp, prefix, msg)
 	}
 }
 

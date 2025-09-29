@@ -16,33 +16,257 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/interface/external/claudecli"
 )
 
+// summarizeText returns first N lines and total line count of text
+func summarizeText(text string, maxLines int) string {
+	lines := strings.Split(text, "\n")
+	total := len(lines)
+
+	if total <= maxLines {
+		return text
+	}
+
+	preview := strings.Join(lines[:maxLines], "\n")
+	return fmt.Sprintf("%s\n... (total %d lines)", preview, total)
+}
+
+// logClaudeInteraction logs the prompt sent to Claude and the response with timing
+func logClaudeInteraction(prompt, result string, err error, startTime, endTime time.Time) {
+	elapsed := endTime.Sub(startTime)
+
+	// Log start
+	Info("┌─ Claude Code Execution ─────────────────────────────────\n")
+	Info("│ Start: %s\n", startTime.Format("15:04:05.000"))
+	Info("│ Prompt: %d chars, %d lines\n", len(prompt), strings.Count(prompt, "\n")+1)
+
+	// Show first few lines of prompt for context
+	lines := strings.Split(prompt, "\n")
+	if len(lines) > 0 {
+		Info("│ Type: %s\n", strings.TrimPrefix(lines[0], "# "))
+	}
+
+	// Log end and result
+	Info("│ End: %s (Duration: %.1fs)\n", endTime.Format("15:04:05.000"), elapsed.Seconds())
+
+	if err != nil {
+		Info("│ Status: ERROR - %v\n", err)
+		Info("└──────────────────────────────────────────────────────────\n")
+		return
+	}
+
+	// Analyze result
+	resultLines := strings.Split(result, "\n")
+	Info("│ Response: %d chars, %d lines\n", len(result), len(resultLines))
+
+	// Try to find key sections in the result
+	var decision string
+	var noteFound bool
+	for _, line := range resultLines {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "DECISION:") {
+			decision = strings.TrimSpace(strings.Split(trimmed, "DECISION:")[1])
+		}
+		if strings.Contains(trimmed, "Implementation Note") ||
+			strings.Contains(trimmed, "Review Note") ||
+			strings.Contains(trimmed, "Test Note") {
+			noteFound = true
+		}
+	}
+
+	if decision != "" {
+		Info("│ Decision: %s\n", decision)
+	}
+	if noteFound {
+		Info("│ Note: Found in response\n")
+	}
+	Info("└──────────────────────────────────────────────────────────\n")
+}
+
 func parseDecision(s string) string {
-	re := regexp.MustCompile(`(?mi)^\s*DECISION:\s*(OK|NEEDS_CHANGES)\s*$`)
+	// Updated to match domain model decisions: SUCCEEDED, NEEDS_CHANGES, FAILED
+	re := regexp.MustCompile(`(?mi)^\s*DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED)\s*$`)
 	m := re.FindStringSubmatch(s)
 	if len(m) == 2 {
 		return strings.ToUpper(strings.TrimSpace(m[1]))
 	}
+	// Default to NEEDS_CHANGES if no valid decision found
 	return "NEEDS_CHANGES"
 }
 
-func buildPlanPrompt(st *State) string {
-	todo := st.Inputs["todo"]
-	if todo == "" {
-		todo = "タスクが未定義"
+// getTaskDescription returns task description based on status and attempt
+func getTaskDescription(st *State) string {
+	switch st.Status {
+	case "READY", "", "WIP":
+		if st.Attempt == 1 {
+			todo := st.Inputs["todo"]
+			if todo == "" {
+				todo = fmt.Sprintf("Implement SBI task %s", st.WIP)
+			}
+			return todo
+		} else if st.Attempt == 2 {
+			taskDesc := fmt.Sprintf("Second attempt for %s. Review feedback and implement improvements.", st.WIP)
+			if reviewFile := st.LastArtifacts["review"]; reviewFile != "" {
+				if content, err := os.ReadFile(reviewFile); err == nil {
+					taskDesc = fmt.Sprintf("Second attempt based on review feedback:\n\n%s", string(content))
+				}
+			}
+			return taskDesc
+		} else {
+			taskDesc := fmt.Sprintf("Third attempt for %s. Final chance to implement correctly.", st.WIP)
+			if reviewFile := st.LastArtifacts["review"]; reviewFile != "" {
+				if content, err := os.ReadFile(reviewFile); err == nil {
+					taskDesc = fmt.Sprintf("Third attempt based on review feedback:\n\n%s", string(content))
+				}
+			}
+			return taskDesc
+		}
+
+	case "REVIEW":
+		implArtifact := ""
+		if st.Attempt == 1 {
+			implArtifact = filepath.Join(".deespec", "specs", "sbi", st.WIP, fmt.Sprintf("implement_%d.md", st.Turn))
+		} else {
+			implArtifact = filepath.Join(".deespec", "specs", "sbi", st.WIP, fmt.Sprintf("implement_attempt%d_%d.md", st.Attempt, st.Turn))
+		}
+		return fmt.Sprintf("Review the implementation at: %s", implArtifact)
+
+	case "REVIEW&WIP":
+		return fmt.Sprintf("Force implementation for %s after 3 failed attempts. As reviewer, implement the solution directly.", st.WIP)
+
+	default:
+		return fmt.Sprintf("Process task %s", st.WIP)
 	}
-	return "次のTODOを200字で計画し、手順を列挙せよ。\nTODO: " + todo + "\n"
 }
 
+// buildPromptByStatus creates appropriate prompt based on status and turn
+func buildPromptByStatus(st *State) string {
+	builder := ClaudeCodePromptBuilder{
+		WorkDir: getCurrentWorkDir(),
+		SBIDir:  filepath.Join(".deespec", "specs", "sbi", st.WIP),
+		SBIID:   st.WIP,
+		Turn:    st.Turn,
+		Step:    determineStep(st.Status, st.Attempt),
+	}
+
+	// Determine task description based on status and attempt
+	taskDesc := getTaskDescription(st)
+
+	// Try to load external prompt first
+	externalPrompt, err := builder.LoadExternalPrompt(st.Status, taskDesc)
+	if err == nil {
+		Info("Loaded external prompt from .deespec/prompts/ for status: %s\n", st.Status)
+		return externalPrompt
+	}
+
+	// Fall back to hardcoded prompts
+	Info("Using default prompt (external prompt not found: %v)\n", err)
+
+	switch st.Status {
+	case "READY", "":
+		// Initial implementation (Turn 1, Step 2: implement_try)
+		todo := st.Inputs["todo"]
+		if todo == "" {
+			todo = fmt.Sprintf("Implement SBI task %s", st.WIP)
+		}
+		return builder.BuildImplementPrompt(todo)
+
+	case "WIP":
+		// Implementation or re-implementation
+		if st.Attempt == 1 {
+			// First attempt (Step 2: implement_try)
+			todo := st.Inputs["todo"]
+			if todo == "" {
+				todo = fmt.Sprintf("Implement SBI task %s", st.WIP)
+			}
+			return builder.BuildImplementPrompt(todo)
+		} else if st.Attempt == 2 {
+			// Second attempt (Step 4: implement_2nd_try)
+			taskDesc := fmt.Sprintf("Second attempt for %s. Review feedback and implement improvements.", st.WIP)
+			if reviewFile := st.LastArtifacts["review"]; reviewFile != "" {
+				if content, err := os.ReadFile(reviewFile); err == nil {
+					taskDesc = fmt.Sprintf("Second attempt based on review feedback:\n\n%s", string(content))
+				}
+			}
+			return builder.BuildImplementPrompt(taskDesc)
+		} else {
+			// Third attempt (Step 6: implement_3rd_try)
+			taskDesc := fmt.Sprintf("Third attempt for %s. Final chance to implement correctly.", st.WIP)
+			if reviewFile := st.LastArtifacts["review"]; reviewFile != "" {
+				if content, err := os.ReadFile(reviewFile); err == nil {
+					taskDesc = fmt.Sprintf("Third attempt based on review feedback:\n\n%s", string(content))
+				}
+			}
+			return builder.BuildImplementPrompt(taskDesc)
+		}
+
+	case "REVIEW":
+		// Review implementation
+		implArtifact := ""
+		if st.Attempt == 1 {
+			implArtifact = filepath.Join(".deespec", "specs", "sbi", st.WIP, fmt.Sprintf("implement_%d.md", st.Turn))
+		} else {
+			implArtifact = filepath.Join(".deespec", "specs", "sbi", st.WIP, fmt.Sprintf("implement_attempt%d_%d.md", st.Attempt, st.Turn))
+		}
+		// No test artifact since test step is removed
+		return builder.BuildReviewPrompt(implArtifact, "")
+
+	case "REVIEW&WIP":
+		// Force termination - reviewer implements (Step 8: reviewer_force_implement)
+		taskDesc := fmt.Sprintf("Force implementation for %s after 3 failed attempts. As reviewer, implement the solution directly.", st.WIP)
+		return builder.BuildImplementPrompt(taskDesc)
+
+	case "DONE":
+		return "# Task completed\n\nThe SBI execution has been completed."
+
+	default:
+		return fmt.Sprintf("# Unknown status: %s\n\nCannot determine appropriate action.", st.Status)
+	}
+}
+
+// determineStep maps status and attempt to execution step
+func determineStep(status string, attempt int) string {
+	switch status {
+	case "READY", "":
+		return "implement_try"
+	case "WIP":
+		if attempt == 1 {
+			return "implement_try"
+		} else if attempt == 2 {
+			return "implement_2nd_try"
+		} else {
+			return "implement_3rd_try"
+		}
+	case "REVIEW":
+		if attempt == 1 {
+			return "first_review"
+		} else if attempt == 2 {
+			return "second_review"
+		} else {
+			return "third_review"
+		}
+	case "REVIEW&WIP":
+		return "reviewer_force_implement"
+	case "DONE":
+		return "done"
+	default:
+		return "unknown"
+	}
+}
+
+// Legacy functions kept for compatibility
 func buildImplementPrompt(st *State) string {
-	return "計画に基づき、実装の差分案を要点と一緒に提示せよ。\n最後に「## Implementation Note」セクションを追加し、実装の要点を簡潔にまとめよ。\n"
-}
-
-func buildTestPrompt(st *State) string {
-	return "変更に対する簡易テスト手順と想定出力ログを提示せよ。\n"
+	return buildPromptByStatus(st)
 }
 
 func buildReviewPrompt(st *State) string {
-	return "以下をレビューし、最後に 'DECISION: OK' もしくは 'DECISION: NEEDS_CHANGES' を1行で出力せよ。\n- 計画/差分/テスト（要約可）\n\n最後に「## Review Note」セクションを追加し、レビューの要点と判断理由を記載せよ。\n"
+	return buildPromptByStatus(st)
+}
+
+func getCurrentWorkDir() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	return dir
 }
 
 func newRunCmd() *cobra.Command {
@@ -133,8 +357,11 @@ func runOnce(autoFB bool) error {
 	}
 
 	// 3) WIP判定とピック/再開
+	Info("Current state: WIP=%s, Current=%s, Turn=%d\n", st.WIP, st.Current, st.Turn)
+
 	if st.WIP == "" {
 		// No WIP - try to pick next task
+		Info("No WIP found, attempting to pick next task...\n")
 		cfg := PickConfig{
 			JournalPath: paths.Journal,
 		}
@@ -169,7 +396,10 @@ func runOnce(autoFB bool) error {
 
 		// Update state for new task
 		st.WIP = picked.ID
-		st.Current = "implement" // Start with implement after plan
+		st.Status = "READY"      // Start with READY status
+		st.Current = "implement" // Legacy field
+		st.Attempt = 1           // First attempt
+		st.Decision = "PENDING"
 		st.Inputs = map[string]string{
 			"todo": fmt.Sprintf("Implement task %s: %s", picked.ID, picked.Title),
 		}
@@ -179,6 +409,7 @@ func runOnce(autoFB bool) error {
 		Info("picked task %s: %s (lease until %s)\n", picked.ID, reason, st.LeaseExpiresAt)
 	} else {
 		// WIP exists - try to resume
+		Info("WIP exists: %s, attempting to resume from step: %s\n", st.WIP, st.Current)
 		resumed, reason, err := ResumeIfInProgress(st, paths.Journal)
 		if err != nil {
 			Error("failed to resume: %v\n", err)
@@ -186,7 +417,7 @@ func runOnce(autoFB bool) error {
 		}
 
 		if resumed {
-			Info("%s\n", reason)
+			Info("Resume result: %s\n", reason)
 		}
 	}
 
@@ -200,54 +431,58 @@ func runOnce(autoFB bool) error {
 	}
 	agent := claudecli.Runner{Bin: agentBin, Timeout: timeout}
 
-	next := st.Current
+	// Initialize status if not set
+	if st.Status == "" {
+		if st.WIP != "" {
+			st.Status = "READY"
+			st.Attempt = 1
+			st.Decision = "PENDING"
+		}
+	}
+
 	output := "# no-op\n"
-	decision := "OK"
+	decision := st.Decision
+	if decision == "" {
+		decision = "PENDING"
+	}
 	errorMsg := ""
 
-	// 3) ステップ別処理
-	switch st.Current {
-	case "plan":
-		prompt := buildPlanPrompt(st)
-		result, err := agent.Run(context.Background(), prompt)
-		if err != nil {
-			output = fmt.Sprintf("# Plan failed\n\nError: %v\n\nDECISION: NEEDS_CHANGES\n", err)
-			errorMsg = err.Error()
-		} else {
-			output = result
-		}
-		next = nextStep("plan", "OK")
+	// 3) Status-based processing
+	Info("Processing status: %s for SBI: %s (Turn: %d, Attempt: %d)\n", st.Status, st.WIP, st.Turn, st.Attempt)
 
-	case "implement":
-		prompt := buildImplementPrompt(st)
+	// Generate prompt based on current status
+	prompt := buildPromptByStatus(st)
+	Info("Generated prompt type: %s (length: %d chars)\n", determineStep(st.Status, st.Attempt), len(prompt))
+
+	switch st.Status {
+	case "READY", "WIP":
+		// Implementation phase
+		Info("Running implementation for attempt %d\n", st.Attempt)
+		claudeStart := time.Now()
 		result, err := agent.Run(context.Background(), prompt)
+		claudeEnd := time.Now()
+		logClaudeInteraction(prompt, result, err, claudeStart, claudeEnd)
 		if err != nil {
-			output = fmt.Sprintf("# Implement failed\n\nError: %v\n\nDECISION: NEEDS_CHANGES\n", err)
+			output = fmt.Sprintf("# Implementation failed\n\nError: %v\n\nDECISION: NEEDS_CHANGES\n", err)
 			errorMsg = err.Error()
+			decision = "NEEDS_CHANGES"
 		} else {
 			output = result
-			// Extract and append implementation note to rolling file
+			// Extract and append implementation note
 			noteBody := ExtractNoteBody(result, "implement")
 			if noteErr := AppendNote("implement", "PENDING", noteBody, st.Turn, st.WIP, time.Now()); noteErr != nil {
 				Warn("failed to append impl_note: %v\n", noteErr)
 			}
+			decision = "PENDING" // Will be determined in review
 		}
-		next = nextStep("implement", "OK")
 
-	case "test":
-		prompt := buildTestPrompt(st)
+	case "REVIEW":
+		// Review phase
+		Info("Running review for attempt %d\n", st.Attempt)
+		claudeStart := time.Now()
 		result, err := agent.Run(context.Background(), prompt)
-		if err != nil {
-			output = fmt.Sprintf("# Test failed\n\nError: %v\n\nDECISION: NEEDS_CHANGES\n", err)
-			errorMsg = err.Error()
-		} else {
-			output = result
-		}
-		next = nextStep("test", "OK")
-
-	case "review":
-		prompt := buildReviewPrompt(st)
-		result, err := agent.Run(context.Background(), prompt)
+		claudeEnd := time.Now()
+		logClaudeInteraction(prompt, result, err, claudeStart, claudeEnd)
 		if err != nil {
 			output = fmt.Sprintf("# Review failed\n\nError: %v\n\nDECISION: NEEDS_CHANGES\n", err)
 			decision = "NEEDS_CHANGES"
@@ -255,21 +490,58 @@ func runOnce(autoFB bool) error {
 		} else {
 			output = result
 			decision = parseDecision(result)
-			// Extract and append review note to rolling file
+			Info("Review decision parsed: %s\n", decision)
+			// Extract and append review note
 			noteBody := ExtractNoteBody(result, "review")
 			if noteErr := AppendNote("review", decision, noteBody, st.Turn, st.WIP, time.Now()); noteErr != nil {
 				Warn("failed to append review_note: %v\n", noteErr)
 			}
 		}
-		next = nextStep("review", decision)
 
-	case "done":
+	case "REVIEW&WIP":
+		// Force implementation by reviewer
+		Info("Running force implementation by reviewer\n")
+		claudeStart := time.Now()
+		result, err := agent.Run(context.Background(), prompt)
+		claudeEnd := time.Now()
+		logClaudeInteraction(prompt, result, err, claudeStart, claudeEnd)
+		if err != nil {
+			output = fmt.Sprintf("# Force implementation failed\n\nError: %v\n\nDECISION: FAILED\n", err)
+			decision = "FAILED"
+			errorMsg = err.Error()
+		} else {
+			output = result
+			decision = "SUCCEEDED" // Force implementation is final
+			Info("Force implementation completed successfully\n")
+		}
+
+	case "DONE":
 		output = fmt.Sprintf("# Workflow completed at %s\n", time.Now().Format(time.RFC3339))
-		next = "done"
+		decision = st.Decision // Keep existing decision
 
 	default:
-		// 不明なステップの場合はplanに戻る
-		next = "plan"
+		// Unknown status
+		Error("Unknown status: %s\n", st.Status)
+		st.Status = "READY"
+	}
+
+	// Determine next status
+	nextStatus := nextStatusTransition(st.Status, decision, st.Attempt)
+	Info("Transition: %s -> %s (decision: %s)\n", st.Status, nextStatus, decision)
+
+	// Update attempt counter if going back to WIP
+	if st.Status == "REVIEW" && nextStatus == "WIP" && decision == "NEEDS_CHANGES" {
+		st.Attempt++
+	}
+
+	// For compatibility, update Current field
+	next := "done"
+	if nextStatus == "WIP" || nextStatus == "READY" {
+		next = "implement"
+	} else if nextStatus == "REVIEW" {
+		next = "review"
+	} else if nextStatus == "DONE" {
+		next = "done"
 	}
 
 	// All journal records in this run will use the same turn number
@@ -338,30 +610,28 @@ func runOnce(autoFB bool) error {
 	journalRec := map[string]interface{}{
 		"ts":         time.Now().UTC().Format(time.RFC3339Nano),
 		"turn":       currentTurn, // All entries in this run use same turn
-		"step":       next,        // 次のステップを記録
-		"decision":   "",
+		"step":       next,        // Legacy field
+		"status":     nextStatus,  // New status field
+		"attempt":    st.Attempt,  // Current attempt number
+		"decision":   decision,
 		"elapsed_ms": elapsedMs,
 		"error":      errorMsg,
 		"artifacts":  artifacts,
 	}
 
-	// decision は review の時のみセット（次がdoneまたはimplementの場合）
-	if st.Current == "review" {
-		journalRec["decision"] = decision
-	}
-
-	// 7) ターンとステップの更新（ジャーナル記録前に状態を更新）
-	if st.Current == "review" && next == "implement" {
-		// ブーメラン時はturn据え置き
-	} else if st.Current != "done" && next != st.Current {
-		st.Turn++
-	}
+	// 7) ステップの更新（ジャーナル記録前に状態を更新）
+	// ターンは既にLine 119で設定済み（1 run = 1 turn）
+	Info("Transitioning from status '%s' to '%s' (decision: %s)\n", st.Status, nextStatus, decision)
 	st.Current = next
+	st.Status = nextStatus
+	st.Decision = decision
 
 	// Clear WIP and lease when task is done
-	if next == "done" {
+	if nextStatus == "DONE" {
+		Info("Task %s completed! Clearing WIP and lease.\n", st.WIP)
 		st.WIP = ""
 		ClearLease(st)
+		st.Attempt = 0 // Reset attempt counter
 		Info("Task completed, WIP and lease cleared")
 	}
 

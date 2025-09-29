@@ -11,12 +11,15 @@ import (
 
 type State struct {
 	Version        int               `json:"version"`
-	Current        string            `json:"current"`
+	Current        string            `json:"current"` // Legacy: plan/implement/test/review/done
+	Status         string            `json:"status"`  // New: READY/WIP/REVIEW/REVIEW&WIP/DONE
 	Turn           int               `json:"turn"`
 	WIP            string            `json:"wip"`              // Work In Progress - current SBI ID (empty = no WIP)
 	LeaseExpiresAt string            `json:"lease_expires_at"` // UTC RFC3339Nano (empty when no WIP)
 	Inputs         map[string]string `json:"inputs"`
 	LastArtifacts  map[string]string `json:"last_artifacts"`
+	Decision       string            `json:"decision"` // PENDING/NEEDS_CHANGES/SUCCEEDED/FAILED
+	Attempt        int               `json:"attempt"`  // Implementation attempt number (1-3)
 	Meta           struct {
 		UpdatedAt string `json:"updated_at"`
 	} `json:"meta"`
@@ -52,13 +55,52 @@ func nextStep(cur string, decision string) string {
 	case "test":
 		return "review"
 	case "review":
-		if decision == "OK" {
+		// Check for success decisions (SUCCEEDED or legacy OK)
+		if decision == "SUCCEEDED" || decision == "OK" {
 			return "done"
 		}
+		// For NEEDS_CHANGES or FAILED, go back to implement
 		return "implement"
 	case "done":
 		return "done"
 	default:
 		return "plan"
+	}
+}
+
+// nextStatusTransition determines the next status based on current status, decision, and attempt
+func nextStatusTransition(currentStatus string, decision string, attempt int) string {
+	switch currentStatus {
+	case "", "READY":
+		// READY -> WIP (start implementation)
+		return "WIP"
+
+	case "WIP":
+		// WIP -> REVIEW (after implementation)
+		return "REVIEW"
+
+	case "REVIEW":
+		if decision == "SUCCEEDED" {
+			// REVIEW -> DONE (success)
+			return "DONE"
+		} else if decision == "FAILED" && attempt >= 3 {
+			// REVIEW -> REVIEW&WIP (force termination after 3 attempts)
+			return "REVIEW&WIP"
+		} else {
+			// REVIEW -> WIP (needs changes, retry)
+			return "WIP"
+		}
+
+	case "REVIEW&WIP":
+		// REVIEW&WIP -> DONE (after force termination)
+		return "DONE"
+
+	case "DONE":
+		// DONE -> DONE (terminal state)
+		return "DONE"
+
+	default:
+		// Unknown status, default to READY
+		return "READY"
 	}
 }

@@ -138,9 +138,9 @@ func TestResumeIfInProgress(t *testing.T) {
 
 	// Test resume with WIP
 	st := &State{
-		CurrentTaskID: "SBI-001",
-		Current:       "plan",
-		Turn:          1,
+		WIP:     "SBI-001",
+		Current: "plan",
+		Turn:    1,
 	}
 
 	resumed, reason, err := ResumeIfInProgress(st, ".deespec/var/journal.ndjson")
@@ -163,9 +163,9 @@ func TestResumeIfInProgress(t *testing.T) {
 
 func TestResumeIfInProgress_NoWIP(t *testing.T) {
 	st := &State{
-		CurrentTaskID: "",
-		Current:       "plan",
-		Turn:          1,
+		WIP:     "",
+		Current: "plan",
+		Turn:    1,
 	}
 
 	resumed, reason, err := ResumeIfInProgress(st, "")
@@ -207,7 +207,7 @@ func TestSyncStateWithJournal(t *testing.T) {
 		},
 		{
 			name:         "done clears WIP",
-			state:        &State{Current: "review", Turn: 2, CurrentTaskID: "SBI-001"},
+			state:        &State{Current: "review", Turn: 2, WIP: "SBI-001"},
 			journalEntry: map[string]interface{}{"step": "done", "decision": "OK", "turn": float64(2)},
 			expectChange: true,
 			expectedStep: "plan", // done/OK transitions to plan, not done
@@ -233,8 +233,8 @@ func TestSyncStateWithJournal(t *testing.T) {
 				if newState.Turn != tt.expectedTurn {
 					t.Errorf("Expected turn=%d, got %d", tt.expectedTurn, newState.Turn)
 				}
-				if tt.expectedStep == "done" && newState.CurrentTaskID != "" {
-					t.Error("Expected CurrentTaskID to be cleared on done")
+				if tt.expectedStep == "done" && newState.WIP != "" {
+					t.Error("Expected WIP to be cleared on done")
 				}
 			}
 		})
@@ -506,7 +506,7 @@ func TestSyncStateWithJournal_SBI_PICK_002_Matrix(t *testing.T) {
 	}{
 		{
 			name:         "plan/PENDING -> implement",
-			state:        &State{Current: "plan", CurrentTaskID: "SBI-001"},
+			state:        &State{Current: "plan", WIP: "SBI-001"},
 			journalEntry: map[string]interface{}{"step": "plan", "decision": "PENDING"},
 			expectChange: true,
 			expectedStep: "implement",
@@ -514,7 +514,7 @@ func TestSyncStateWithJournal_SBI_PICK_002_Matrix(t *testing.T) {
 		},
 		{
 			name:         "implement/PENDING -> implement (idempotent)",
-			state:        &State{Current: "implement", CurrentTaskID: "SBI-001"},
+			state:        &State{Current: "implement", WIP: "SBI-001"},
 			journalEntry: map[string]interface{}{"step": "implement", "decision": "PENDING"},
 			expectChange: true,
 			expectedStep: "implement",
@@ -522,7 +522,7 @@ func TestSyncStateWithJournal_SBI_PICK_002_Matrix(t *testing.T) {
 		},
 		{
 			name:         "test/PENDING -> test (idempotent)",
-			state:        &State{Current: "test", CurrentTaskID: "SBI-001"},
+			state:        &State{Current: "test", WIP: "SBI-001"},
 			journalEntry: map[string]interface{}{"step": "test", "decision": "PENDING"},
 			expectChange: true,
 			expectedStep: "test",
@@ -530,7 +530,7 @@ func TestSyncStateWithJournal_SBI_PICK_002_Matrix(t *testing.T) {
 		},
 		{
 			name:         "review/NEEDS_CHANGES -> implement (boomerang)",
-			state:        &State{Current: "review", CurrentTaskID: "SBI-001"},
+			state:        &State{Current: "review", WIP: "SBI-001"},
 			journalEntry: map[string]interface{}{"step": "review", "decision": "NEEDS_CHANGES"},
 			expectChange: true,
 			expectedStep: "implement",
@@ -538,7 +538,7 @@ func TestSyncStateWithJournal_SBI_PICK_002_Matrix(t *testing.T) {
 		},
 		{
 			name:         "review/OK -> done",
-			state:        &State{Current: "review", CurrentTaskID: "SBI-001"},
+			state:        &State{Current: "review", WIP: "SBI-001"},
 			journalEntry: map[string]interface{}{"step": "review", "decision": "OK"},
 			expectChange: true,
 			expectedStep: "done",
@@ -546,7 +546,7 @@ func TestSyncStateWithJournal_SBI_PICK_002_Matrix(t *testing.T) {
 		},
 		{
 			name:         "done/OK -> plan (WIP cleared)",
-			state:        &State{Current: "done", CurrentTaskID: "SBI-001"},
+			state:        &State{Current: "done", WIP: "SBI-001"},
 			journalEntry: map[string]interface{}{"step": "done", "decision": "OK"},
 			expectChange: true,
 			expectedStep: "plan",
@@ -569,8 +569,8 @@ func TestSyncStateWithJournal_SBI_PICK_002_Matrix(t *testing.T) {
 				if newState.Current != tt.expectedStep {
 					t.Errorf("Expected step=%s, got %s", tt.expectedStep, newState.Current)
 				}
-				if newState.CurrentTaskID != tt.expectedWIP {
-					t.Errorf("Expected WIP=%s, got %s", tt.expectedWIP, newState.CurrentTaskID)
+				if newState.WIP != tt.expectedWIP {
+					t.Errorf("Expected WIP=%s, got %s", tt.expectedWIP, newState.WIP)
 				}
 			}
 		})
@@ -757,7 +757,7 @@ func TestTurnConsistency_SBI_PICK_002(t *testing.T) {
 			"decision":   "PENDING",
 			"elapsed_ms": 1000,
 			"error":      "",
-			"artifacts":  []interface{}{".deespec/var/artifacts/turn5/implement.md"},
+			"artifacts":  []interface{}{".deespec/specs/sbi/SBI-TEST/implement_5.md"},
 		},
 		{
 			"ts":         "2025-09-26T10:02:00Z",
@@ -766,7 +766,7 @@ func TestTurnConsistency_SBI_PICK_002(t *testing.T) {
 			"decision":   "PENDING",
 			"elapsed_ms": 500,
 			"error":      "",
-			"artifacts":  []interface{}{".deespec/var/artifacts/turn5/test.md"},
+			"artifacts":  []interface{}{".deespec/specs/sbi/SBI-TEST/test_5.md"},
 		},
 	}
 

@@ -214,16 +214,15 @@ func containsInvalidPath(path string) bool {
 	return false
 }
 
-// PersistFBDraft saves the FB draft to artifacts
-func PersistFBDraft(d FBDraft, artifactsDir string) (string, error) {
-	// Create fb_sbi directory structure
-	fbDir := filepath.Join(artifactsDir, "fb_sbi", d.TargetTaskID)
-	if err := os.MkdirAll(fbDir, 0755); err != nil {
-		return "", fmt.Errorf("create fb_sbi dir: %w", err)
+// PersistFBDraft saves the FB draft to SBI directory
+func PersistFBDraft(d FBDraft, sbiDir string) (string, error) {
+	// Ensure SBI directory exists
+	if err := os.MkdirAll(sbiDir, 0755); err != nil {
+		return "", fmt.Errorf("create SBI dir: %w", err)
 	}
 
-	// Write context.md
-	contextPath := filepath.Join(fbDir, "context.md")
+	// Write fb_context.md (prefixed to distinguish from other files)
+	contextPath := filepath.Join(sbiDir, "fb_context.md")
 	contextContent := fmt.Sprintf(`# 不完全指示検出レポート
 
 ## 対象タスク
@@ -252,8 +251,8 @@ func PersistFBDraft(d FBDraft, artifactsDir string) (string, error) {
 		return "", fmt.Errorf("write context.md: %w", err)
 	}
 
-	// Write evidence.txt
-	evidencePath := filepath.Join(fbDir, "evidence.txt")
+	// Write fb_evidence.txt
+	evidencePath := filepath.Join(sbiDir, "fb_evidence.txt")
 	evidenceContent := fmt.Sprintf(`Task ID: %s
 Reason Code: %s
 Summary: %s
@@ -264,8 +263,8 @@ Created At: %s
 		return "", fmt.Errorf("write evidence.txt: %w", err)
 	}
 
-	// Write draft.yaml
-	draftPath := filepath.Join(fbDir, "draft.yaml")
+	// Write fb_draft.yaml
+	draftPath := filepath.Join(sbiDir, "fb_draft.yaml")
 	draftYAML := FBDraftYAML{
 		ID:         "", // Will be assigned on registration
 		Title:      d.Title,

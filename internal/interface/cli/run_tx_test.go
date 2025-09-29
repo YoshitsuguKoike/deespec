@@ -29,9 +29,6 @@ func TestStateJournalTXConsistency(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(varDir, "txn"), 0755); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(varDir, "artifacts"), 0755); err != nil {
-		t.Fatalf("mkdir failed: %v", err)
-	}
 
 	// Change to temp directory
 	oldDir, _ := os.Getwd()
@@ -57,7 +54,7 @@ func TestStateJournalTXConsistency(t *testing.T) {
 		}{
 			UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 		},
-		ArtifactsDir: filepath.Join(varDir, "artifacts"),
+		WIP: "SBI-TEST-001",
 	}
 
 	// Save initial state
@@ -129,7 +126,7 @@ func TestStateJournalTXConsistency(t *testing.T) {
 			}{
 				UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 			},
-			ArtifactsDir: state.ArtifactsDir,
+			WIP: state.WIP,
 		}
 
 		err := SaveStateAndJournalTX(testState, journalRec, paths, wrongVersion)
@@ -162,7 +159,7 @@ func TestStateJournalTXConsistency(t *testing.T) {
 			}{
 				UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 			},
-			ArtifactsDir: state.ArtifactsDir,
+			WIP: state.WIP,
 		}
 
 		err := SaveStateAndJournalTX(testState, journalRec, paths, currentVersion)

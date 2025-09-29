@@ -49,7 +49,6 @@ All files will be created under the .deespec/ directory.`,
 				filepath.Join(deespecDir, "specs", "sbi"),
 				filepath.Join(deespecDir, "specs", "pbi"),
 				filepath.Join(deespecDir, "templates"),
-				filepath.Join(deespecDir, "var", "artifacts"),
 				filepath.Join(deespecDir, "sessions"),
 				filepath.Join(deespecDir, "knowledge"),
 			}

@@ -10,6 +10,42 @@
 
 ---
 
+## \[v0.1.27] - 2025-09-29
+
+### 変更 (Changed)
+
+* **アーティファクトパス構造の大幅な改善**:
+  - 従来の中央集約型 `.deespec/var/artifacts/turn1/`, `turn2/` 構造を廃止
+  - SBI 固有ディレクトリでのファイル管理に移行 (`.deespec/specs/sbi/<SBI-ID>/`)
+  - ターン関連ファイルは `{step}_{turn}.md` 形式で保存 (例: `plan_1.md`, `implement_2.md`)
+  - FB ドラフトは `fb_` プレフィックスで同一ディレクトリに配置
+  - ノートファイル (`impl_notes.md`, `review_notes.md`) も SBI ディレクトリに統合
+
+* **設定管理の簡素化**:
+  - `ArtifactsDir` フィールドと関連メソッドを完全削除
+  - `AppConfig` 構造体から不要なフィールドを除去
+  - `NewAppConfig` 関数のパラメータを最適化
+
+* **State 管理の改善**:
+  - `CurrentTaskID` を `WIP` (Work In Progress) に名称変更
+  - 現在作業中の SBI ID を明確に追跡
+
+### 削除 (Removed)
+
+* **廃止された機能**:
+  - `ArtifactsDir` 設定項目
+  - 中央集約型アーティファクトディレクトリ (`.deespec/var/artifacts/`)
+  - 関連する初期化・検証ロジック
+
+### 修正 (Fixed)
+
+* **テストの更新**:
+  - `TestPersistFBDraft` を新しいパス構造に対応
+  - 不要なディレクトリ作成処理を削除
+  - パス参照を新構造に統一
+
+---
+
 ## \[v0.1.26] - 2025-09-28
 
 ### 追加 (Added)

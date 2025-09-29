@@ -91,11 +91,11 @@ func newDoctorCmd() *cobra.Command {
 			// Use globalConfig if available
 			if globalConfig != nil {
 				fmt.Println("AgentBin:", globalConfig.AgentBin())
-				fmt.Println("ArtifactsDir:", paths.Artifacts)
+				fmt.Println("SpecsSBI:", paths.SpecsSBI)
 				fmt.Println("Timeout:", time.Duration(globalConfig.TimeoutSec())*time.Second)
 			} else {
 				fmt.Println("AgentBin: claude")
-				fmt.Println("ArtifactsDir:", paths.Artifacts)
+				fmt.Println("SpecsSBI:", paths.SpecsSBI)
 				fmt.Println("Timeout: 60s")
 			}
 			fmt.Println("DeespecHome:", paths.Home)
@@ -109,8 +109,8 @@ func newDoctorCmd() *cobra.Command {
 			} else {
 				fmt.Printf("OK: %s found\n", agentBin)
 			}
-			if err := os.MkdirAll(paths.Artifacts, 0o755); err != nil {
-				return fmt.Errorf("artifacts dir error: %w", err)
+			if err := os.MkdirAll(paths.SpecsSBI, 0o755); err != nil {
+				return fmt.Errorf("specs/sbi dir error: %w", err)
 			}
 			probeFile := filepath.Join(paths.Var, ".probe")
 			if f, err := os.Create(probeFile); err != nil {

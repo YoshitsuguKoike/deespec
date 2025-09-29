@@ -6,10 +6,10 @@ type State struct {
 	Turn          int               `json:"turn"`
 	Inputs        map[string]string `json:"inputs"`
 	LastArtifacts map[string]string `json:"last_artifacts"`
-	ArtifactsDir  string            `json:"artifacts_dir"`
 	Meta          struct {
 		UpdatedAt string `json:"updated_at"`
 	} `json:"meta"`
+	WIP string `json:"wip"` // Work In Progress - current SBI ID
 }
 
 // 次ステップ（最小直進）

@@ -8,14 +8,13 @@ import (
 
 // Paths holds all resolved paths for deespec v1 structure
 type Paths struct {
-	Home      string // .deespec directory
-	Etc       string // .deespec/etc
-	Prompts   string // .deespec/prompts
-	Policies  string // .deespec/etc/policies
-	SpecsSBI  string // .deespec/specs/sbi
-	SpecsPBI  string // .deespec/specs/pbi
-	Var       string // .deespec/var
-	Artifacts string // .deespec/var/artifacts
+	Home     string // .deespec directory
+	Etc      string // .deespec/etc
+	Prompts  string // .deespec/prompts
+	Policies string // .deespec/etc/policies
+	SpecsSBI string // .deespec/specs/sbi
+	SpecsPBI string // .deespec/specs/pbi
+	Var      string // .deespec/var
 
 	// Key files
 	Workflow  string // .deespec/etc/workflow.yaml
@@ -65,7 +64,6 @@ func ResolvePathsWithHome(home string) Paths {
 	p.Policies = filepath.Join(p.Etc, "policies")
 	p.SpecsSBI = filepath.Join(homeAbs, "specs", "sbi")
 	p.SpecsPBI = filepath.Join(homeAbs, "specs", "pbi")
-	p.Artifacts = filepath.Join(p.Var, "artifacts")
 
 	// Key files
 	p.Workflow = filepath.Join(p.Etc, "workflow.yaml")

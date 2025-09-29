@@ -21,8 +21,8 @@ func TestAppendNote(t *testing.T) {
 		}
 	}()
 
-	// Create .deespec/var/artifacts directory
-	artifactsDir := filepath.Join(".deespec", "var", "artifacts")
+	// Create SBI test directory
+	artifactsDir := filepath.Join(".deespec", "specs", "sbi", "SBI-TEST-001")
 	if err := os.MkdirAll(artifactsDir, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestAppendNote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := AppendNote(tt.kind, tt.decision, tt.body, tt.turn, now)
+			err := AppendNote(tt.kind, tt.decision, tt.body, tt.turn, "SBI-TEST-001", now)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AppendNote() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -105,9 +105,9 @@ func TestAppendNote(t *testing.T) {
 				// Read the file and check contents
 				var filePath string
 				if tt.kind == "implement" {
-					filePath = filepath.Join(artifactsDir, "impl_note.md")
+					filePath = filepath.Join(artifactsDir, "impl_notes.md")
 				} else if tt.kind == "review" {
-					filePath = filepath.Join(artifactsDir, "review_note.md")
+					filePath = filepath.Join(artifactsDir, "review_notes.md")
 				}
 
 				content, err := os.ReadFile(filePath)
@@ -144,8 +144,8 @@ func TestAppendNote_MultipleAppends(t *testing.T) {
 		}
 	}()
 
-	// Create .deespec/var/artifacts directory
-	artifactsDir := filepath.Join(".deespec", "var", "artifacts")
+	// Create SBI test directory
+	artifactsDir := filepath.Join(".deespec", "specs", "sbi", "SBI-TEST-001")
 	if err := os.MkdirAll(artifactsDir, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -155,25 +155,25 @@ func TestAppendNote_MultipleAppends(t *testing.T) {
 	now3 := time.Date(2025, 9, 26, 12, 0, 0, 0, time.UTC)
 
 	// First implement
-	err := AppendNote("implement", "", "First implementation", 1, now1)
+	err := AppendNote("implement", "", "First implementation", 1, "SBI-TEST-001", now1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// First review (needs changes)
-	err = AppendNote("review", "NEEDS_CHANGES", "Needs improvements", 2, now2)
+	err = AppendNote("review", "NEEDS_CHANGES", "Needs improvements", 2, "SBI-TEST-001", now2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Second implement
-	err = AppendNote("implement", "", "Fixed issues", 3, now3)
+	err = AppendNote("implement", "", "Fixed issues", 3, "SBI-TEST-001", now3)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Check impl_note.md has both entries
-	implContent, err := os.ReadFile(filepath.Join(artifactsDir, "impl_note.md"))
+	// Check impl_notes.md has both entries
+	implContent, err := os.ReadFile(filepath.Join(artifactsDir, "impl_notes.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,8 +301,8 @@ func TestNoAbsolutePathsInNotes(t *testing.T) {
 
 	// The note paths should be relative
 	notePaths := []string{
-		".deespec/var/artifacts/impl_note.md",
-		".deespec/var/artifacts/review_note.md",
+		".deespec/specs/sbi/SBI-TEST-001/impl_notes.md",
+		".deespec/specs/sbi/SBI-TEST-001/review_notes.md",
 	}
 
 	for _, path := range notePaths {

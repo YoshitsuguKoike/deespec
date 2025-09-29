@@ -119,21 +119,21 @@ func runOnce(autoFB bool) error {
 	st.Turn = currentTurn
 
 	// 3.5) Lease management - check for expired lease
-	if st.CurrentTaskID != "" && LeaseExpired(st) {
-		Info("Lease expired for task %s, taking over\n", st.CurrentTaskID)
+	if st.WIP != "" && LeaseExpired(st) {
+		Info("Lease expired for task %s, taking over\n", st.WIP)
 		// Lease expired, we can take over the task
 		// The task will be resumed in the next section
 	}
 
 	// Renew or set lease for current process
-	if st.CurrentTaskID != "" {
+	if st.WIP != "" {
 		if RenewLease(st, DefaultLeaseTTL) {
-			Info("Renewed lease for task %s until %s\n", st.CurrentTaskID, st.LeaseExpiresAt)
+			Info("Renewed lease for task %s until %s\n", st.WIP, st.LeaseExpiresAt)
 		}
 	}
 
 	// 3) WIP判定とピック/再開
-	if st.CurrentTaskID == "" {
+	if st.WIP == "" {
 		// No WIP - try to pick next task
 		cfg := PickConfig{
 			JournalPath: paths.Journal,
@@ -168,7 +168,7 @@ func runOnce(autoFB bool) error {
 		}
 
 		// Update state for new task
-		st.CurrentTaskID = picked.ID
+		st.WIP = picked.ID
 		st.Current = "implement" // Start with implement after plan
 		st.Inputs = map[string]string{
 			"todo": fmt.Sprintf("Implement task %s: %s", picked.ID, picked.Title),
@@ -228,7 +228,7 @@ func runOnce(autoFB bool) error {
 			output = result
 			// Extract and append implementation note to rolling file
 			noteBody := ExtractNoteBody(result, "implement")
-			if noteErr := AppendNote("implement", "PENDING", noteBody, st.Turn, time.Now()); noteErr != nil {
+			if noteErr := AppendNote("implement", "PENDING", noteBody, st.Turn, st.WIP, time.Now()); noteErr != nil {
 				Warn("failed to append impl_note: %v\n", noteErr)
 			}
 		}
@@ -257,7 +257,7 @@ func runOnce(autoFB bool) error {
 			decision = parseDecision(result)
 			// Extract and append review note to rolling file
 			noteBody := ExtractNoteBody(result, "review")
-			if noteErr := AppendNote("review", decision, noteBody, st.Turn, time.Now()); noteErr != nil {
+			if noteErr := AppendNote("review", decision, noteBody, st.Turn, st.WIP, time.Now()); noteErr != nil {
 				Warn("failed to append review_note: %v\n", noteErr)
 			}
 		}
@@ -275,13 +275,24 @@ func runOnce(autoFB bool) error {
 	// All journal records in this run will use the same turn number
 	// (this is now set at the beginning of the run)
 
-	// 5) 成果物出力
-	turnDir := filepath.Join(st.ArtifactsDir, fmt.Sprintf("turn%d", currentTurn))
-	if err := os.MkdirAll(turnDir, 0o755); err != nil {
+	// 5) 成果物出力 - SBIディレクトリ配下に保存
+	// WIP (Work in Progress) からSBI-IDを取得
+	var sbiID string
+	if st.WIP != "" {
+		sbiID = st.WIP
+	} else {
+		// WIPがない場合はエラー
+		Error("No work in progress (WIP) found in state\n")
+		return fmt.Errorf("no work in progress")
+	}
+
+	// SBIディレクトリパス: .deespec/specs/sbi/<SBI-ID>/
+	sbiDir := filepath.Join(".deespec", "specs", "sbi", sbiID)
+	if err := os.MkdirAll(sbiDir, 0o755); err != nil {
 		return err
 	}
 
-	// 出力ファイル名を決定（現在のステップではなく次のステップ名を使う既存ロジックを保持）
+	// 出力ファイル名を決定（ステップ名_turn番号.md）
 	stepName := next
 	if st.Current != "done" {
 		stepName = next
@@ -289,7 +300,7 @@ func runOnce(autoFB bool) error {
 		stepName = st.Current
 	}
 
-	outFile := filepath.Join(turnDir, fmt.Sprintf("%s.md", stepName))
+	outFile := filepath.Join(sbiDir, fmt.Sprintf("%s_%d.md", stepName, currentTurn))
 	if err := os.WriteFile(outFile, []byte(output), 0o644); err != nil {
 		Error("failed to write artifact: %v\n", err)
 		return fmt.Errorf("write artifact: %w", err)
@@ -300,22 +311,24 @@ func runOnce(autoFB bool) error {
 	}
 	st.LastArtifacts[stepName] = outFile
 
-	// 6) Build artifacts list with rolling note paths
+	// 6) Build artifacts list with note paths in SBI directory
 	artifacts := []interface{}{outFile}
 
-	// Add rolling note path for implement step
+	// Add rolling note path for implement step (in SBI directory)
 	if st.Current == "implement" {
+		implNotePath := filepath.Join(sbiDir, "impl_notes.md")
 		artifacts = append(artifacts, map[string]interface{}{
 			"type": "impl_note_rollup",
-			"path": ".deespec/var/artifacts/impl_note.md",
+			"path": implNotePath,
 		})
 	}
 
-	// Add rolling note path for review step
+	// Add rolling note path for review step (in SBI directory)
 	if st.Current == "review" {
+		reviewNotePath := filepath.Join(sbiDir, "review_notes.md")
 		artifacts = append(artifacts, map[string]interface{}{
 			"type": "review_note_rollup",
-			"path": ".deespec/var/artifacts/review_note.md",
+			"path": reviewNotePath,
 		})
 	}
 
@@ -347,7 +360,7 @@ func runOnce(autoFB bool) error {
 
 	// Clear WIP and lease when task is done
 	if next == "done" {
-		st.CurrentTaskID = ""
+		st.WIP = ""
 		ClearLease(st)
 		Info("Task completed, WIP and lease cleared")
 	}

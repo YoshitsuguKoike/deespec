@@ -23,12 +23,11 @@ func TestSaveStateAndJournalTX_CrashRecoveryE2E(t *testing.T) {
 
 	// Setup paths
 	paths := app.Paths{
-		Home:      tempDir,
-		Var:       filepath.Join(tempDir, ".deespec", "var"),
-		State:     filepath.Join(tempDir, ".deespec", "var", "state.json"),
-		Journal:   filepath.Join(tempDir, ".deespec", "var", "journal.ndjson"),
-		Health:    filepath.Join(tempDir, ".deespec", "var", "health.json"),
-		Artifacts: filepath.Join(tempDir, ".deespec", "artifacts"),
+		Home:    tempDir,
+		Var:     filepath.Join(tempDir, ".deespec", "var"),
+		State:   filepath.Join(tempDir, ".deespec", "var", "state.json"),
+		Journal: filepath.Join(tempDir, ".deespec", "var", "journal.ndjson"),
+		Health:  filepath.Join(tempDir, ".deespec", "var", "health.json"),
 	}
 
 	// Create directories

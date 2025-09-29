@@ -95,9 +95,9 @@ func PickNextTask(cfg PickConfig) (*Task, string, error) {
 		Info("Detected incomplete instruction for %s: %s",
 			draft.TargetTaskID, draft.ReasonCode)
 
-		// Persist FB draft
-		artifactsDir := ".deespec/var/artifacts"
-		draftPath, err := PersistFBDraft(draft, artifactsDir)
+		// Persist FB draft to SBI directory
+		sbiDir := filepath.Join(".deespec", "specs", "sbi", draft.TargetTaskID)
+		draftPath, err := PersistFBDraft(draft, sbiDir)
 		if err != nil {
 			Warn("Failed to persist FB draft: %v", err)
 		} else {
@@ -430,7 +430,7 @@ func sortTasksByPriority(tasks []*Task, orderBy []string) {
 
 // ResumeIfInProgress checks if there's a task in progress and resumes it
 func ResumeIfInProgress(st *State, journalPath string) (bool, string, error) {
-	if st.CurrentTaskID == "" {
+	if st.WIP == "" {
 		return false, "", nil
 	}
 
@@ -462,7 +462,7 @@ func ResumeIfInProgress(st *State, journalPath string) (bool, string, error) {
 	// Find the current task
 	var currentTask *Task
 	for _, t := range tasks {
-		if t.ID == st.CurrentTaskID {
+		if t.ID == st.WIP {
 			currentTask = t
 			break
 		}
@@ -479,9 +479,9 @@ func ResumeIfInProgress(st *State, journalPath string) (bool, string, error) {
 			Info("Detected incomplete during resume for %s: %s",
 				draft.TargetTaskID, draft.ReasonCode)
 
-			// Persist FB draft
-			artifactsDir := ".deespec/var/artifacts"
-			draftPath, err := PersistFBDraft(draft, artifactsDir)
+			// Persist FB draft to SBI directory
+			sbiDir := filepath.Join(".deespec", "specs", "sbi", draft.TargetTaskID)
+			draftPath, err := PersistFBDraft(draft, sbiDir)
 			if err != nil {
 				Warn("Failed to persist FB draft: %v", err)
 			} else {
@@ -495,7 +495,7 @@ func ResumeIfInProgress(st *State, journalPath string) (bool, string, error) {
 		}
 	}
 
-	reason := fmt.Sprintf("resuming task %s at step %s", st.CurrentTaskID, st.Current)
+	reason := fmt.Sprintf("resuming task %s at step %s", st.WIP, st.Current)
 	return true, reason, nil
 }
 
@@ -547,7 +547,7 @@ func SyncStateWithJournal(st *State, lastEntry map[string]interface{}) (bool, *S
 		if journalDecision == "OK" {
 			// Task completed, clear WIP and reset to plan
 			newState.Current = "plan"
-			newState.CurrentTaskID = ""
+			newState.WIP = ""
 			changed = true
 		}
 	}

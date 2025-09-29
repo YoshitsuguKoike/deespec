@@ -26,7 +26,7 @@ func NewRoot() *cobra.Command {
 			if err != nil {
 				// Continue with defaults if loading fails
 				cfg = config.NewAppConfig(
-					".deespec", "claude", 60, ".deespec/var/artifacts",
+					".deespec", "claude", 60,
 					"", "", "", "",
 					false, false, false,
 					"", false,

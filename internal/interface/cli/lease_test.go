@@ -61,7 +61,7 @@ func TestRenewLease(t *testing.T) {
 		{
 			name: "no task - clear lease",
 			state: &State{
-				CurrentTaskID:  "",
+				WIP:            "",
 				LeaseExpiresAt: "2025-01-01T00:00:00Z",
 			},
 			expectChanged: true,
@@ -70,7 +70,7 @@ func TestRenewLease(t *testing.T) {
 		{
 			name: "task with no lease - set lease",
 			state: &State{
-				CurrentTaskID:  "SBI-001",
+				WIP:            "SBI-001",
 				LeaseExpiresAt: "",
 			},
 			expectChanged: true,
@@ -79,7 +79,7 @@ func TestRenewLease(t *testing.T) {
 		{
 			name: "task with existing lease - update",
 			state: &State{
-				CurrentTaskID:  "SBI-001",
+				WIP:            "SBI-001",
 				LeaseExpiresAt: "2025-01-01T00:00:00Z",
 			},
 			expectChanged: true,
@@ -115,7 +115,7 @@ func TestRenewLease(t *testing.T) {
 
 func TestClearLease(t *testing.T) {
 	state := &State{
-		CurrentTaskID:  "SBI-001",
+		WIP:            "SBI-001",
 		LeaseExpiresAt: "2025-01-01T00:00:00Z",
 	}
 

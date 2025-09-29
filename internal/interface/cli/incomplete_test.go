@@ -132,7 +132,7 @@ func TestDetectIncomplete(t *testing.T) {
 func TestPersistFBDraft(t *testing.T) {
 	// Create temp directory for test
 	tempDir := t.TempDir()
-	artifactsDir := filepath.Join(tempDir, "artifacts")
+	sbiDir := filepath.Join(tempDir, ".deespec", "specs", "sbi", "SBI-001")
 
 	draft := FBDraft{
 		TargetTaskID: "SBI-001",
@@ -142,16 +142,16 @@ func TestPersistFBDraft(t *testing.T) {
 		CreatedAt:    time.Now().UTC(),
 	}
 
-	draftPath, err := PersistFBDraft(draft, artifactsDir)
+	draftPath, err := PersistFBDraft(draft, sbiDir)
 	if err != nil {
 		t.Fatalf("PersistFBDraft() error = %v", err)
 	}
 
-	// Check that files were created
+	// Check that files were created with fb_ prefix
 	expectedFiles := []string{
-		filepath.Join(artifactsDir, "fb_sbi", "SBI-001", "context.md"),
-		filepath.Join(artifactsDir, "fb_sbi", "SBI-001", "evidence.txt"),
-		filepath.Join(artifactsDir, "fb_sbi", "SBI-001", "draft.yaml"),
+		filepath.Join(sbiDir, "fb_context.md"),
+		filepath.Join(sbiDir, "fb_evidence.txt"),
+		filepath.Join(sbiDir, "fb_draft.yaml"),
 	}
 
 	for _, file := range expectedFiles {

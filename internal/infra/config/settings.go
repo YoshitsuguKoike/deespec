@@ -14,10 +14,9 @@ import (
 // JSON tags are used for marshaling/unmarshaling.
 type RawSettings struct {
 	// Core settings
-	Home         *string `json:"home"`
-	AgentBin     *string `json:"agent_bin"`
-	TimeoutSec   *int    `json:"timeout_sec"`
-	ArtifactsDir *string `json:"artifacts_dir"`
+	Home       *string `json:"home"`
+	AgentBin   *string `json:"agent_bin"`
+	TimeoutSec *int    `json:"timeout_sec"`
 
 	// Workflow variables
 	ProjectName *string `json:"project_name"`
@@ -95,10 +94,6 @@ func applyDefaults(settings *RawSettings) {
 	if settings.TimeoutSec == nil {
 		v := 60
 		settings.TimeoutSec = &v
-	}
-	if settings.ArtifactsDir == nil {
-		v := ".deespec/var/artifacts"
-		settings.ArtifactsDir = &v
 	}
 
 	// Workflow variables (default to empty)
@@ -189,7 +184,6 @@ func buildAppConfig(settings *RawSettings, configSource, settingPath string) *co
 		*settings.Home,
 		*settings.AgentBin,
 		*settings.TimeoutSec,
-		*settings.ArtifactsDir,
 		*settings.ProjectName,
 		*settings.Language,
 		*settings.Turn,

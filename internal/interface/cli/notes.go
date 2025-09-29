@@ -13,19 +13,25 @@ import (
 // decision: "OK", "NEEDS_CHANGES", or "PENDING" (for implement, always "PENDING")
 // body: The AI-generated note content
 // turn: The current turn number from state.json
+// sbiID: The SBI ID to determine where to save the note
 // now: The timestamp for the note
-func AppendNote(kind string, decision string, body string, turn int, now time.Time) error {
-	// Determine file path based on kind
+func AppendNote(kind string, decision string, body string, turn int, sbiID string, now time.Time) error {
+	// Determine file path based on kind and SBI ID
+	if sbiID == "" {
+		return fmt.Errorf("SBI ID is required for note storage")
+	}
+
+	sbiDir := filepath.Join(".deespec", "specs", "sbi", sbiID)
 	path := ""
 	switch kind {
 	case "implement":
-		path = ".deespec/var/artifacts/impl_note.md"
+		path = filepath.Join(sbiDir, "impl_notes.md")
 		// For implement, decision is always PENDING
 		if decision == "" {
 			decision = "PENDING"
 		}
 	case "review":
-		path = ".deespec/var/artifacts/review_note.md"
+		path = filepath.Join(sbiDir, "review_notes.md")
 		// For review, normalize decision to OK|NEEDS_CHANGES|PENDING
 		if decision == "" {
 			decision = "PENDING"

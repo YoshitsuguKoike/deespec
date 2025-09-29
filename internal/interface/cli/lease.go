@@ -30,7 +30,7 @@ func FormatRFC3339NanoUTC(t time.Time) string {
 
 // RenewLease updates the lease expiration time if there's a current task
 func RenewLease(st *State, ttl time.Duration) bool {
-	if st.CurrentTaskID == "" {
+	if st.WIP == "" {
 		// No task in progress, clear lease
 		if st.LeaseExpiresAt != "" {
 			st.LeaseExpiresAt = ""

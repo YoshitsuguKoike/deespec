@@ -11,7 +11,6 @@ type Config interface {
 	AgentBin() string       // Agent binary path (DEE_AGENT_BIN)
 	TimeoutSec() int        // Execution timeout in seconds (DEE_TIMEOUT_SEC)
 	Timeout() time.Duration // Execution timeout as Duration
-	ArtifactsDir() string   // Artifacts directory (DEE_ARTIFACTS_DIR)
 
 	// Workflow variables
 	ProjectName() string // Project name (DEE_PROJECT_NAME)
@@ -49,10 +48,9 @@ type Config interface {
 // AppConfig is the concrete implementation of Config interface.
 // It holds all configuration values loaded from various sources.
 type AppConfig struct {
-	home         string
-	agentBin     string
-	timeoutSec   int
-	artifactsDir string
+	home       string
+	agentBin   string
+	timeoutSec int
 
 	projectName string
 	language    string
@@ -98,11 +96,6 @@ func (c *AppConfig) TimeoutSec() int {
 // Timeout returns the timeout as a Duration
 func (c *AppConfig) Timeout() time.Duration {
 	return time.Duration(c.timeoutSec) * time.Second
-}
-
-// ArtifactsDir returns the artifacts directory
-func (c *AppConfig) ArtifactsDir() string {
-	return c.artifactsDir
 }
 
 // ProjectName returns the project name
@@ -198,7 +191,7 @@ func (c *AppConfig) SettingPath() string {
 // NewAppConfig creates a new AppConfig with the given values.
 // This is typically called by the infrastructure layer after loading and merging configurations.
 func NewAppConfig(
-	home, agentBin string, timeoutSec int, artifactsDir string,
+	home, agentBin string, timeoutSec int,
 	projectName, language, turn, taskID string,
 	validate, autoFB, strictFsync bool,
 	txDestRoot string, disableRecovery bool,
@@ -211,7 +204,6 @@ func NewAppConfig(
 		home:                   home,
 		agentBin:               agentBin,
 		timeoutSec:             timeoutSec,
-		artifactsDir:           artifactsDir,
 		projectName:            projectName,
 		language:               language,
 		turn:                   turn,

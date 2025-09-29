@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"syscall"
 	"time"
 )
 
@@ -138,16 +139,29 @@ func isProcessRunning(pid int) bool {
 		return false
 	}
 
-	// Try to find the process to check if it exists
-	_, err := os.FindProcess(pid)
+	// Find the process
+	process, err := os.FindProcess(pid)
 	if err != nil {
 		return false
 	}
 
-	// On Unix systems, we would use signal 0, but Go doesn't support this directly
-	// For our purposes, if FindProcess succeeds, we assume the process exists
-	// This is a reasonable approximation for the lock mechanism
-	return true
+	// On Unix systems, send signal 0 to check if process exists
+	// Signal 0 doesn't actually send a signal, just checks if process exists
+	err = process.Signal(syscall.Signal(0))
+
+	// If the signal succeeded or we get EPERM, the process exists
+	// EPERM means we don't have permission but the process is there
+	if err == nil {
+		return true
+	}
+
+	// Check for permission denied error (process exists but we can't signal it)
+	if err.Error() == "operation not permitted" {
+		return true
+	}
+
+	// Process doesn't exist
+	return false
 }
 
 // CleanupExpiredLocks removes expired lock files (maintenance function)

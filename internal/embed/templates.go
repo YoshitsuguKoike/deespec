@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-//go:embed templates/etc/* templates/etc/policies/* templates/prompts/system/* templates/var/* templates/specs/* templates/templates/*
+//go:embed templates/etc/* templates/etc/policies/* templates/prompts/* templates/var/* templates/specs/* templates/templates/*
 var templatesFS embed.FS
 
 // Template represents a template file to be written

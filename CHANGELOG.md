@@ -4,21 +4,49 @@
 
 ## \[Unreleased]
 
+### 追加予定
+
+* `scripts/metrics.py`（レビューOK率・平均 `elapsed_ms` のローカル集計）
+
+---
+
+## \[v0.1.27] - 2025-09-29
+
 ### 追加 (Added)
 
+* **ラベル管理システム**: SBI仕様のラベル管理機能を実装
+  - `deespec label` コマンド群を追加（set, add, list, search, delete, clear）
+  - meta.yml内でのラベル保存
+  - ラベルインデックスによる高速検索（.deespec/var/labels.json）
+  - 階層ラベルのサポート（例: frontend/architecture, backend/api）
+  - ラベル固有の指示書サポート（.deespec/prompts/labels/）
+
+* **プロンプトテンプレートの強化**:
+  - WIP.md.tmpl、REVIEW.md.tmpl、REVIEW_AND_WIP.md.tmplをembedディレクトリに移動
+  - .deespecディレクトリの変更禁止を最高優先度制約として追加
+  - ターン番号を含む構造化レポートフォーマットを追加
+  - ラベルベースのタスクエンリッチメント機能
+
 * **ヘルプドキュメント**: `clear` と `cleanup-locks` コマンドのヘルプ文書を追加
+
 * **テストカバレッジ改善**: CLI パッケージの包括的なテストを追加
   - clear 機能のテスト (`clear_test.go`)
   - cleanup-locks 機能のテスト (`cleanup_locks_test.go`)
   - コマンド登録のテスト (`cmd_test.go`)
   - ロガー機能のテスト (`logger_test.go`)
+  - ラベル機能のテスト (`label_cmd_test.go`)
   - ドメイン実行エンティティのテスト拡張
 
 ### 修正 (Fixed)
 
+* **ロックファイル処理**: Unix系システムでのPIDチェックバグを修正
+  - os.FindProcess()の誤動作を修正
+  - process.Signal(syscall.Signal(0))を使用した適切なプロセス確認
+
 * **Clear コマンドロジック**: 期限切れリースでのクリア動作を改善
   - WIP タスクがあってもリースが期限切れの場合はクリアを許可（警告付き）
   - アクティブなリースがある場合のみクリアをブロック
+
 * **ファイル名対応**: メタファイル検索で `meta.yaml` と `meta.yml` の両方に対応
 
 ### 非推奨 (Deprecated)
@@ -29,10 +57,6 @@
   - ワークフロー検証機能 (`NewValidator()`, `Validate()`)
   - ワークフローコマンド (`workflow verify`)
   - 現在はシンプルなステータスベース（WIP/REVIEW/REVIEW&WIP）を使用
-
-### 追加予定
-
-* `scripts/metrics.py`（レビューOK率・平均 `elapsed_ms` のローカル集計）
 
 ---
 

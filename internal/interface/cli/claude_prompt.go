@@ -40,6 +40,9 @@ func (b *ClaudeCodePromptBuilder) LoadExternalPrompt(status string, taskDescript
 		return "", err
 	}
 
+	// Enrich task description with labels
+	enrichedTaskDescription := b.EnrichTaskWithLabels(taskDescription, b.SBIID)
+
 	// Replace placeholders in template
 	prompt := string(template)
 	prompt = strings.ReplaceAll(prompt, "{{.WorkDir}}", b.WorkDir)
@@ -47,7 +50,7 @@ func (b *ClaudeCodePromptBuilder) LoadExternalPrompt(status string, taskDescript
 	prompt = strings.ReplaceAll(prompt, "{{.Turn}}", fmt.Sprintf("%d", b.Turn))
 	prompt = strings.ReplaceAll(prompt, "{{.Step}}", b.Step)
 	prompt = strings.ReplaceAll(prompt, "{{.SBIDir}}", b.SBIDir)
-	prompt = strings.ReplaceAll(prompt, "{{.TaskDescription}}", taskDescription)
+	prompt = strings.ReplaceAll(prompt, "{{.TaskDescription}}", enrichedTaskDescription)
 
 	// Add timestamp for context
 	prompt = strings.ReplaceAll(prompt, "{{.Timestamp}}", fmt.Sprintf("%s", time.Now().Format("2006-01-02 15:04:05")))
@@ -239,4 +242,91 @@ func (b *ClaudeCodePromptBuilder) GetLastArtifact(step string, turn int) string 
 		return ""
 	}
 	return filepath.Join(b.SBIDir, fmt.Sprintf("%s_%d.md", step, turn))
+}
+
+// EnrichTaskWithLabels enriches the task description with label-based context
+func (b *ClaudeCodePromptBuilder) EnrichTaskWithLabels(taskDescription string, sbiID string) string {
+	// Load labels from meta.yml
+	metaPath := filepath.Join(".deespec", sbiID, "meta.yml")
+	if _, err := os.Stat(metaPath); os.IsNotExist(err) {
+		// Try meta.yaml as fallback
+		metaPath = filepath.Join(".deespec", sbiID, "meta.yaml")
+		if _, err := os.Stat(metaPath); os.IsNotExist(err) {
+			return taskDescription // No meta file, return original
+		}
+	}
+
+	data, err := os.ReadFile(metaPath)
+	if err != nil {
+		return taskDescription
+	}
+
+	// Manual simple parsing to avoid import issues
+	lines := strings.Split(string(data), "\n")
+	var inLabels bool
+	var labels []string
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "labels:") {
+			inLabels = true
+			continue
+		}
+		if inLabels {
+			if strings.HasPrefix(trimmed, "- ") {
+				label := strings.TrimPrefix(trimmed, "- ")
+				label = strings.TrimSpace(label)
+				labels = append(labels, label)
+			} else if trimmed != "" && !strings.HasPrefix(trimmed, " ") && !strings.HasPrefix(trimmed, "-") {
+				// Next field started
+				break
+			}
+		}
+	}
+
+	if len(labels) == 0 {
+		return taskDescription
+	}
+
+	// Build enriched description
+	var enriched strings.Builder
+	enriched.WriteString(taskDescription)
+
+	// Check for label-specific instructions
+	labelInstructions := make([]string, 0)
+	for _, label := range labels {
+		// Support hierarchical labels (e.g., frontend/architecture, frontend/admin/design)
+		// Convert label to file path: frontend/architecture -> frontend/architecture.md
+		labelPath := filepath.Join(".deespec", "prompts", "labels", label+".md")
+
+		// Also check if label contains slash (hierarchical)
+		if strings.Contains(label, "/") {
+			// For hierarchical labels, the path is already correct
+			// e.g., "frontend/architecture" -> ".deespec/prompts/labels/frontend/architecture.md"
+			labelPath = filepath.Join(".deespec", "prompts", "labels", label+".md")
+		}
+
+		if content, err := os.ReadFile(labelPath); err == nil {
+			// Use the full label path for display
+			labelInstructions = append(labelInstructions, fmt.Sprintf("### Label: %s\n%s", label, string(content)))
+		}
+	}
+
+	// Add label instructions if any exist
+	if len(labelInstructions) > 0 {
+		enriched.WriteString("\n\n## Label-Specific Guidelines\n")
+		enriched.WriteString("The following guidelines apply based on the task labels:\n\n")
+		for _, instruction := range labelInstructions {
+			enriched.WriteString(instruction)
+			enriched.WriteString("\n\n")
+		}
+	} else if len(labels) > 0 {
+		// Just list the labels if no specific instructions
+		enriched.WriteString("\n\n## Task Labels\n")
+		enriched.WriteString("This task is tagged with: ")
+		enriched.WriteString(strings.Join(labels, ", "))
+		enriched.WriteString("\n")
+	}
+
+	return enriched.String()
 }

@@ -426,12 +426,19 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 	if enableStream {
 		// Try streaming mode first
 		// Start heartbeat for streaming mode
+		Info("   Starting AI execution (streaming mode) with heartbeat monitoring...")
 		streamHeartbeatCtx, cancelStreamHeartbeat := context.WithCancel(context.Background())
 		defer cancelStreamHeartbeat()
+
+		streamStarted := make(chan bool, 1)
 		go func() {
 			ticker := time.NewTicker(30 * time.Second)
 			defer ticker.Stop()
 			elapsed := 0
+
+			// Signal that goroutine has started
+			streamStarted <- true
+
 			for {
 				select {
 				case <-streamHeartbeatCtx.Done():
@@ -442,6 +449,14 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 				}
 			}
 		}()
+
+		// Wait for goroutine to start
+		select {
+		case <-streamStarted:
+			Debug("   Streaming heartbeat goroutine started")
+		case <-time.After(100 * time.Millisecond):
+			Debug("   Streaming heartbeat goroutine timeout")
+		}
 
 		streamCtx := &claudecli.StreamContext{
 			SBIDir:   sbiDir,
@@ -486,12 +501,21 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 	startTime := time.Now()
 
 	// Start heartbeat goroutine for long-running AI execution
+	Info("   Starting AI execution with heartbeat monitoring...")
 	heartbeatCtx, cancelHeartbeat := context.WithCancel(context.Background())
 	defer cancelHeartbeat()
+
+	// Create a channel to confirm goroutine started
+	started := make(chan bool, 1)
+
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 		elapsed := 0
+
+		// Signal that goroutine has started
+		started <- true
+
 		for {
 			select {
 			case <-heartbeatCtx.Done():
@@ -503,9 +527,19 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 		}
 	}()
 
+	// Wait for goroutine to start (with timeout)
+	select {
+	case <-started:
+		Debug("   Heartbeat goroutine started successfully")
+	case <-time.After(100 * time.Millisecond):
+		Debug("   Heartbeat goroutine start timeout")
+	}
+
+	Info("   Calling AI agent now...")
 	result, err := agent.Run(context.Background(), prompt)
 	cancelHeartbeat() // Stop heartbeat
 	endTime := time.Now()
+	Info("   AI agent call completed (duration: %v)", endTime.Sub(startTime))
 
 	// Save raw response to a debug file for inspection
 	resultsDir := filepath.Join(sbiDir, "results")

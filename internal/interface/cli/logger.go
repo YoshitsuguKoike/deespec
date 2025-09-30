@@ -93,6 +93,11 @@ func (l *Logger) log(level LogLevel, prefix string, format string, args ...inter
 		msg = strings.TrimRight(msg, "\n")
 		timestamp := time.Now().Format("15:04:05.000")
 		fmt.Fprintf(output, "[%s] %s: %s\n", timestamp, prefix, msg)
+
+		// Force flush to ensure immediate output
+		if f, ok := output.(*os.File); ok {
+			f.Sync()
+		}
 	}
 }
 

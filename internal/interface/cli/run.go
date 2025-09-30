@@ -425,6 +425,24 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 
 	if enableStream {
 		// Try streaming mode first
+		// Start heartbeat for streaming mode
+		streamHeartbeatCtx, cancelStreamHeartbeat := context.WithCancel(context.Background())
+		defer cancelStreamHeartbeat()
+		go func() {
+			ticker := time.NewTicker(30 * time.Second)
+			defer ticker.Stop()
+			elapsed := 0
+			for {
+				select {
+				case <-streamHeartbeatCtx.Done():
+					return
+				case <-ticker.C:
+					elapsed += 30
+					Info("   ⏳ AI agent still processing (streaming)... (%d seconds elapsed)", elapsed)
+				}
+			}
+		}()
+
 		streamCtx := &claudecli.StreamContext{
 			SBIDir:   sbiDir,
 			StepName: stepName,
@@ -440,6 +458,7 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 			},
 		}
 		result, err := agent.RunWithStream(context.Background(), prompt, streamCtx, nil)
+		cancelStreamHeartbeat() // Stop streaming heartbeat
 		if err == nil {
 			// Check if result seems valid
 			if len(result) == 0 {
@@ -465,7 +484,27 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 
 	// Use regular mode and save result as history
 	startTime := time.Now()
+
+	// Start heartbeat goroutine for long-running AI execution
+	heartbeatCtx, cancelHeartbeat := context.WithCancel(context.Background())
+	defer cancelHeartbeat()
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		elapsed := 0
+		for {
+			select {
+			case <-heartbeatCtx.Done():
+				return
+			case <-ticker.C:
+				elapsed += 30
+				Info("   ⏳ AI agent still processing... (%d seconds elapsed)", elapsed)
+			}
+		}
+	}()
+
 	result, err := agent.Run(context.Background(), prompt)
+	cancelHeartbeat() // Stop heartbeat
 	endTime := time.Now()
 
 	// Save raw response to a debug file for inspection

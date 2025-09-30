@@ -300,14 +300,28 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 		// Calculate next interval with backoff
 		interval := calculateNextInterval(config.Interval, consecutiveErrors)
 
-		// Wait for next execution
+		// Wait for next execution with periodic heartbeat
 		Debug("[%s] Next execution in %v", runner.Name(), interval)
-		select {
-		case <-wm.ctx.Done():
-			return
-		case <-time.After(interval):
-			continue
+
+		// Create ticker for heartbeat during wait
+		heartbeatTicker := time.NewTicker(30 * time.Second)
+		waitTimer := time.NewTimer(interval)
+
+		waitComplete := false
+		for !waitComplete {
+			select {
+			case <-wm.ctx.Done():
+				heartbeatTicker.Stop()
+				waitTimer.Stop()
+				return
+			case <-waitTimer.C:
+				waitComplete = true
+			case <-heartbeatTicker.C:
+				Info("💓 [%s] Workflow active - waiting for next cycle...", runner.Name())
+			}
 		}
+		heartbeatTicker.Stop()
+		waitTimer.Stop()
 	}
 }
 

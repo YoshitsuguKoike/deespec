@@ -628,7 +628,14 @@ func runOnce(autoFB bool) error {
 
 		// Set lease for new task
 		RenewLease(st, DefaultLeaseTTL)
-		Info("picked task %s: %s (lease until %s)\n", picked.ID, reason, st.LeaseExpiresAt)
+
+		// Log prominent message for new SBI execution
+		Info("════════════════════════════════════════════════════════════════\n")
+		Info("🚀 Starting NEW SBI execution: %s\n", picked.ID)
+		Info("   Title: %s\n", picked.Title)
+		Info("   Reason: %s\n", reason)
+		Info("   Lease until: %s\n", st.LeaseExpiresAt)
+		Info("════════════════════════════════════════════════════════════════\n")
 	} else {
 		// WIP exists - try to resume
 		Info("WIP exists: %s, attempting to resume from step: %s\n", st.WIP, st.Current)
@@ -862,12 +869,19 @@ func runOnce(autoFB bool) error {
 
 	// Clear WIP and lease when task is done
 	if nextStatus == "DONE" {
-		Info("Task %s completed! Clearing WIP, lease, and resetting turn.\n", st.WIP)
+		// Log prominent message for SBI completion
+		Info("════════════════════════════════════════════════════════════════\n")
+		Info("✅ SBI COMPLETED: %s\n", st.WIP)
+		Info("   Decision: %s\n", decision)
+		Info("   Total attempts: %d\n", st.Attempt)
+		Info("   Duration: Turn %d completed\n", currentTurn)
+		Info("════════════════════════════════════════════════════════════════\n")
+
 		st.WIP = ""
 		ClearLease(st)
 		st.Attempt = 0 // Reset attempt counter
 		st.Turn = 0    // Reset turn counter for next task
-		Info("Task completed, WIP and lease cleared, turn reset to 0")
+		Info("State cleared, ready for next SBI\n")
 	}
 
 	// 8) health.json 更新（エラーに関わらず更新）

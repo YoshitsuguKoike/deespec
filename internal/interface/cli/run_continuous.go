@@ -136,9 +136,9 @@ func calculateNextInterval(baseInterval time.Duration, consecutiveErrors int) ti
 		return baseInterval
 	}
 
-	// Exponential backoff with max 5 minutes
+	// Exponential backoff with max 10 seconds for lock contention visibility
 	backoff := time.Duration(math.Pow(2, float64(consecutiveErrors))) * baseInterval
-	maxBackoff := 5 * time.Minute
+	maxBackoff := 10 * time.Second // Reduced from 5 minutes to 10 seconds
 
 	if backoff > maxBackoff {
 		return maxBackoff

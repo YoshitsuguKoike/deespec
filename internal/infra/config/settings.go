@@ -92,7 +92,7 @@ func applyDefaults(settings *RawSettings) {
 		settings.AgentBin = &v
 	}
 	if settings.TimeoutSec == nil {
-		v := 60
+		v := 900 // 15 minutes for complex tasks
 		settings.TimeoutSec = &v
 	}
 

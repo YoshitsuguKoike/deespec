@@ -3,8 +3,12 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/YoshitsuguKoike/deespec/internal/app"
 )
 
 // WorkflowRunner defines the interface for workflow execution
@@ -67,12 +71,75 @@ type ManagerConfig struct {
 // NewWorkflowManager creates a new workflow manager
 func NewWorkflowManager() *WorkflowManager {
 	ctx, cancel := context.WithCancel(context.Background())
+
+	// Improvement 3: Check and remove old locks at startup
+	cleanupStaleLocks()
+
 	return &WorkflowManager{
 		workflows: make(map[string]WorkflowRunner),
 		configs:   make(map[string]WorkflowConfig),
 		stats:     make(map[string]*WorkflowStats),
 		ctx:       ctx,
 		cancel:    cancel,
+	}
+}
+
+// cleanupStaleLocks removes stale lock files at startup
+func cleanupStaleLocks() {
+	// Get paths using config
+	paths := app.GetPathsWithConfig(globalConfig)
+
+	// Check for state.lock file
+	if lockInfo, err := os.Stat(paths.StateLock); err == nil {
+		// Lock file exists, check if it's stale
+		shouldRemove := false
+		removeReason := ""
+
+		// Load state to check lease
+		if st, loadErr := loadState(paths.State); loadErr == nil {
+			if st.LeaseExpiresAt != "" && LeaseExpired(st) {
+				// Lease expired
+				shouldRemove = true
+				removeReason = fmt.Sprintf("expired lease for task %s", st.WIP)
+			} else if st.LeaseExpiresAt == "" {
+				// No active lease, check lock age
+				lockAge := time.Since(lockInfo.ModTime())
+				if lockAge > 10*time.Minute {
+					shouldRemove = true
+					removeReason = fmt.Sprintf("lock file is %v old with no active lease", lockAge.Round(time.Second))
+				}
+			}
+		} else {
+			// Can't read state, check lock age
+			lockAge := time.Since(lockInfo.ModTime())
+			if lockAge > 10*time.Minute {
+				shouldRemove = true
+				removeReason = fmt.Sprintf("lock file is %v old and state unreadable", lockAge.Round(time.Second))
+			}
+		}
+
+		if shouldRemove {
+			Info("[Manager Startup] Removing stale lock: %s\n", removeReason)
+			if err := os.Remove(paths.StateLock); err != nil {
+				Warn("[Manager Startup] Failed to remove stale lock: %v\n", err)
+			} else {
+				Info("[Manager Startup] Successfully removed stale lock\n")
+			}
+		} else {
+			Info("[Manager Startup] Active lock found, will respect it\n")
+		}
+	}
+
+	// Also check for runlock file
+	runLockPath := filepath.Join(paths.Var, "runlock")
+	if runLockInfo, err := os.Stat(runLockPath); err == nil {
+		runLockAge := time.Since(runLockInfo.ModTime())
+		if runLockAge > 10*time.Minute {
+			Info("[Manager Startup] Removing stale runlock (age: %v)\n", runLockAge.Round(time.Second))
+			if err := os.Remove(runLockPath); err != nil {
+				Warn("[Manager Startup] Failed to remove stale runlock: %v\n", err)
+			}
+		}
 	}
 }
 

@@ -523,20 +523,45 @@ func runOnce(autoFB bool) error {
 	// First attempt to acquire lock
 	releaseFsLock, err := fs.AcquireLock(paths.StateLock)
 	if err != nil {
-		// If lock exists, check if lease is expired
-		if _, statErr := os.Stat(paths.StateLock); statErr == nil {
-			// Lock file exists, check lease expiration
-			if st, loadErr := loadState(paths.State); loadErr == nil && st.LeaseExpiresAt != "" {
-				if LeaseExpired(st) {
-					// Lease expired, try to remove stale lock and acquire again
-					Info("Lease expired for %s, removing stale lock and retrying...\n", st.WIP)
-					if rmErr := os.Remove(paths.StateLock); rmErr == nil {
-						// Try to acquire lock again after removing stale lock
-						releaseFsLock, err = fs.AcquireLock(paths.StateLock)
-						if err == nil {
-							Info("Successfully acquired lock after removing stale lock\n")
-						}
+		// If lock exists, check if it's stale
+		if lockInfo, statErr := os.Stat(paths.StateLock); statErr == nil {
+			// Lock file exists, check multiple conditions for staleness
+			shouldRemove := false
+			removeReason := ""
+
+			// Check lease expiration
+			if st, loadErr := loadState(paths.State); loadErr == nil {
+				if st.LeaseExpiresAt != "" && LeaseExpired(st) {
+					shouldRemove = true
+					removeReason = fmt.Sprintf("lease expired for %s", st.WIP)
+				} else if st.LeaseExpiresAt == "" {
+					// Improvement 2: Remove old locks even when lease is empty
+					// If lock file is older than 10 minutes and no lease, consider it stale
+					lockAge := time.Since(lockInfo.ModTime())
+					if lockAge > 10*time.Minute {
+						shouldRemove = true
+						removeReason = fmt.Sprintf("lock file is %v old with no active lease", lockAge.Round(time.Second))
 					}
+				}
+			} else {
+				// Can't read state, but lock exists - check age
+				lockAge := time.Since(lockInfo.ModTime())
+				if lockAge > 10*time.Minute {
+					shouldRemove = true
+					removeReason = fmt.Sprintf("lock file is %v old and state unreadable", lockAge.Round(time.Second))
+				}
+			}
+
+			if shouldRemove {
+				Info("Removing stale lock: %s\n", removeReason)
+				if rmErr := os.Remove(paths.StateLock); rmErr == nil {
+					// Try to acquire lock again after removing stale lock
+					releaseFsLock, err = fs.AcquireLock(paths.StateLock)
+					if err == nil {
+						Info("Successfully acquired lock after removing stale lock\n")
+					}
+				} else {
+					Warn("Failed to remove stale lock: %v\n", rmErr)
 				}
 			}
 		}
@@ -902,6 +927,14 @@ func runOnce(autoFB bool) error {
 		ClearLease(st)
 		st.Attempt = 0 // Reset attempt counter
 		st.Turn = 0    // Reset turn counter for next task
+
+		// Improvement 1: Explicitly delete lock file when task is done
+		if err := os.Remove(paths.StateLock); err != nil && !os.IsNotExist(err) {
+			Warn("Failed to remove state.lock file after task completion: %v\n", err)
+		} else {
+			Info("State lock file removed after task completion\n")
+		}
+
 		Info("State cleared, ready for next SBI\n")
 	}
 

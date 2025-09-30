@@ -21,7 +21,7 @@ func TestLoadSettings(t *testing.T) {
 			setupFunc:   nil,
 			wantHome:    ".deespec",
 			wantAgent:   "claude",
-			wantTimeout: 60,
+			wantTimeout: 900, // Updated to match new default
 			wantSource:  "default",
 		},
 		{
@@ -131,8 +131,8 @@ func TestCreateDefaultSettings(t *testing.T) {
 	if settings.AgentBin == nil || *settings.AgentBin != "claude" {
 		t.Errorf("Default agent_bin should be claude")
 	}
-	if settings.TimeoutSec == nil || *settings.TimeoutSec != 60 {
-		t.Errorf("Default timeout_sec should be 60")
+	if settings.TimeoutSec == nil || *settings.TimeoutSec != 900 {
+		t.Errorf("Default timeout_sec should be 900")
 	}
 	if settings.DisableRecovery == nil || *settings.DisableRecovery != false {
 		t.Errorf("Default disable_recovery should be false")

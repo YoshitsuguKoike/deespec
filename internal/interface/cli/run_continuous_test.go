@@ -149,14 +149,14 @@ func TestCalculateNextInterval(t *testing.T) {
 		{
 			name:              "Multiple errors",
 			consecutiveErrors: 3,
-			expectedMin:       8 * baseInterval,
-			expectedMax:       8 * baseInterval,
+			expectedMin:       10 * time.Second, // Max backoff is now 10 seconds
+			expectedMax:       10 * time.Second,
 		},
 		{
 			name:              "Many errors hit max",
 			consecutiveErrors: 10,
-			expectedMin:       5 * time.Minute,
-			expectedMax:       5 * time.Minute,
+			expectedMin:       10 * time.Second, // Max backoff is now 10 seconds
+			expectedMax:       10 * time.Second,
 		},
 	}
 

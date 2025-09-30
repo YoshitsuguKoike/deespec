@@ -520,9 +520,30 @@ func runOnce(autoFB bool) error {
 	paths := app.GetPathsWithConfig(globalConfig)
 
 	// 1) 排他ロック（WIP=1 enforcement）
+	// First attempt to acquire lock
 	releaseFsLock, err := fs.AcquireLock(paths.StateLock)
 	if err != nil {
-		return err
+		// If lock exists, check if lease is expired
+		if _, statErr := os.Stat(paths.StateLock); statErr == nil {
+			// Lock file exists, check lease expiration
+			if st, loadErr := loadState(paths.State); loadErr == nil && st.LeaseExpiresAt != "" {
+				if LeaseExpired(st) {
+					// Lease expired, try to remove stale lock and acquire again
+					Info("Lease expired for %s, removing stale lock and retrying...\n", st.WIP)
+					if rmErr := os.Remove(paths.StateLock); rmErr == nil {
+						// Try to acquire lock again after removing stale lock
+						releaseFsLock, err = fs.AcquireLock(paths.StateLock)
+						if err == nil {
+							Info("Successfully acquired lock after removing stale lock\n")
+						}
+					}
+				}
+			}
+		}
+		// If still error, return it
+		if err != nil {
+			return err
+		}
 	}
 	defer releaseFsLock()
 

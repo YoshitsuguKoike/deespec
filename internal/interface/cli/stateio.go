@@ -42,7 +42,8 @@ func saveStateCAS(path string, st *State, prevVersion int) error {
 		return fmt.Errorf("version changed (expected %d, got %d)", prevVersion, st.Version)
 	}
 	st.Version++
-	st.Meta.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	// Use local timezone with offset for better readability
+	st.Meta.UpdatedAt = time.Now().Local().Format(time.RFC3339)
 	return fs.AtomicWriteJSON(path, st)
 }
 

@@ -410,6 +410,10 @@ Examples:
 
 // Helper function to run agent and save history
 func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName string, turn int, enableStream bool) (string, error) {
+	// Log that we're starting AI execution
+	Info("🤖 Starting AI agent execution for step: %s (turn: %d)\n", stepName, turn)
+	Info("   Working directory: %s\n", sbiDir)
+
 	// Create histories directory
 	historiesDir := filepath.Join(sbiDir, "histories")
 	if err := os.MkdirAll(historiesDir, 0755); err != nil {
@@ -441,7 +445,7 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 			if len(result) == 0 {
 				Warn("Streaming returned empty result, falling back to regular mode\n")
 			} else {
-				Info("Streaming successful, result length: %d chars\n", len(result))
+				Info("✅ AI agent completed successfully (streaming mode, %d chars)\n", len(result))
 				// Also save raw response to a debug file for inspection
 				resultsDir := filepath.Join(sbiDir, "results")
 				if err := os.MkdirAll(resultsDir, 0755); err == nil {
@@ -510,11 +514,20 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 		Debug("History saved to: %s\n", historyFile)
 	}
 
+	if err != nil {
+		Info("❌ AI agent execution failed: %v\n", err)
+	} else if len(result) > 0 {
+		Info("✅ AI agent completed successfully (regular mode, %d chars)\n", len(result))
+	}
+
 	return result, err
 }
 
 func runOnce(autoFB bool) error {
 	startTime := time.Now()
+
+	// Log execution start
+	Info("🔄 Starting workflow execution cycle at %s\n", startTime.Format("15:04:05"))
 
 	// Get paths using config
 	paths := app.GetPathsWithConfig(globalConfig)
@@ -571,6 +584,7 @@ func runOnce(autoFB bool) error {
 		}
 	}
 	defer releaseFsLock()
+	Info("✓ Successfully acquired state lock\n")
 
 	// 1.2) Run-level lock (parallel execution guard)
 	runLockPath := paths.Var + "/runlock"
@@ -908,7 +922,13 @@ func runOnce(autoFB bool) error {
 
 	// 7) ステップの更新（ジャーナル記録前に状態を更新）
 	// ターンは既にLine 119で設定済み（1 run = 1 turn）
-	Info("Transitioning from status '%s' to '%s' (decision: %s)\n", st.Status, nextStatus, decision)
+	Info("──────────────────────────────────────────────────────\n")
+	Info("📝 WORKFLOW STEP TRANSITION:\n")
+	Info("   From: %s (Status: %s)\n", st.Current, st.Status)
+	Info("   To:   %s (Status: %s)\n", next, nextStatus)
+	Info("   Decision: %s\n", decision)
+	Info("   Turn: %d, Attempt: %d\n", currentTurn, st.Attempt)
+	Info("──────────────────────────────────────────────────────\n")
 	st.Current = next
 	st.Status = nextStatus
 	st.Decision = decision

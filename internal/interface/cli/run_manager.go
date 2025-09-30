@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -241,6 +242,11 @@ func (wm *WorkflowManager) RunWorkflow(name string) error {
 func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config WorkflowConfig, stats *WorkflowStats) {
 	consecutiveErrors := 0
 
+	// Log initial start
+	Info("┌─────────────────────────────────────────────────────────┐\n")
+	Info("│ Workflow '%s' started (interval: %v)\n", runner.Name(), config.Interval)
+	Info("└─────────────────────────────────────────────────────────┘\n")
+
 	for {
 		select {
 		case <-wm.ctx.Done():
@@ -258,7 +264,7 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 		stats.LastExecution = startTime
 		stats.mutex.Unlock()
 
-		Info("[%s] Starting execution #%d...\n", runner.Name(), executionNum)
+		Info("[%s] Starting execution #%d at %s...\n", runner.Name(), executionNum, startTime.Format("15:04:05"))
 
 		err := runner.Run(wm.ctx, config)
 
@@ -270,7 +276,12 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 			stats.FailedRuns++
 			stats.LastError = err
 			consecutiveErrors++
-			Warn("[%s] Execution #%d failed: %v\n", runner.Name(), executionNum, err)
+			// Check if it's just a lock contention (not a real error)
+			if strings.Contains(err.Error(), "another process is running") || strings.Contains(err.Error(), "state.lock: file exists") {
+				Debug("[%s] Execution #%d skipped: lock contention (another instance running)\n", runner.Name(), executionNum)
+			} else {
+				Warn("[%s] Execution #%d failed: %v\n", runner.Name(), executionNum, err)
+			}
 		} else {
 			stats.SuccessfulRuns++
 			consecutiveErrors = 0

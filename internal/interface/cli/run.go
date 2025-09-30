@@ -432,7 +432,7 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 
 		streamStarted := make(chan bool, 1)
 		go func() {
-			ticker := time.NewTicker(30 * time.Second)
+			ticker := time.NewTicker(5 * time.Second)
 			defer ticker.Stop()
 			elapsed := 0
 
@@ -444,7 +444,7 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 				case <-streamHeartbeatCtx.Done():
 					return
 				case <-ticker.C:
-					elapsed += 30
+					elapsed += 5
 					Info("   ⏳ AI agent still processing (streaming)... (%d seconds elapsed)", elapsed)
 				}
 			}
@@ -509,7 +509,7 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 	started := make(chan bool, 1)
 
 	go func() {
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 		elapsed := 0
 
@@ -521,7 +521,7 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 			case <-heartbeatCtx.Done():
 				return
 			case <-ticker.C:
-				elapsed += 30
+				elapsed += 5
 				Info("   ⏳ AI agent still processing... (%d seconds elapsed)", elapsed)
 			}
 		}
@@ -1048,6 +1048,14 @@ func runOnce(autoFB bool) error {
 			Warn("Failed to remove state.lock file after task completion: %v\n", err)
 		} else {
 			Info("State lock file removed after task completion\n")
+		}
+
+		// Also remove runlock when task is done
+		runLockPath := filepath.Join(paths.Var, "runlock")
+		if err := os.Remove(runLockPath); err != nil && !os.IsNotExist(err) {
+			Warn("Failed to remove runlock file after task completion: %v\n", err)
+		} else {
+			Info("Runlock file removed after task completion\n")
 		}
 
 		Info("State cleared, ready for next SBI\n")

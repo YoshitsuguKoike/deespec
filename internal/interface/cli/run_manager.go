@@ -136,15 +136,19 @@ func cleanupStaleLocks() {
 		}
 	}
 
-	// Also check for runlock file
+	// Also check for runlock file - use the proper cleanup function
 	runLockPath := filepath.Join(paths.Var, "runlock")
-	if runLockInfo, err := os.Stat(runLockPath); err == nil {
-		runLockAge := time.Since(runLockInfo.ModTime())
-		if runLockAge > 10*time.Minute {
-			Info("[Manager Startup] Removing stale runlock (age: %v)\n", runLockAge.Round(time.Second))
+	if lockInfo, err := GetLockInfo(runLockPath); err == nil {
+		// Check if lock is expired using the same logic as AcquireLock
+		if isLockExpired(lockInfo) {
+			Info("[Manager Startup] Removing expired runlock from PID %d (expired: %s)\n",
+				lockInfo.PID, lockInfo.ExpiresAt)
 			if err := os.Remove(runLockPath); err != nil {
-				Warn("[Manager Startup] Failed to remove stale runlock: %v\n", err)
+				Warn("[Manager Startup] Failed to remove expired runlock: %v\n", err)
 			}
+		} else {
+			Info("[Manager Startup] Valid runlock exists from PID %d (expires: %s)\n",
+				lockInfo.PID, lockInfo.ExpiresAt)
 		}
 	}
 }
@@ -304,7 +308,7 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 		Debug("[%s] Next execution in %v", runner.Name(), interval)
 
 		// Create ticker for heartbeat during wait
-		heartbeatTicker := time.NewTicker(30 * time.Second)
+		heartbeatTicker := time.NewTicker(5 * time.Second)
 		waitTimer := time.NewTimer(interval)
 
 		waitComplete := false

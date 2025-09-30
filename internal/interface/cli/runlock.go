@@ -48,9 +48,13 @@ func AcquireLock(lockPath string, ttl time.Duration) (func() error, bool, error)
 		// Lock exists - check if it's expired
 		if !isLockExpired(existingLock) {
 			// Lock is still valid, cannot acquire
+			Info("Runlock held by PID %d on %s (expires: %s)\n",
+				existingLock.PID, existingLock.Hostname, existingLock.ExpiresAt)
 			return nil, false, nil
 		}
 		// Lock is expired, remove it first so we can acquire with O_EXCL
+		Info("Removing expired runlock from PID %d (expired: %s)\n",
+			existingLock.PID, existingLock.ExpiresAt)
 		os.Remove(lockPath)
 	}
 
@@ -125,12 +129,24 @@ func isLockExpired(lockInfo *LockInfo) bool {
 		return true
 	}
 
-	// Check if the process is still running (Unix-style)
+	// First check time expiration
+	if time.Now().UTC().After(expires) {
+		// Even if expired by time, still check if process is running
+		// If process is dead, definitely expired
+		if !isProcessRunning(lockInfo.PID) {
+			return true
+		}
+		// Process is still running but time expired
+		// This could be a long-running task, but we should respect the TTL
+		return true
+	}
+
+	// Time not expired, check if process is still running
 	if !isProcessRunning(lockInfo.PID) {
 		return true
 	}
 
-	return time.Now().UTC().After(expires)
+	return false
 }
 
 // isProcessRunning checks if a process with the given PID is still running

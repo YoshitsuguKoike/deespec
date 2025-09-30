@@ -81,6 +81,13 @@
   - 後方互換性のため一時的に残存
   - v0.2.0で削除予定
 
+### 修正 (Fixed)
+
+* **WorkflowManagerテスト時のセグメンテーション違反を修正**:
+  - `cleanupStaleLocks()`関数で`globalConfig`がnilの場合の処理を追加
+  - テスト環境でNewWorkflowManager呼び出し時のクラッシュを防止
+  - 通常実行時の動作には影響なし
+
 ### 追加予定
 
 * `scripts/metrics.py`（レビューOK率・平均 `elapsed_ms` のローカル集計）

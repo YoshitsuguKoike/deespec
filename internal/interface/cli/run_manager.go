@@ -264,7 +264,7 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 		stats.LastExecution = startTime
 		stats.mutex.Unlock()
 
-		Info("[%s] Starting execution #%d at %s...\n", runner.Name(), executionNum, startTime.Format("15:04:05"))
+		Debug("[%s] Starting execution cycle #%d", runner.Name(), executionNum)
 
 		err := runner.Run(wm.ctx, config)
 
@@ -285,7 +285,7 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 		} else {
 			stats.SuccessfulRuns++
 			consecutiveErrors = 0
-			Info("[%s] Execution #%d completed successfully (took %v)\n",
+			Debug("[%s] Execution #%d completed successfully (took %v)",
 				runner.Name(), executionNum, duration)
 		}
 
@@ -301,7 +301,7 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 		interval := calculateNextInterval(config.Interval, consecutiveErrors)
 
 		// Wait for next execution
-		Info("[%s] Next execution in %v\n", runner.Name(), interval)
+		Debug("[%s] Next execution in %v", runner.Name(), interval)
 		select {
 		case <-wm.ctx.Done():
 			return

@@ -526,9 +526,6 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 func runOnce(autoFB bool) error {
 	startTime := time.Now()
 
-	// Log execution start
-	Info("🔄 Starting workflow execution cycle at %s\n", startTime.Format("15:04:05"))
-
 	// Get paths using config
 	paths := app.GetPathsWithConfig(globalConfig)
 
@@ -584,7 +581,6 @@ func runOnce(autoFB bool) error {
 		}
 	}
 	defer releaseFsLock()
-	Info("✓ Successfully acquired state lock\n")
 
 	// 1.2) Run-level lock (parallel execution guard)
 	runLockPath := paths.Var + "/runlock"
@@ -595,7 +591,18 @@ func runOnce(autoFB bool) error {
 
 	if !acquired {
 		// Another instance is running - this is normal, not an error
-		Info("another instance active")
+		// Try to load state to show what's currently running
+		if st, loadErr := loadState(paths.State); loadErr == nil {
+			Info("⏳ Another instance active - waiting...")
+			if st.WIP != "" {
+				Info("   Processing: %s (Turn: %d, Attempt: %d)", st.WIP, st.Turn, st.Attempt)
+				if st.LeaseExpiresAt != "" {
+					Info("   Lease until: %s", st.LeaseExpiresAt)
+				}
+			}
+		} else {
+			Info("another instance active")
+		}
 
 		// Update health even on no-op
 		if err := app.WriteHealth(paths.Health, 0, "plan", true, ""); err != nil {
@@ -619,6 +626,21 @@ func runOnce(autoFB bool) error {
 		return fmt.Errorf("read state: %w", err)
 	}
 	prevV := st.Version
+
+	// Log execution cycle with current state
+	Info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	Info("🔄 Workflow Execution Cycle at %s", time.Now().Format("15:04:05"))
+	if st.WIP != "" {
+		Info("   Current SBI: %s", st.WIP)
+		Info("   Status: %s | Step: %s", st.Status, st.Current)
+		Info("   Turn: %d | Attempt: %d", st.Turn, st.Attempt)
+		if st.LeaseExpiresAt != "" {
+			Info("   Lease expires: %s", st.LeaseExpiresAt)
+		}
+	} else {
+		Info("   No active SBI - checking for new tasks")
+	}
+	Info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 	// 3) Turn management: 1 run = 1 turn
 	currentTurn := st.Turn + 1

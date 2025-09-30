@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -57,6 +58,35 @@ func logClaudeInteraction(prompt, result string, err error, startTime, endTime t
 	resultLines := strings.Split(result, "\n")
 	Info("│ Response: %d chars, %d lines\n", len(result), len(resultLines))
 
+	// Log warnings for suspicious responses
+	if len(result) == 0 {
+		Warn("│ Warning: Empty response from AI\n")
+	} else if len(result) < 100 {
+		Warn("│ Warning: Unusually short response (%d chars)\n", len(result))
+		Warn("│ Full content: %s\n", result)
+	}
+
+	// Always show AI response content (not just in debug mode)
+	Info("┌─ AI Response Content ─────────────────────────────────────\n")
+	// Show first 50 lines or entire response if shorter
+	maxLines := 50
+	if len(resultLines) <= maxLines {
+		// Show entire response if it's short enough
+		for i, line := range resultLines {
+			Info("│ %4d: %s\n", i+1, line)
+		}
+	} else {
+		// Show first and last parts for long responses
+		for i := 0; i < 25; i++ {
+			Info("│ %4d: %s\n", i+1, resultLines[i])
+		}
+		Info("│ ... (%d lines omitted) ...\n", len(resultLines)-50)
+		for i := len(resultLines) - 25; i < len(resultLines); i++ {
+			Info("│ %4d: %s\n", i+1, resultLines[i])
+		}
+	}
+	Info("└──────────────────────────────────────────────────────────\n")
+
 	// Try to find key sections in the result
 	var decision string
 	var noteFound bool
@@ -83,12 +113,26 @@ func logClaudeInteraction(prompt, result string, err error, startTime, endTime t
 
 func parseDecision(s string) string {
 	// Updated to match domain model decisions: SUCCEEDED, NEEDS_CHANGES, FAILED
-	re := regexp.MustCompile(`(?mi)^\s*DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED)\s*$`)
-	m := re.FindStringSubmatch(s)
-	if len(m) == 2 {
-		return strings.ToUpper(strings.TrimSpace(m[1]))
+	// Allow leading/trailing characters like asterisks or other markers
+	// Try multiple patterns to be more flexible
+	patterns := []string{
+		`(?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED)`,       // Basic pattern
+		`(?mi)\*+\s*DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED)`, // With leading asterisks
+		`(?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED)\s*\*+`, // With trailing asterisks
 	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		m := re.FindStringSubmatch(s)
+		if len(m) >= 2 {
+			decision := strings.ToUpper(strings.TrimSpace(m[1]))
+			Info("Decision extracted: %s (pattern: %s)\n", decision, pattern)
+			return decision
+		}
+	}
+
 	// Default to NEEDS_CHANGES if no valid decision found
+	Info("No valid DECISION found in response, defaulting to NEEDS_CHANGES\n")
 	return "NEEDS_CHANGES"
 }
 
@@ -291,6 +335,105 @@ func newRunCmd() *cobra.Command {
 	return cmd
 }
 
+// Helper function to run agent and save history
+func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName string, turn int, enableStream bool) (string, error) {
+	// Create histories directory
+	historiesDir := filepath.Join(sbiDir, "histories")
+	if err := os.MkdirAll(historiesDir, 0755); err != nil {
+		Warn("Failed to create histories directory: %v\n", err)
+	}
+
+	// Create history file with consistent naming: workflow_step_N.jsonl
+	historyFile := filepath.Join(historiesDir, fmt.Sprintf("workflow_step_%d.jsonl", turn))
+
+	if enableStream {
+		// Try streaming mode first
+		streamCtx := &claudecli.StreamContext{
+			SBIDir:   sbiDir,
+			StepName: stepName,
+			Turn:     turn,
+			LogWriter: func(format string, args ...interface{}) {
+				// Log stream events with prefix for clarity
+				// Always log to debug
+				Debug("[STREAM] "+format, args...)
+				// Also log important events to info
+				if strings.Contains(format, "error") || strings.Contains(format, "warning") || strings.Contains(format, "final") {
+					Info("[STREAM] "+format, args...)
+				}
+			},
+		}
+		result, err := agent.RunWithStream(context.Background(), prompt, streamCtx, nil)
+		if err == nil {
+			// Check if result seems valid
+			if len(result) == 0 {
+				Warn("Streaming returned empty result, falling back to regular mode\n")
+			} else {
+				Info("Streaming successful, result length: %d chars\n", len(result))
+				// Also save raw response to a debug file for inspection
+				if debugFile := filepath.Join(sbiDir, fmt.Sprintf("raw_response_%s_%d.txt", stepName, turn)); len(result) > 0 {
+					if err := os.WriteFile(debugFile, []byte(result), 0644); err == nil {
+						Debug("Raw response saved to: %s\n", debugFile)
+					}
+				}
+				return result, nil
+			}
+		} else {
+			// If streaming fails, fall back to regular mode
+			Warn("Streaming mode failed, falling back to regular mode: %v\n", err)
+		}
+	}
+
+	// Use regular mode and save result as history
+	startTime := time.Now()
+	result, err := agent.Run(context.Background(), prompt)
+	endTime := time.Now()
+
+	// Save raw response to a debug file for inspection
+	if debugFile := filepath.Join(sbiDir, fmt.Sprintf("raw_response_%s_%d.txt", stepName, turn)); err == nil && len(result) > 0 {
+		if werr := os.WriteFile(debugFile, []byte(result), 0644); werr == nil {
+			Debug("Raw response saved to: %s\n", debugFile)
+		}
+	}
+
+	// Save history even in regular mode
+	if file, ferr := os.Create(historyFile); ferr == nil {
+		defer file.Close()
+		encoder := json.NewEncoder(file)
+
+		// Write request event with step info
+		encoder.Encode(map[string]interface{}{
+			"type":      "request",
+			"timestamp": startTime.UTC().Format(time.RFC3339Nano),
+			"step":      stepName,
+			"turn":      turn,
+			"prompt":    prompt,
+		})
+
+		// Write response event
+		if err != nil {
+			encoder.Encode(map[string]interface{}{
+				"type":      "error",
+				"timestamp": endTime.UTC().Format(time.RFC3339Nano),
+				"step":      stepName,
+				"turn":      turn,
+				"error":     err.Error(),
+			})
+		} else {
+			encoder.Encode(map[string]interface{}{
+				"type":        "response",
+				"timestamp":   endTime.UTC().Format(time.RFC3339Nano),
+				"step":        stepName,
+				"turn":        turn,
+				"result":      result,
+				"duration_ms": endTime.Sub(startTime).Milliseconds(),
+			})
+		}
+		Debug("History saved to: %s\n", historyFile)
+	}
+
+	return result, err
+}
+
 func runOnce(autoFB bool) error {
 	startTime := time.Now()
 
@@ -429,6 +572,11 @@ func runOnce(autoFB bool) error {
 		agentBin = globalConfig.AgentBin()
 		timeout = time.Duration(globalConfig.TimeoutSec()) * time.Second
 	}
+
+	// Always enable streaming to save histories
+	// This provides audit trail and debugging capability
+	enableStream := true
+
 	agent := claudecli.Runner{Bin: agentBin, Timeout: timeout}
 
 	// Initialize status if not set
@@ -454,12 +602,15 @@ func runOnce(autoFB bool) error {
 	prompt := buildPromptByStatus(st)
 	Info("Generated prompt type: %s (length: %d chars)\n", determineStep(st.Status, st.Attempt), len(prompt))
 
+	// SBIディレクトリパス: .deespec/specs/sbi/<SBI-ID>/
+	sbiDir := filepath.Join(".deespec", "specs", "sbi", st.WIP)
+
 	switch st.Status {
 	case "READY", "WIP":
 		// Implementation phase
 		Info("Running implementation for attempt %d\n", st.Attempt)
 		claudeStart := time.Now()
-		result, err := agent.Run(context.Background(), prompt)
+		result, err := runAgent(agent, prompt, sbiDir, "implement", currentTurn, enableStream)
 		claudeEnd := time.Now()
 		logClaudeInteraction(prompt, result, err, claudeStart, claudeEnd)
 		if err != nil {
@@ -480,7 +631,7 @@ func runOnce(autoFB bool) error {
 		// Review phase
 		Info("Running review for attempt %d\n", st.Attempt)
 		claudeStart := time.Now()
-		result, err := agent.Run(context.Background(), prompt)
+		result, err := runAgent(agent, prompt, sbiDir, "review", currentTurn, enableStream)
 		claudeEnd := time.Now()
 		logClaudeInteraction(prompt, result, err, claudeStart, claudeEnd)
 		if err != nil {
@@ -489,6 +640,14 @@ func runOnce(autoFB bool) error {
 			errorMsg = err.Error()
 		} else {
 			output = result
+			// Log the exact DECISION line if found
+			lines := strings.Split(result, "\n")
+			for _, line := range lines {
+				if strings.Contains(line, "DECISION:") {
+					Info("Found DECISION line: %s\n", strings.TrimSpace(line))
+					break
+				}
+			}
 			decision = parseDecision(result)
 			Info("Review decision parsed: %s\n", decision)
 			// Extract and append review note
@@ -502,7 +661,7 @@ func runOnce(autoFB bool) error {
 		// Force implementation by reviewer
 		Info("Running force implementation by reviewer\n")
 		claudeStart := time.Now()
-		result, err := agent.Run(context.Background(), prompt)
+		result, err := runAgent(agent, prompt, sbiDir, "force_implement", currentTurn, enableStream)
 		claudeEnd := time.Now()
 		logClaudeInteraction(prompt, result, err, claudeStart, claudeEnd)
 		if err != nil {
@@ -549,17 +708,13 @@ func runOnce(autoFB bool) error {
 
 	// 5) 成果物出力 - SBIディレクトリ配下に保存
 	// WIP (Work in Progress) からSBI-IDを取得
-	var sbiID string
-	if st.WIP != "" {
-		sbiID = st.WIP
-	} else {
+	if st.WIP == "" {
 		// WIPがない場合はエラー
 		Error("No work in progress (WIP) found in state\n")
 		return fmt.Errorf("no work in progress")
 	}
 
-	// SBIディレクトリパス: .deespec/specs/sbi/<SBI-ID>/
-	sbiDir := filepath.Join(".deespec", "specs", "sbi", sbiID)
+	// sbiDir is already defined earlier in the function
 	if err := os.MkdirAll(sbiDir, 0o755); err != nil {
 		return err
 	}
@@ -628,11 +783,12 @@ func runOnce(autoFB bool) error {
 
 	// Clear WIP and lease when task is done
 	if nextStatus == "DONE" {
-		Info("Task %s completed! Clearing WIP and lease.\n", st.WIP)
+		Info("Task %s completed! Clearing WIP, lease, and resetting turn.\n", st.WIP)
 		st.WIP = ""
 		ClearLease(st)
 		st.Attempt = 0 // Reset attempt counter
-		Info("Task completed, WIP and lease cleared")
+		st.Turn = 0    // Reset turn counter for next task
+		Info("Task completed, WIP and lease cleared, turn reset to 0")
 	}
 
 	// 8) health.json 更新（エラーに関わらず更新）

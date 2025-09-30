@@ -83,8 +83,9 @@ func nextStatusTransition(currentStatus string, decision string, attempt int) st
 		if decision == "SUCCEEDED" {
 			// REVIEW -> DONE (success)
 			return "DONE"
-		} else if decision == "FAILED" && attempt >= 3 {
-			// REVIEW -> REVIEW&WIP (force termination after 3 attempts)
+		} else if attempt >= 3 {
+			// REVIEW -> REVIEW&WIP (force termination after 3 attempts, regardless of decision)
+			// This prevents infinite loops when AI keeps returning NEEDS_CHANGES or FAILED
 			return "REVIEW&WIP"
 		} else {
 			// REVIEW -> WIP (needs changes, retry)

@@ -323,7 +323,7 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 				}
 			}
 		}
-		// Look for done steps
+		// Look for done steps (old format)
 		if step, ok := entry["step"].(string); ok && step == "done" {
 			// Output done step entry for debugging
 			Debug("[JOURNAL] step=done: %s", line)
@@ -335,7 +335,35 @@ func getCompletedTasksFromJournal(journalPath string) map[string]bool {
 						if artifactType, ok := artifactMap["type"].(string); ok && artifactType == "pick" {
 							if taskID, ok := artifactMap["id"].(string); ok {
 								completed[taskID] = true
-								Debug("[JOURNAL] Task completed: %s", taskID)
+								Debug("[JOURNAL] Task completed (old format): %s", taskID)
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Look for DONE status (new format)
+		if status, ok := entry["status"].(string); ok && status == "DONE" {
+			Debug("[JOURNAL] status=DONE found: %s", line)
+
+			// Extract task ID from artifact paths
+			if artifacts, ok := entry["artifacts"].([]interface{}); ok {
+				for _, artifact := range artifacts {
+					// Check if artifact is a string (file path)
+					if artifactPath, ok := artifact.(string); ok {
+						// Extract task ID from path like ".deespec/specs/sbi/SBI-XXX/done_N.md"
+						if strings.Contains(artifactPath, "/specs/sbi/") {
+							parts := strings.Split(artifactPath, "/")
+							for i, part := range parts {
+								if part == "sbi" && i+1 < len(parts) {
+									taskID := parts[i+1]
+									if strings.HasPrefix(taskID, "SBI-") {
+										completed[taskID] = true
+										Debug("[JOURNAL] Task completed (new format from path): %s", taskID)
+									}
+									break
+								}
 							}
 						}
 					}

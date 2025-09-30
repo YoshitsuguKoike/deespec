@@ -72,8 +72,11 @@ func (l *Logger) Fatal(format string, args ...interface{}) {
 	output := l.output
 	l.mu.RUnlock()
 
+	msg := fmt.Sprintf(format, args...)
+	// Remove trailing newlines as we'll add one at the end
+	msg = strings.TrimRight(msg, "\n")
 	timestamp := time.Now().Format("15:04:05.000")
-	fmt.Fprintf(output, "[%s] FATAL: %s\n", timestamp, fmt.Sprintf(format, args...))
+	fmt.Fprintf(output, "[%s] FATAL: %s\n", timestamp, msg)
 	os.Exit(1)
 }
 
@@ -86,6 +89,8 @@ func (l *Logger) log(level LogLevel, prefix string, format string, args ...inter
 
 	if level >= minLevel {
 		msg := fmt.Sprintf(format, args...)
+		// Remove trailing newlines as we'll add one at the end
+		msg = strings.TrimRight(msg, "\n")
 		timestamp := time.Now().Format("15:04:05.000")
 		fmt.Fprintf(output, "[%s] %s: %s\n", timestamp, prefix, msg)
 	}
@@ -105,8 +110,8 @@ func LogLevelFromString(level string) LogLevel {
 	case "fatal":
 		return LogLevelError // Fatal is treated as Error level for filtering
 	default:
-		// Default to WARN level if not specified or invalid
-		return LogLevelWarn
+		// Default to INFO level if not specified or invalid
+		return LogLevelInfo
 	}
 }
 
@@ -116,8 +121,8 @@ var globalLogger *Logger
 // InitGlobalLogger initializes the global logger
 func InitGlobalLogger(level string) {
 	if level == "" {
-		// Default to WARN if not specified
-		level = "warn"
+		// Default to INFO if not specified to show important status messages
+		level = "info"
 	}
 	globalLogger = NewLogger(LogLevelFromString(level), os.Stderr)
 }
@@ -125,8 +130,8 @@ func InitGlobalLogger(level string) {
 // GetLogger returns the global logger instance
 func GetLogger() *Logger {
 	if globalLogger == nil {
-		// Initialize with default WARN level if not initialized
-		InitGlobalLogger("warn")
+		// Initialize with default INFO level if not initialized
+		InitGlobalLogger("info")
 	}
 	return globalLogger
 }

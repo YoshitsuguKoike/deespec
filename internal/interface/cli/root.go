@@ -15,7 +15,7 @@ var globalLogLevel string
 func NewRoot() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deespec",
-		Short: "DeeSpec CLI",
+		Short: "DeeSpec CLI - Parallel workflow orchestration for specification processing",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Load configuration before any command runs
 			// Priority: CLI flag > setting.json > defaults

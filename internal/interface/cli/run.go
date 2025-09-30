@@ -326,9 +326,19 @@ func newRunCmd() *cobra.Command {
 This command runs multiple workflow types (SBI, PBI, etc.) simultaneously,
 each in their own execution loop. Use Ctrl+C to stop all workflows gracefully.
 
-Note: Individual workflows can be run separately using their specific commands:
+Configuration:
+  Workflows can be configured via .deespec/workflow.yaml file.
+  Use 'deespec workflow generate-example' to create a sample configuration.
+
+Individual workflows:
   - deespec sbi run   (for SBI workflow only)
-  - deespec pbi run   (for PBI workflow only, when available)`,
+  - deespec pbi run   (for PBI workflow only, when available)
+
+Examples:
+  deespec run                           # Run all enabled workflows
+  deespec run --workflows sbi           # Run only SBI workflow
+  deespec run --interval 10s            # Run with 10-second intervals
+  deespec run --auto-fb                 # Enable automatic FB-SBI registration`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Parse interval
 			interval, err := parseInterval(intervalStr)

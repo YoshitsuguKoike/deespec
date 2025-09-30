@@ -15,6 +15,7 @@ func NewSBICommand() *cobra.Command {
 
 	// Add subcommands
 	cmd.AddCommand(NewSBIRegisterCommand())
+	cmd.AddCommand(NewSBIRunCommand())
 
 	return cmd
 }

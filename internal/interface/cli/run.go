@@ -314,24 +314,87 @@ func getCurrentWorkDir() string {
 }
 
 func newRunCmd() *cobra.Command {
-	var once bool
 	var autoFB bool
+	var intervalStr string
+	var enabledWorkflows []string
+
 	cmd := &cobra.Command{
 		Use:   "run",
-		Short: "Run workflow",
+		Short: "Run all enabled workflows in parallel",
+		Long: `Run all enabled workflows in parallel.
+
+This command runs multiple workflow types (SBI, PBI, etc.) simultaneously,
+each in their own execution loop. Use Ctrl+C to stop all workflows gracefully.
+
+Note: Individual workflows can be run separately using their specific commands:
+  - deespec sbi run   (for SBI workflow only)
+  - deespec pbi run   (for PBI workflow only, when available)`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !once {
-				return fmt.Errorf("use --once for now (single-step mode)")
+			// Parse interval
+			interval, err := parseInterval(intervalStr)
+			if err != nil {
+				return fmt.Errorf("invalid interval: %v", err)
 			}
+
 			// Check config for auto-fb (config takes precedence over flag)
 			if globalConfig != nil && globalConfig.AutoFB() {
 				autoFB = true
 			}
-			return runOnce(autoFB)
+
+			// Create workflow manager
+			manager := NewWorkflowManager()
+
+			// Register available workflows
+			sbiRunner := NewSBIWorkflowRunner()
+			sbiConfig := WorkflowConfig{
+				Name:     "sbi",
+				Enabled:  true,
+				Interval: interval,
+				AutoFB:   autoFB,
+			}
+
+			// Override enabled workflows if specified
+			if len(enabledWorkflows) > 0 {
+				sbiConfig.Enabled = false
+				for _, workflow := range enabledWorkflows {
+					if workflow == "sbi" {
+						sbiConfig.Enabled = true
+						break
+					}
+				}
+			}
+
+			if err := manager.RegisterWorkflow(sbiRunner, sbiConfig); err != nil {
+				return fmt.Errorf("failed to register SBI workflow: %v", err)
+			}
+
+			// Setup signal handling for graceful shutdown
+			ctx, cancel := setupSignalHandler()
+			defer cancel()
+
+			// Setup cleanup
+			defer func() {
+				manager.Stop()
+				manager.PrintStats()
+			}()
+
+			// Start all enabled workflows
+			if err := manager.RunAll(); err != nil {
+				return fmt.Errorf("failed to start workflows: %v", err)
+			}
+
+			// Wait for shutdown signal
+			<-ctx.Done()
+			Info("Shutdown signal received, stopping all workflows...\n")
+
+			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&once, "once", false, "Advance exactly one step")
+
 	cmd.Flags().BoolVar(&autoFB, "auto-fb", false, "Automatically register FB-SBI drafts")
+	cmd.Flags().StringVar(&intervalStr, "interval", "", "Execution interval for all workflows (default: 5s, min: 1s, max: 10m)")
+	cmd.Flags().StringSliceVar(&enabledWorkflows, "workflows", nil, "Comma-separated list of workflows to enable (default: all available)")
+
 	return cmd
 }
 

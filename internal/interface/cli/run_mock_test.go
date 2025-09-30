@@ -6,10 +6,13 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"go.uber.org/goleak"
 )
 
 // Test helper functions
 func TestSummarizeText(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli.setupSignalHandler.func1"))
 	tests := []struct {
 		name     string
 		text     string
@@ -54,6 +57,7 @@ func TestSummarizeText(t *testing.T) {
 }
 
 func TestBuildImplementPrompt(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli.setupSignalHandler.func1"))
 	// Create test state
 	st := &State{
 		WIP:  "TEST-001",
@@ -67,6 +71,7 @@ func TestBuildImplementPrompt(t *testing.T) {
 }
 
 func TestBuildReviewPrompt(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli.setupSignalHandler.func1"))
 	// Create test state
 	st := &State{
 		WIP:  "TEST-001",
@@ -80,6 +85,7 @@ func TestBuildReviewPrompt(t *testing.T) {
 }
 
 func TestGetCurrentWorkDir(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli.setupSignalHandler.func1"))
 	dir := getCurrentWorkDir()
 	if dir == "" {
 		t.Error("getCurrentWorkDir returned empty string")
@@ -93,6 +99,7 @@ func TestGetCurrentWorkDir(t *testing.T) {
 
 // Test nextStep function that was missing
 func TestNextStep(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli.setupSignalHandler.func1"))
 	tests := []struct {
 		name     string
 		current  string
@@ -168,6 +175,7 @@ func TestNextStep(t *testing.T) {
 
 // Test ExtractNoteBody
 func TestExtractNoteBody(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli.setupSignalHandler.func1"))
 	tests := []struct {
 		name     string
 		content  string
@@ -250,6 +258,7 @@ Second line
 
 // Test AppendNote basic functionality
 func TestLogClaudeInteraction(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli.setupSignalHandler.func1"))
 	// Capture log output
 	originalTime := time.Now()
 

@@ -94,4 +94,25 @@ func TestMoreCommandConstructors(t *testing.T) {
 		}
 	})
 
+	// Test NewSBIRunCommand
+	t.Run("NewSBIRunCommand", func(t *testing.T) {
+		cmd := NewSBIRunCommand()
+		if cmd == nil {
+			t.Fatal("NewSBIRunCommand returned nil")
+		}
+		if cmd.Use != "run" {
+			t.Errorf("Expected Use='run', got %q", cmd.Use)
+		}
+		// Check for required flags
+		if cmd.Flags().Lookup("once") == nil {
+			t.Error("Expected --once flag to be defined (deprecated)")
+		}
+		if cmd.Flags().Lookup("auto-fb") == nil {
+			t.Error("Expected --auto-fb flag to be defined")
+		}
+		if cmd.Flags().Lookup("interval") == nil {
+			t.Error("Expected --interval flag to be defined")
+		}
+	})
+
 }

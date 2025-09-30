@@ -169,6 +169,11 @@ func (r Runner) RunWithStream(ctx context.Context, prompt string, streamCtx *Str
 	// Process stderr (errors/warnings) in background
 	go func() {
 		scanner := bufio.NewScanner(stderr)
+		// Increase buffer size for large lines (10MB)
+		const maxScanTokenSize = 10 * 1024 * 1024 // 10MB
+		buf := make([]byte, 0, 64*1024)           // Start with 64KB
+		scanner.Buffer(buf, maxScanTokenSize)
+
 		for scanner.Scan() {
 			if streamCtx.LogWriter != nil {
 				streamCtx.LogWriter("[stderr] %s", scanner.Text())
@@ -180,6 +185,11 @@ func (r Runner) RunWithStream(ctx context.Context, prompt string, streamCtx *Str
 	var finalResult string
 	var contentBuilder strings.Builder // Accumulate content chunks
 	scanner := bufio.NewScanner(stdout)
+	// Increase buffer size for large JSON lines (10MB)
+	// Claude can output very long lines in streaming mode
+	const maxScanTokenSize = 10 * 1024 * 1024 // 10MB
+	buf := make([]byte, 0, 64*1024)           // Start with 64KB
+	scanner.Buffer(buf, maxScanTokenSize)
 	lineNum := 0
 
 	for scanner.Scan() {

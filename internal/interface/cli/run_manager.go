@@ -86,6 +86,11 @@ func NewWorkflowManager() *WorkflowManager {
 
 // cleanupStaleLocks removes stale lock files at startup
 func cleanupStaleLocks() {
+	// Skip cleanup if no config available (e.g., in tests)
+	if globalConfig == nil {
+		return
+	}
+
 	// Get paths using config
 	paths := app.GetPathsWithConfig(globalConfig)
 

@@ -370,9 +370,12 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 			} else {
 				Info("Streaming successful, result length: %d chars\n", len(result))
 				// Also save raw response to a debug file for inspection
-				if debugFile := filepath.Join(sbiDir, fmt.Sprintf("raw_response_%s_%d.txt", stepName, turn)); len(result) > 0 {
-					if err := os.WriteFile(debugFile, []byte(result), 0644); err == nil {
-						Debug("Raw response saved to: %s\n", debugFile)
+				resultsDir := filepath.Join(sbiDir, "results")
+				if err := os.MkdirAll(resultsDir, 0755); err == nil {
+					if debugFile := filepath.Join(resultsDir, fmt.Sprintf("raw_response_%s_%d.txt", stepName, turn)); len(result) > 0 {
+						if err := os.WriteFile(debugFile, []byte(result), 0644); err == nil {
+							Debug("Raw response saved to: %s\n", debugFile)
+						}
 					}
 				}
 				return result, nil
@@ -389,9 +392,12 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 	endTime := time.Now()
 
 	// Save raw response to a debug file for inspection
-	if debugFile := filepath.Join(sbiDir, fmt.Sprintf("raw_response_%s_%d.txt", stepName, turn)); err == nil && len(result) > 0 {
-		if werr := os.WriteFile(debugFile, []byte(result), 0644); werr == nil {
-			Debug("Raw response saved to: %s\n", debugFile)
+	resultsDir := filepath.Join(sbiDir, "results")
+	if err := os.MkdirAll(resultsDir, 0755); err == nil {
+		if debugFile := filepath.Join(resultsDir, fmt.Sprintf("raw_response_%s_%d.txt", stepName, turn)); err == nil && len(result) > 0 {
+			if werr := os.WriteFile(debugFile, []byte(result), 0644); werr == nil {
+				Debug("Raw response saved to: %s\n", debugFile)
+			}
 		}
 	}
 

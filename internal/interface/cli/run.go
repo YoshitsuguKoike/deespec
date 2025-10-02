@@ -719,6 +719,27 @@ func runOnce(autoFB bool) error {
 	currentTurn := st.Turn + 1
 	st.Turn = currentTurn
 
+	// Check Turn limit
+	maxTurns := 8 // Default
+	if globalConfig != nil {
+		maxTurns = globalConfig.MaxTurns()
+	}
+	if currentTurn > maxTurns {
+		Info("⚠️ Maximum turns (%d) reached, forcing termination\n", maxTurns)
+		st.Status = "DONE"
+		st.Decision = "FORCE_TERMINATED"
+		st.WIP = ""
+		ClearLease(st)
+		st.Turn = 0
+		st.Attempt = 0
+		// Save state and return
+		if err := saveState(st, paths.State); err != nil {
+			Error("failed to save state: %v\n", err)
+			return fmt.Errorf("failed to save state: %w", err)
+		}
+		return nil
+	}
+
 	// 3.5) Lease management - check for expired lease
 	if st.WIP != "" && LeaseExpired(st) {
 		Info("Lease expired for task %s, taking over\n", st.WIP)
@@ -791,6 +812,15 @@ func runOnce(autoFB bool) error {
 		Info("   Reason: %s\n", reason)
 		Info("   Lease until: %s\n", st.LeaseExpiresAt)
 		Info("════════════════════════════════════════════════════════════════\n")
+
+		// Save state and return - implement will be done in next turn
+		if err := saveState(st, paths.State); err != nil {
+			Error("failed to save state: %v\n", err)
+			return fmt.Errorf("failed to save state: %w", err)
+		}
+
+		// Exit after picking task - implementation starts next turn
+		return nil
 	} else {
 		// WIP exists - try to resume
 		Info("WIP exists: %s, attempting to resume from step: %s\n", st.WIP, st.Current)

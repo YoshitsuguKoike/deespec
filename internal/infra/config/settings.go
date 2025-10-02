@@ -29,6 +29,10 @@ type RawSettings struct {
 	AutoFB      *bool `json:"auto_fb"`
 	StrictFsync *bool `json:"strict_fsync"`
 
+	// Execution limits
+	MaxAttempts *int `json:"max_attempts"`
+	MaxTurns    *int `json:"max_turns"`
+
 	// Transaction settings
 	TxDestRoot      *string `json:"tx_dest_root"`
 	DisableRecovery *bool   `json:"disable_recovery"`
@@ -128,6 +132,16 @@ func applyDefaults(settings *RawSettings) {
 		settings.StrictFsync = &v
 	}
 
+	// Execution limits (defaults)
+	if settings.MaxAttempts == nil {
+		v := 3 // Maximum 3 attempts before force termination
+		settings.MaxAttempts = &v
+	}
+	if settings.MaxTurns == nil {
+		v := 8 // Maximum 8 turns total
+		settings.MaxTurns = &v
+	}
+
 	// Transaction settings
 	if settings.TxDestRoot == nil {
 		v := ""
@@ -191,6 +205,8 @@ func buildAppConfig(settings *RawSettings, configSource, settingPath string) *co
 		*settings.Validate,
 		*settings.AutoFB,
 		*settings.StrictFsync,
+		*settings.MaxAttempts,
+		*settings.MaxTurns,
 		*settings.TxDestRoot,
 		*settings.DisableRecovery,
 		*settings.DisableMetricsRotation,

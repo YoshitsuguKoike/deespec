@@ -47,6 +47,13 @@ func saveStateCAS(path string, st *State, prevVersion int) error {
 	return fs.AtomicWriteJSON(path, st)
 }
 
+// saveState saves the state without CAS check (simple save)
+func saveState(st *State, path string) error {
+	st.Version++
+	st.Meta.UpdatedAt = time.Now().Local().Format(time.RFC3339)
+	return fs.AtomicWriteJSON(path, st)
+}
+
 func nextStep(cur string, decision string) string {
 	switch cur {
 	case "plan":
@@ -71,6 +78,12 @@ func nextStep(cur string, decision string) string {
 
 // nextStatusTransition determines the next status based on current status, decision, and attempt
 func nextStatusTransition(currentStatus string, decision string, attempt int) string {
+	// Get max attempts from config if available
+	maxAttempts := 3 // Default
+	if globalConfig != nil {
+		maxAttempts = globalConfig.MaxAttempts()
+	}
+
 	switch currentStatus {
 	case "", "READY":
 		// READY -> WIP (start implementation)
@@ -84,8 +97,8 @@ func nextStatusTransition(currentStatus string, decision string, attempt int) st
 		if decision == "SUCCEEDED" {
 			// REVIEW -> DONE (success)
 			return "DONE"
-		} else if attempt >= 3 {
-			// REVIEW -> REVIEW&WIP (force termination after 3 attempts, regardless of decision)
+		} else if attempt >= maxAttempts {
+			// REVIEW -> REVIEW&WIP (force termination after max attempts)
 			// This prevents infinite loops when AI keeps returning NEEDS_CHANGES or FAILED
 			return "REVIEW&WIP"
 		} else {

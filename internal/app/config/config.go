@@ -23,6 +23,10 @@ type Config interface {
 	AutoFB() bool      // Enable auto feedback (DEE_AUTO_FB)
 	StrictFsync() bool // Treat fsync failures as errors (DEE_STRICT_FSYNC)
 
+	// Execution limits
+	MaxAttempts() int // Maximum attempts before force termination
+	MaxTurns() int    // Maximum turns allowed for execution
+
 	// Transaction settings
 	TxDestRoot() string    // Transaction destination root (DEESPEC_TX_DEST_ROOT)
 	DisableRecovery() bool // Disable startup recovery (DEESPEC_DISABLE_RECOVERY)
@@ -60,6 +64,9 @@ type AppConfig struct {
 	validate    bool
 	autoFB      bool
 	strictFsync bool
+
+	maxAttempts int
+	maxTurns    int
 
 	txDestRoot      string
 	disableRecovery bool
@@ -133,6 +140,16 @@ func (c *AppConfig) StrictFsync() bool {
 	return c.strictFsync
 }
 
+// MaxAttempts returns the maximum attempts before force termination
+func (c *AppConfig) MaxAttempts() int {
+	return c.maxAttempts
+}
+
+// MaxTurns returns the maximum turns allowed for execution
+func (c *AppConfig) MaxTurns() int {
+	return c.maxTurns
+}
+
 // TxDestRoot returns the transaction destination root
 func (c *AppConfig) TxDestRoot() string {
 	return c.txDestRoot
@@ -194,6 +211,7 @@ func NewAppConfig(
 	home, agentBin string, timeoutSec int,
 	projectName, language, turn, taskID string,
 	validate, autoFB, strictFsync bool,
+	maxAttempts, maxTurns int,
 	txDestRoot string, disableRecovery bool,
 	disableMetricsRotation, fsyncAudit bool,
 	testMode, testQuiet bool,
@@ -211,6 +229,8 @@ func NewAppConfig(
 		validate:               validate,
 		autoFB:                 autoFB,
 		strictFsync:            strictFsync,
+		maxAttempts:            maxAttempts,
+		maxTurns:               maxTurns,
 		txDestRoot:             txDestRoot,
 		disableRecovery:        disableRecovery,
 		disableMetricsRotation: disableMetricsRotation,

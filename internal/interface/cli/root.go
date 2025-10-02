@@ -29,6 +29,7 @@ func NewRoot() *cobra.Command {
 					".deespec", "claude", 60,
 					"", "", "", "",
 					false, false, false,
+					3, 8, // max_attempts=3, max_turns=8
 					"", false,
 					false, false,
 					false, false,

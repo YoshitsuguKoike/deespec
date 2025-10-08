@@ -6,6 +6,42 @@
 
 ### 追加 (Added)
 
+* **Clean Architecture + DDD リファクタリング Phase 4完了**: Adapter層の完全実装
+  - **Presenter層**: CLI/JSON両対応の出力フォーマッター実装
+    - `CLITaskPresenter`: 人間可読なCLI出力（292行）
+    - `JSONPresenter`: 機械可読なJSON出力（47行）
+    - 完全なテストカバレッジ（6テスト全てパス）
+  - **Agent Gateway層**: AI統合とモック実装
+    - `ClaudeCodeGateway`: Anthropic Messages API v1統合（195行）
+    - `GeminiMockGateway`/`CodexMockGateway`: 将来の拡張用モック
+    - 環境変数ベースのAgent選択機構
+    - 5テスト全てパス（Claude APIテストはキーなしでスキップ）
+  - **Storage Gateway層**: アーティファクト管理
+    - `MockStorageGateway`: スレッドセーフなメモリ内ストレージ（122行）
+    - Phase 6でのS3/Local実装への準備完了
+    - 5テスト全てパス
+  - **Controller層**: 完全新規のCLIコマンド体系
+    - `EPICController`: EPIC CRUD + 分解（252行、8コマンド）
+    - `PBIController`: PBI CRUD + 分解（252行、8コマンド）
+    - `SBIController`: SBI CRUD + コード生成（297行、9コマンド）
+    - `WorkflowController`: ワークフロー実行（271行、6コマンド）
+    - `RootBuilder`: Cobraコマンドツリー統合（104行）
+  - **Infrastructure層**: テスト用モック実装
+    - `MockTransactionManager`: トランザクション管理（52行）
+    - Mock Repositories: Task/EPIC/PBI/SBI（290行）
+    - Phase 5でのSQLite実装への準備完了
+  - **DI Container**: 依存性注入コンテナ
+    - 4層アーキテクチャに沿った初期化（226行）
+    - 設定ベースのコンポーネント切り替え
+    - Mock ↔ Real実装の完全な交換可能性
+
+* **Clean Architecture + DDD リファクタリング Phase 5開始**: SQLite Repository実装開始
+  - SQLiteスキーマ設計完了（schema.sql）
+    - EPIC/PBI/SBIテーブル定義
+    - 多対多関連テーブル（epic_pbis、pbi_sbis）
+    - パフォーマンス最適化用インデックス
+    - スキーマバージョン管理テーブル
+
 * **並列ワークフロー実行フレームワーク (Phase 2)**: 複数ワークフローの同時実行をサポート
   - `WorkflowManager`による並列オーケストレーション
   - 各ワークフローが独立したgoroutineで実行

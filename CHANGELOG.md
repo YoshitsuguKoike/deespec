@@ -6,6 +6,34 @@
 
 ### 追加 (Added)
 
+* **Clean Architecture + DDD リファクタリング Phase 7完了**: Lock System SQLite移行
+  - **Domain層**: Lock Models実装
+    - `LockID` value object（27行）
+    - `RunLock` entity: SBI実行ロック（94行）
+    - `StateLock` entity: state.jsonアクセスロック（93行）
+    - IsExpired(), UpdateHeartbeat()メソッド実装
+  - **Repository層**: Lock永続化
+    - `RunLockRepository` interface & SQLite実装（280行、72-86% coverage）
+    - `StateLockRepository` interface & SQLite実装（259行、72-84% coverage）
+    - Transaction context propagation対応
+    - 17個のunit tests（全成功）
+  - **Application層**: Lock Service実装
+    - `LockService`: 統一されたLock管理API（318行、83.7% coverage）
+    - Heartbeat自動送信（30秒間隔）
+    - 期限切れLock自動削除（60秒間隔）
+    - Start/Stop lifecycle管理
+    - 9個のunit tests（全成功）
+  - **Infrastructure層**: DI統合
+    - Lock repositories/serviceをDI Containerに登録
+    - 設定可能なheartbeat/cleanup intervals
+    - 6個の統合tests（全成功）
+    - Performance benchmark: 830 ops/sec
+  - **CLI層**: 新しいlockコマンド
+    - `deespec lock list`: アクティブなLock一覧表示
+    - `deespec lock cleanup`: 期限切れLockのクリーンアップ
+    - `deespec lock info <lockID>`: Lock詳細情報表示
+    - 旧`deespec cleanup-locks`コマンドを@deprecated化
+
 * **Clean Architecture + DDD リファクタリング Phase 4完了**: Adapter層の完全実装
   - **Presenter層**: CLI/JSON両対応の出力フォーマッター実装
     - `CLITaskPresenter`: 人間可読なCLI出力（292行）
@@ -152,6 +180,18 @@
   - エラー発生時も継続実行（一時的エラーの場合）
 
 ### 非推奨 (Deprecated)
+
+* **`deespec cleanup-locks`コマンドの非推奨化** (Phase 7.3):
+  - 旧file-basedロックシステム用のコマンド
+  - 新しい`deespec lock cleanup`コマンドを使用してください
+  - 新コマンドはSQLite-based Lock Systemを使用
+  - Phase 8で削除予定
+
+* **`internal/interface/cli/runlock.go`の非推奨化** (Phase 7.3):
+  - 旧file-based RunLock実装（203行）
+  - 新しいLock Service (`internal/application/service/lock_service.go`)を使用してください
+  - 移行ガイド: DI Containerから`GetLockService()`を取得
+  - Phase 8で削除予定
 
 * **`workflow`コマンドの非推奨化**:
   - メイン実行パスでは使用されなくなったため非推奨

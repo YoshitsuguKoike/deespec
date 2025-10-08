@@ -98,6 +98,42 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     description TEXT
 );
 
+-- RunLock テーブル (SBI実行の排他制御)
+CREATE TABLE IF NOT EXISTS run_locks (
+    lock_id TEXT PRIMARY KEY,        -- Resource identifier (e.g., SBI ID)
+    pid INTEGER NOT NULL,             -- Process ID
+    hostname TEXT NOT NULL,           -- Host name
+    acquired_at DATETIME NOT NULL,    -- Lock acquisition time
+    expires_at DATETIME NOT NULL,     -- Lock expiration time
+    heartbeat_at DATETIME NOT NULL,   -- Last heartbeat time
+    metadata TEXT,                    -- JSON metadata (optional)
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- StateLock テーブル (状態ファイルの排他制御)
+CREATE TABLE IF NOT EXISTS state_locks (
+    lock_id TEXT PRIMARY KEY,        -- Resource identifier
+    pid INTEGER NOT NULL,             -- Process ID
+    hostname TEXT NOT NULL,           -- Host name
+    acquired_at DATETIME NOT NULL,    -- Lock acquisition time
+    expires_at DATETIME NOT NULL,     -- Lock expiration time
+    heartbeat_at DATETIME NOT NULL,   -- Last heartbeat time
+    lock_type TEXT NOT NULL,          -- Lock type: "read" or "write"
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Lock パフォーマンス最適化用インデックス
+CREATE INDEX IF NOT EXISTS idx_run_locks_expires_at ON run_locks(expires_at);
+CREATE INDEX IF NOT EXISTS idx_state_locks_expires_at ON state_locks(expires_at);
+CREATE INDEX IF NOT EXISTS idx_run_locks_heartbeat_at ON run_locks(heartbeat_at);
+CREATE INDEX IF NOT EXISTS idx_state_locks_heartbeat_at ON state_locks(heartbeat_at);
+CREATE INDEX IF NOT EXISTS idx_run_locks_pid ON run_locks(pid);
+CREATE INDEX IF NOT EXISTS idx_state_locks_pid ON state_locks(pid);
+
 -- 初期バージョン記録
 INSERT OR IGNORE INTO schema_migrations (version, description)
 VALUES (1, 'Initial schema - EPIC/PBI/SBI tables');
+
+-- Lock systemバージョン記録
+INSERT OR IGNORE INTO schema_migrations (version, description)
+VALUES (2, 'Add Lock tables - run_locks and state_locks');

@@ -8,7 +8,16 @@ import (
 	"time"
 )
 
+// Deprecated: This file implements the old file-based lock system.
+// The new SQLite-based lock system is available in:
+// - internal/domain/model/lock (domain models)
+// - internal/application/service/lock_service.go (application service)
+// - internal/infrastructure/persistence/sqlite/*_lock_repository_impl.go (persistence)
+//
+// This file will be removed in Phase 8 when CLI layer is fully migrated to Clean Architecture.
+
 // LockInfo represents the information stored in the lock file
+// Deprecated: Use lock.RunLock or lock.StateLock from domain/model/lock instead
 type LockInfo struct {
 	PID        int    `json:"pid"`
 	AcquiredAt string `json:"acquired_at"` // UTC RFC3339
@@ -18,6 +27,7 @@ type LockInfo struct {
 
 // AcquireLock attempts to acquire an exclusive lock for the run
 // Returns release function, whether lock was acquired, and any error
+// Deprecated: Use lockService.AcquireRunLock() from the new Lock Service instead
 func AcquireLock(lockPath string, ttl time.Duration) (func() error, bool, error) {
 	if lockPath == "" {
 		lockPath = ".deespec/var/lock"

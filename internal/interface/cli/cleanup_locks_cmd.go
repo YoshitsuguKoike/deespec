@@ -5,13 +5,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// newCleanupLocksCmd creates the cleanup-locks command
+// Deprecated: Use `deespec lock cleanup` instead.
+// This command uses the old file-based lock system.
+// The new SQLite-based lock system is available via `deespec lock` commands.
 func newCleanupLocksCmd() *cobra.Command {
 	var showOnly bool
 
 	cmd := &cobra.Command{
-		Use:   "cleanup-locks",
-		Short: "Clean up expired lock files",
-		Long: `Clean up expired lock files that may prevent deespec from running.
+		Use:        "cleanup-locks",
+		Short:      "[DEPRECATED] Clean up expired lock files (use 'deespec lock cleanup' instead)",
+		Deprecated: "Use 'deespec lock cleanup' instead for the new SQLite-based lock system",
+		Long: `[DEPRECATED] Clean up expired lock files that may prevent deespec from running.
+
+⚠️  This command uses the old file-based lock system and will be removed in a future version.
+    Please use 'deespec lock cleanup' instead for the new SQLite-based lock system.
+
+Clean up expired lock files that may prevent deespec from running.
 
 This command checks for three types of locks:
 1. runlock - Process lock file with PID and expiration

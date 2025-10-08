@@ -1,9 +1,13 @@
 package di
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/adapter/controller/cli"
 	agentgateway "github.com/YoshitsuguKoike/deespec/internal/adapter/gateway/agent"
@@ -11,24 +15,31 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/adapter/presenter"
 	"github.com/YoshitsuguKoike/deespec/internal/application/port/input"
 	"github.com/YoshitsuguKoike/deespec/internal/application/port/output"
+	"github.com/YoshitsuguKoike/deespec/internal/application/service"
 	taskusecase "github.com/YoshitsuguKoike/deespec/internal/application/usecase/task"
 	workflowusecase "github.com/YoshitsuguKoike/deespec/internal/application/usecase/workflow"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/factory"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/service/strategy"
-	mockrepo "github.com/YoshitsuguKoike/deespec/internal/infrastructure/repository/mock"
+	sqliterepo "github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/sqlite"
 	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/transaction"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/cobra"
 )
 
 // Container is the DI container that holds all dependencies
 // This implements manual dependency injection for Clean Architecture
 type Container struct {
-	// Infrastructure Layer - Repositories (Mock implementations for Phase 4)
-	taskRepo repository.TaskRepository
-	epicRepo repository.EPICRepository
-	pbiRepo  repository.PBIRepository
-	sbiRepo  repository.SBIRepository
+	// Infrastructure Layer - Database
+	db *sql.DB
+
+	// Infrastructure Layer - Repositories (SQLite implementations)
+	taskRepo      repository.TaskRepository
+	epicRepo      repository.EPICRepository
+	pbiRepo       repository.PBIRepository
+	sbiRepo       repository.SBIRepository
+	runLockRepo   repository.RunLockRepository
+	stateLockRepo repository.StateLockRepository
 
 	// Infrastructure Layer - Gateways
 	agentGateway   output.AgentGateway
@@ -36,6 +47,9 @@ type Container struct {
 
 	// Infrastructure Layer - Transaction Manager
 	txManager output.TransactionManager
+
+	// Application Layer - Services
+	lockService service.LockService
 
 	// Domain Layer - Factories
 	taskFactory *factory.Factory
@@ -67,6 +81,18 @@ type Config struct {
 	OutputWriter io.Writer
 	Version      string
 	BuildInfo    string
+	DBPath       string // Path to SQLite database file
+
+	// Storage Gateway configuration
+	StorageType    string // Storage type: "local", "s3", "mock" (default: "mock")
+	StorageBaseDir string // Base directory for local storage (default: ~/.deespec)
+	S3Bucket       string // S3 bucket name (for S3 storage)
+	S3Prefix       string // S3 key prefix (optional)
+	S3Region       string // AWS region (optional, uses default if empty)
+
+	// Lock Service configuration
+	LockHeartbeatInterval time.Duration // Heartbeat interval for locks (default: 30s)
+	LockCleanupInterval   time.Duration // Cleanup interval for expired locks (default: 60s)
 }
 
 // NewContainer creates and initializes the DI container
@@ -102,16 +128,46 @@ func NewContainer(config Config) (*Container, error) {
 
 // initializeInfrastructure initializes infrastructure layer components
 func (c *Container) initializeInfrastructure() error {
-	// 1. Initialize Mock Repositories (will be replaced with SQLite in Phase 5)
-	c.taskRepo = mockrepo.NewMockTaskRepository()
-	c.epicRepo = mockrepo.NewMockEPICRepository()
-	c.pbiRepo = mockrepo.NewMockPBIRepository()
-	c.sbiRepo = mockrepo.NewMockSBIRepository()
+	// 1. Set default database path if not provided
+	dbPath := c.config.DBPath
+	if dbPath == "" {
+		// Default to ~/.deespec/deespec.db
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get home directory: %w", err)
+		}
+		dbDir := filepath.Join(homeDir, ".deespec")
+		if err := os.MkdirAll(dbDir, 0755); err != nil {
+			return fmt.Errorf("failed to create database directory: %w", err)
+		}
+		dbPath = filepath.Join(dbDir, "deespec.db")
+	}
 
-	// 2. Initialize Transaction Manager (Mock for Phase 4)
-	c.txManager = transaction.NewMockTransactionManager()
+	// 2. Open SQLite database connection
+	db, err := sql.Open("sqlite3", dbPath+"?_foreign_keys=on")
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	c.db = db
 
-	// 3. Initialize Agent Gateway
+	// 3. Run database migrations
+	migrator := sqliterepo.NewMigrator(db)
+	if err := migrator.Migrate(); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	// 4. Initialize SQLite Repositories
+	c.taskRepo = sqliterepo.NewTaskRepository(db)
+	c.epicRepo = sqliterepo.NewEPICRepository(db)
+	c.pbiRepo = sqliterepo.NewPBIRepository(db)
+	c.sbiRepo = sqliterepo.NewSBIRepository(db)
+	c.runLockRepo = sqliterepo.NewRunLockRepository(db)
+	c.stateLockRepo = sqliterepo.NewStateLockRepository(db)
+
+	// 5. Initialize SQLite Transaction Manager
+	c.txManager = transaction.NewSQLiteTransactionManager(db)
+
+	// 6. Initialize Agent Gateway
 	agentType := c.config.AgentType
 	if agentType == "" {
 		agentType = agentgateway.GetDefaultAgent()
@@ -123,8 +179,48 @@ func (c *Container) initializeInfrastructure() error {
 	}
 	c.agentGateway = gateway
 
-	// 4. Initialize Storage Gateway (Mock for Phase 4)
-	c.storageGateway = storagegateway.NewMockStorageGateway()
+	// 7. Initialize Storage Gateway based on configuration
+	storageType := c.config.StorageType
+	if storageType == "" {
+		storageType = "mock" // Default to mock for backward compatibility
+	}
+
+	switch storageType {
+	case "local":
+		// Use local filesystem storage
+		baseDir := c.config.StorageBaseDir
+		if baseDir == "" {
+			// Default to same directory as database
+			baseDir = filepath.Dir(dbPath)
+		}
+		localGateway, err := storagegateway.NewLocalStorageGateway(baseDir)
+		if err != nil {
+			return fmt.Errorf("failed to create local storage gateway: %w", err)
+		}
+		c.storageGateway = localGateway
+
+	case "s3":
+		// Use AWS S3 storage
+		if c.config.S3Bucket == "" {
+			return fmt.Errorf("S3 bucket name is required for S3 storage")
+		}
+		s3Gateway, err := storagegateway.NewS3StorageGateway(storagegateway.S3Config{
+			BucketName: c.config.S3Bucket,
+			Prefix:     c.config.S3Prefix,
+			Region:     c.config.S3Region,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create S3 storage gateway: %w", err)
+		}
+		c.storageGateway = s3Gateway
+
+	case "mock":
+		// Use mock storage (in-memory)
+		c.storageGateway = storagegateway.NewMockStorageGateway()
+
+	default:
+		return fmt.Errorf("unknown storage type: %s", storageType)
+	}
 
 	return nil
 }
@@ -168,9 +264,36 @@ func (c *Container) initializeApplication() error {
 
 	// 3. Workflow-specific use cases will be implemented as methods on WorkflowUseCaseImpl
 	// For now, we use the main workflow use case which implements all workflow interfaces
-	c.epicWorkflowUseCase = c.workflowUseCase.(input.EPICWorkflowUseCase)
-	c.pbiWorkflowUseCase = c.workflowUseCase.(input.PBIWorkflowUseCase)
-	c.sbiWorkflowUseCase = c.workflowUseCase.(input.SBIWorkflowUseCase)
+	// Type assertions are safe-checked to prevent panics during initialization
+	if epic, ok := c.workflowUseCase.(input.EPICWorkflowUseCase); ok {
+		c.epicWorkflowUseCase = epic
+	}
+	if pbi, ok := c.workflowUseCase.(input.PBIWorkflowUseCase); ok {
+		c.pbiWorkflowUseCase = pbi
+	}
+	if sbi, ok := c.workflowUseCase.(input.SBIWorkflowUseCase); ok {
+		c.sbiWorkflowUseCase = sbi
+	}
+
+	// 4. Initialize Lock Service
+	lockConfig := service.LockServiceConfig{
+		HeartbeatInterval: c.config.LockHeartbeatInterval,
+		CleanupInterval:   c.config.LockCleanupInterval,
+	}
+
+	// Set defaults if not configured
+	if lockConfig.HeartbeatInterval == 0 {
+		lockConfig.HeartbeatInterval = 30 * time.Second
+	}
+	if lockConfig.CleanupInterval == 0 {
+		lockConfig.CleanupInterval = 60 * time.Second
+	}
+
+	c.lockService = service.NewLockService(
+		c.runLockRepo,
+		c.stateLockRepo,
+		lockConfig,
+	)
 
 	return nil
 }
@@ -231,4 +354,35 @@ func (c *Container) GetAgentGateway() output.AgentGateway {
 // GetStorageGateway returns the storage gateway
 func (c *Container) GetStorageGateway() output.StorageGateway {
 	return c.storageGateway
+}
+
+// GetLockService returns the lock service
+func (c *Container) GetLockService() service.LockService {
+	return c.lockService
+}
+
+// Start starts background services (Lock Service, etc.)
+func (c *Container) Start(ctx context.Context) error {
+	// Start Lock Service for heartbeat and cleanup
+	if err := c.lockService.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start lock service: %w", err)
+	}
+	return nil
+}
+
+// Close closes all resources held by the container
+func (c *Container) Close() error {
+	// Stop Lock Service first
+	if c.lockService != nil {
+		if err := c.lockService.Stop(); err != nil {
+			// Log error but continue closing other resources
+			fmt.Fprintf(os.Stderr, "Warning: failed to stop lock service: %v\n", err)
+		}
+	}
+
+	// Close database connection
+	if c.db != nil {
+		return c.db.Close()
+	}
+	return nil
 }

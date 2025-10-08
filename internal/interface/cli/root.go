@@ -65,7 +65,8 @@ func NewRoot() *cobra.Command {
 	cmd.AddCommand(workflowCmd)
 	cmd.AddCommand(NewSBICommand())
 	cmd.AddCommand(newClearCmd())
-	cmd.AddCommand(newCleanupLocksCmd())
+	cmd.AddCommand(newCleanupLocksCmd()) // Deprecated: Use `deespec lock cleanup` instead
+	cmd.AddCommand(newLockCmd())         // New SQLite-based lock management
 	cmd.AddCommand(newLabelCmd())
 
 	// Add global log level flag

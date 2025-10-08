@@ -425,9 +425,13 @@ Phase 3: アプリケーション層構築 (Week 3-4)
   ↓
 Phase 4: アダプター層リファクタリング (Week 4-5)
   ↓
-Phase 5: インフラ層整理 (Week 5-6)
+Phase 5: インフラ層整理 - SQLite Repository実装 (Week 5-6)
   ↓
-Phase 6: 移行完了・旧コード削除 (Week 6-7)
+Phase 6: Storage Gateway実装 (Week 7)
+  ↓
+Phase 7: Lock System SQLite移行 (Week 8)
+  ↓
+Phase 8: 統合・テスト・移行完了 (Week 9-10)
 ```
 
 ### 3.2 フェーズ別詳細計画
@@ -4966,25 +4970,97 @@ deespec/
 - [ ] 旧CLIコードの段階的削除
 - [ ] アダプター層テスト
 
-### Phase 5: インフラ層整理
-- [ ] SBIRepositoryImpl実装
-- [ ] ExecutionRepositoryImpl実装
-- [ ] StateRepositoryImpl実装
-- [ ] JournalRepositoryImpl実装
-- [ ] WorkflowRepositoryImpl実装
-- [ ] FileTransactionManager統合
-- [ ] DIコンテナ実装
-- [ ] 統合テスト(E2E)
+### Phase 5: インフラ層整理 - SQLite Repository実装
+- [x] SQLiteスキーマ設計(epics, pbis, sbis, epic_pbis, pbi_sbis)
+- [x] Migration system実装(go:embed schema.sql)
+- [x] EPICRepositoryImpl実装
+- [x] PBIRepositoryImpl実装
+- [x] SBIRepositoryImpl実装
+- [x] TaskRepositoryImpl実装(ポリモーフィックラッパー)
+- [x] SQLiteTransactionManager実装
+- [x] DIコンテナ更新(SQLite統合)
+- [x] Transaction context propagation修正
+- [x] Code duplication除去(TaskRepositoryImpl)
+- [ ] 統合テスト(SQLite使用)
 
-### Phase 6: 移行完了
-- [ ] 旧コード完全削除
-- [ ] パフォーマンスベンチマーク
+### Phase 6: Storage Gateway実装
+- [ ] StorageGateway interface定義確認
+- [ ] S3StorageGateway実装
+  - [ ] Store/Retrieve/Delete/List実装
+  - [ ] AWS SDK v2統合
+  - [ ] Metadata管理
+- [ ] LocalStorageGateway実装
+  - [ ] ファイルシステムベース実装
+  - [ ] パス管理とディレクトリ構造
+- [ ] DIコンテナ更新(Storage Gateway統合)
+- [ ] Artifact管理統合
+- [ ] Storage Gateway unit tests
+- [ ] Storage Gateway integration tests
+
+### Phase 7: Lock System SQLite移行 ✅ COMPLETED
+- [x] Lock SQLiteスキーマ設計
+  - [x] run_locks テーブル
+  - [x] state_locks テーブル
+  - [x] インデックス追加
+- [x] Domain Lock Models実装
+  - [x] RunLock model (94 lines)
+  - [x] StateLock model (93 lines)
+  - [x] LockID value object (27 lines)
+- [x] Lock Repository実装
+  - [x] RunLockRepository interface & impl (280 lines, 72-86% coverage)
+  - [x] StateLockRepository interface & impl (259 lines, 72-84% coverage)
+- [x] Lock Service実装
+  - [x] Acquire/Release/Extend機能
+  - [x] Heartbeat機能 (automatic, 30s interval)
+  - [x] 期限切れロック自動削除 (automatic, 60s interval)
+- [x] DI Container統合 (Phase 7.2)
+  - [x] Lock repositories registered
+  - [x] Lock Service registered
+  - [x] Start/Close lifecycle management
+  - [x] 6 integration tests
+- [x] 旧runlock.go置き換え (Phase 7.3)
+  - [x] New `deespec lock` command implemented (328 lines)
+  - [x] Old implementation marked as @deprecated
+  - [x] Deprecation warnings added
+  - [x] Migration path documented
+- [x] Lock system unit tests (17 repository tests + 9 service tests = 26 tests)
+- [x] Lock system integration tests (6 DI container tests)
+- [x] Performance benchmarks (830 ops/sec @ M2 Pro)
+
+**Phase 7 Final Stats:**
+- Production code: 1,154 lines
+- Test code: 1,326 lines (1.15x ratio)
+- Total test cases: 32 (all passing)
+- Test coverage: 75-84%
+- Lock command: `deespec lock {list|cleanup|info}`
+- Old command: `deespec cleanup-locks` (deprecated)
+
+### Phase 8: 統合・テスト・移行完了
+- [ ] 統合テスト実装
+  - [ ] Task workflow integration tests
+  - [ ] Repository integration tests
+  - [ ] Transaction integration tests
+  - [ ] Lock system integration tests
+- [ ] E2Eテスト実装
+  - [ ] CLI E2E tests
+  - [ ] Full workflow E2E tests
+- [ ] 旧コード削除
+  - [ ] 旧CLI実装削除
+  - [ ] 旧Repository実装削除
+  - [ ] 使用されていないファイル削除
+- [ ] パフォーマンス検証
+  - [ ] ベンチマーク実行
+  - [ ] メモリ使用量測定
+  - [ ] N+1クエリ最適化(必要に応じて)
 - [ ] ドキュメント更新
+  - [ ] README更新
+  - [ ] アーキテクチャ図更新
+  - [ ] API仕様書更新
 - [ ] 全テスト通過確認
 - [ ] リリースノート作成
 
 ---
 
-**Last Updated**: 2025-10-08
-**Version**: 1.0
+**Last Updated**: 2025-10-08 (Phase 7 完了 - Lock System SQLite移行)
+**Version**: 1.2
 **Author**: Claude Code + User

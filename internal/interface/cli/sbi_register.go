@@ -2,16 +2,14 @@ package cli
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"time"
+	"path/filepath"
+	"strings"
 
-	infraSbi "github.com/YoshitsuguKoike/deespec/internal/infra/repository/sbi"
-	usecaseSbi "github.com/YoshitsuguKoike/deespec/internal/usecase/sbi"
-	"github.com/spf13/afero"
+	"github.com/YoshitsuguKoike/deespec/internal/application/dto"
 	"github.com/spf13/cobra"
 )
 
@@ -67,6 +65,48 @@ Examples:
 	return cmd
 }
 
+// buildSpecMarkdown constructs the full markdown content for a specification
+func buildSpecMarkdown(title, body string) string {
+	var sb strings.Builder
+
+	// Fixed guideline block (preamble)
+	sb.WriteString(`## ガイドライン
+
+このドキュメントは、チームで共有される仕様書です。以下のガイドラインに従って記述してください。
+
+### 記述ルール
+
+1. **明確性**: 曖昧な表現を避け、具体的に記述する
+2. **完全性**: 必要な情報をすべて含める
+3. **一貫性**: 用語や形式を統一する
+4. **追跡可能性**: 変更履歴を明確にする
+
+### セクション構成
+
+- 概要: 機能の目的と背景
+- 詳細仕様: 具体的な要求事項
+- 制約事項: 技術的・業務的制約
+- 受け入れ条件: 完了の定義
+
+---
+
+`)
+
+	// Title as H1
+	sb.WriteString(fmt.Sprintf("# %s\n\n", title))
+
+	// Body content
+	if body != "" {
+		sb.WriteString(body)
+		// Ensure trailing newline
+		if !strings.HasSuffix(body, "\n") {
+			sb.WriteString("\n")
+		}
+	}
+
+	return sb.String()
+}
+
 // runSBIRegister executes the sbi register command
 func runSBIRegister(ctx context.Context, flags *sbiRegisterFlags) error {
 	// Validate title
@@ -88,96 +128,101 @@ func runSBIRegister(ctx context.Context, flags *sbiRegisterFlags) error {
 	// Process labels
 	labels := processLabels(flags.labelArray, flags.labels)
 
-	// Create the use case input
-	input := usecaseSbi.RegisterSBIInput{
-		Title:  flags.title,
-		Body:   body,
-		Labels: labels,
-	}
-
-	// For dry-run, we need to simulate the ID and path
+	// For dry-run, simulate without creating actual SBI
 	if flags.dryRun {
-		return handleDryRun(input, flags)
+		sbiDTO := &dto.SBIDTO{
+			TaskDTO: dto.TaskDTO{
+				ID:    "SBI-DRYRUN-EXAMPLE",
+				Title: flags.title,
+			},
+			Labels: labels,
+		}
+		specPath := filepath.Join(".deespec", "specs", "sbi", sbiDTO.ID, "spec.md")
+
+		if flags.jsonOut {
+			return outputJSONNew(sbiDTO, specPath, false)
+		}
+
+		if !flags.quiet {
+			fmt.Printf("[DRY RUN] Would register SBI\n")
+			fmt.Printf("ID: %s\n", sbiDTO.ID)
+			fmt.Printf("Spec path: %s\n", specPath)
+			if len(labels) > 0 {
+				fmt.Printf("Labels: %v\n", labels)
+			}
+		}
+		return nil
 	}
 
-	// Set up dependencies
-	fs := afero.NewOsFs()
-	repo := infraSbi.NewFileSBIRepository(fs)
-	useCase := &usecaseSbi.RegisterSBIUseCase{
-		Repo: repo,
-		Now:  time.Now,
-		Rand: rand.Reader,
+	// Initialize DI container
+	container, err := initializeContainer()
+	if err != nil {
+		return fmt.Errorf("failed to initialize container: %w", err)
+	}
+	defer container.Close()
+
+	// Get Task UseCase
+	taskUseCase := container.GetTaskUseCase()
+
+	// Create SBI request
+	req := dto.CreateSBIRequest{
+		Title:       flags.title,
+		Description: body,
+		Labels:      labels,
 	}
 
 	// Execute the use case
-	output, err := useCase.Execute(ctx, input)
+	sbiDTO, err := taskUseCase.CreateSBI(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to register SBI: %w", err)
 	}
 
+	// Build spec markdown content
+	specContent := buildSpecMarkdown(flags.title, body)
+
+	// Save spec.md to .deespec/specs/sbi/<ID>/spec.md (for backward compatibility)
+	specDir := filepath.Join(".deespec", "specs", "sbi", sbiDTO.ID)
+	specPath := filepath.Join(specDir, "spec.md")
+
+	// Create directory
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		return fmt.Errorf("failed to create spec directory: %w", err)
+	}
+
+	// Write spec.md
+	if err := os.WriteFile(specPath, []byte(specContent), 0644); err != nil {
+		return fmt.Errorf("failed to write spec.md: %w", err)
+	}
+
 	// Output the result
 	if flags.jsonOut {
-		return outputJSON(output, true, input.Labels)
+		return outputJSONNew(sbiDTO, specPath, true)
 	}
 
 	if !flags.quiet {
 		fmt.Printf("Successfully registered SBI\n")
-		fmt.Printf("ID: %s\n", output.ID)
-		fmt.Printf("Spec path: %s\n", output.SpecPath)
-		if len(input.Labels) > 0 {
-			fmt.Printf("Labels: %v\n", input.Labels)
+		fmt.Printf("ID: %s\n", sbiDTO.ID)
+		fmt.Printf("Spec path: %s\n", specPath)
+		if len(labels) > 0 {
+			fmt.Printf("Labels: %v\n", labels)
 		}
 	}
 
 	return nil
 }
 
-// handleDryRun simulates the registration without creating files
-func handleDryRun(input usecaseSbi.RegisterSBIInput, flags *sbiRegisterFlags) error {
-	// Create a mock use case with in-memory filesystem
-	fs := afero.NewMemMapFs()
-	repo := infraSbi.NewFileSBIRepository(fs)
-	useCase := &usecaseSbi.RegisterSBIUseCase{
-		Repo: repo,
-		Now:  time.Now,
-		Rand: rand.Reader,
-	}
-
-	// Execute with in-memory filesystem
-	output, err := useCase.Execute(context.Background(), input)
-	if err != nil {
-		return fmt.Errorf("dry-run failed: %w", err)
-	}
-
-	// Output the result
-	if flags.jsonOut {
-		return outputJSON(output, false, input.Labels)
-	}
-
-	if !flags.quiet {
-		fmt.Printf("[DRY RUN] Would register SBI\n")
-		fmt.Printf("ID: %s\n", output.ID)
-		fmt.Printf("Spec path: %s\n", output.SpecPath)
-		if len(input.Labels) > 0 {
-			fmt.Printf("Labels: %v\n", input.Labels)
-		}
-	}
-
-	return nil
-}
-
-// outputJSON outputs the result in JSON format
-func outputJSON(output *usecaseSbi.RegisterSBIOutput, created bool, labels []string) error {
+// outputJSONNew outputs the result in JSON format using new implementation
+func outputJSONNew(sbiDTO *dto.SBIDTO, specPath string, created bool) error {
 	result := map[string]interface{}{
 		"ok":        true,
-		"id":        output.ID,
-		"spec_path": output.SpecPath,
+		"id":        sbiDTO.ID,
+		"spec_path": specPath,
 		"created":   created,
 	}
 
 	// Add labels if present
-	if len(labels) > 0 {
-		result["labels"] = labels
+	if len(sbiDTO.Labels) > 0 {
+		result["labels"] = sbiDTO.Labels
 	}
 
 	encoder := json.NewEncoder(os.Stdout)

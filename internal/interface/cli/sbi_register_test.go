@@ -5,8 +5,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-
-	usecaseSbi "github.com/YoshitsuguKoike/deespec/internal/usecase/sbi"
 )
 
 func TestNewSBIRegisterCommand(t *testing.T) {
@@ -146,79 +144,7 @@ func TestRunSBIRegister_EmptyTitle(t *testing.T) {
 	}
 }
 
-func TestHandleDryRun(t *testing.T) {
-	tests := []struct {
-		name      string
-		input     usecaseSbi.RegisterSBIInput
-		flags     *sbiRegisterFlags
-		wantError bool
-		validate  func(t *testing.T)
-	}{
-		{
-			name: "Dry run with valid input",
-			input: usecaseSbi.RegisterSBIInput{
-				Title:  "Test Title",
-				Body:   "Test Body",
-				Labels: []string{"test", "dry-run"},
-			},
-			flags: &sbiRegisterFlags{
-				jsonOut: false,
-				quiet:   false,
-			},
-			wantError: false,
-			validate: func(t *testing.T) {
-				// Verify no actual files were created
-				// (handleDryRun uses MemMapFs internally)
-			},
-		},
-		{
-			name: "Dry run with JSON output",
-			input: usecaseSbi.RegisterSBIInput{
-				Title: "JSON Title",
-				Body:  "JSON Body",
-			},
-			flags: &sbiRegisterFlags{
-				jsonOut: true,
-				quiet:   false,
-			},
-			wantError: false,
-			validate: func(t *testing.T) {
-				// JSON output is handled by the function
-			},
-		},
-		{
-			name: "Dry run in quiet mode",
-			input: usecaseSbi.RegisterSBIInput{
-				Title: "Quiet Title",
-				Body:  "Quiet Body",
-			},
-			flags: &sbiRegisterFlags{
-				jsonOut: false,
-				quiet:   true,
-			},
-			wantError: false,
-			validate: func(t *testing.T) {
-				// No output expected in quiet mode
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Note: handleDryRun creates its own MemMapFs internally
-			// so we don't need to verify file system state here
-			err := handleDryRun(tt.input, tt.flags)
-
-			if (err != nil) != tt.wantError {
-				t.Errorf("handleDryRun() error = %v, wantError %v", err, tt.wantError)
-			}
-
-			if tt.validate != nil {
-				tt.validate(t)
-			}
-		})
-	}
-}
+// TestHandleDryRun removed - dry-run functionality is now tested via TestSBIRegister_DryRun integration tests
 
 func TestIsInputFromTerminal(t *testing.T) {
 	// Test the isInputFromTerminal function
@@ -233,21 +159,7 @@ func TestIsInputFromTerminal(t *testing.T) {
 	}
 }
 
-func TestOutputJSON(t *testing.T) {
-	// Note: outputJSON writes to os.Stdout directly
-	// In a real test, we would need to capture stdout
-	// For now, we verify the function exists and can be called
-
-	output := &usecaseSbi.RegisterSBIOutput{
-		ID:       "SBI-TEST123",
-		SpecPath: ".deespec/specs/sbi/SBI-TEST123/spec.md",
-	}
-
-	// This would normally write to stdout
-	// We can't easily capture it in this test without refactoring
-	// The existence of the function is verified by compilation
-	_ = output
-}
+// TestOutputJSON removed - JSON output functionality is now tested via TestSBIRegister_DryRun with --json flag
 
 func TestProcessLabels(t *testing.T) {
 	tests := []struct {

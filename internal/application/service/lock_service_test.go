@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 
 // MockRunLockRepository is a mock implementation of RunLockRepository for testing
 type MockRunLockRepository struct {
+	mu               sync.RWMutex
 	acquiredLocks    map[string]*lock.RunLock
 	heartbeatCounts  map[string]int
 	cleanupCallCount int
@@ -26,6 +28,9 @@ func NewMockRunLockRepository() *MockRunLockRepository {
 }
 
 func (m *MockRunLockRepository) Acquire(ctx context.Context, lockID lock.LockID, ttl time.Duration) (*lock.RunLock, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if _, exists := m.acquiredLocks[lockID.String()]; exists {
 		return nil, nil // Already acquired
 	}
@@ -41,12 +46,18 @@ func (m *MockRunLockRepository) Acquire(ctx context.Context, lockID lock.LockID,
 }
 
 func (m *MockRunLockRepository) Release(ctx context.Context, lockID lock.LockID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	delete(m.acquiredLocks, lockID.String())
 	delete(m.heartbeatCounts, lockID.String())
 	return nil
 }
 
 func (m *MockRunLockRepository) Find(ctx context.Context, lockID lock.LockID) (*lock.RunLock, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if runLock, exists := m.acquiredLocks[lockID.String()]; exists {
 		return runLock, nil
 	}
@@ -54,6 +65,9 @@ func (m *MockRunLockRepository) Find(ctx context.Context, lockID lock.LockID) (*
 }
 
 func (m *MockRunLockRepository) UpdateHeartbeat(ctx context.Context, lockID lock.LockID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if _, exists := m.acquiredLocks[lockID.String()]; !exists {
 		return lock.ErrLockNotFound
 	}
@@ -62,6 +76,9 @@ func (m *MockRunLockRepository) UpdateHeartbeat(ctx context.Context, lockID lock
 }
 
 func (m *MockRunLockRepository) Extend(ctx context.Context, lockID lock.LockID, duration time.Duration) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if runLock, exists := m.acquiredLocks[lockID.String()]; exists {
 		// Update expiration in the existing lock
 		_ = runLock
@@ -71,11 +88,17 @@ func (m *MockRunLockRepository) Extend(ctx context.Context, lockID lock.LockID, 
 }
 
 func (m *MockRunLockRepository) CleanupExpired(ctx context.Context) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.cleanupCallCount++
 	return 0, nil
 }
 
 func (m *MockRunLockRepository) List(ctx context.Context) ([]*lock.RunLock, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	locks := make([]*lock.RunLock, 0, len(m.acquiredLocks))
 	for _, l := range m.acquiredLocks {
 		locks = append(locks, l)
@@ -83,8 +106,30 @@ func (m *MockRunLockRepository) List(ctx context.Context) ([]*lock.RunLock, erro
 	return locks, nil
 }
 
+// GetHeartbeatCount returns the heartbeat count for a lock (thread-safe)
+func (m *MockRunLockRepository) GetHeartbeatCount(lockID string) int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.heartbeatCounts[lockID]
+}
+
+// GetCleanupCallCount returns the cleanup call count (thread-safe)
+func (m *MockRunLockRepository) GetCleanupCallCount() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.cleanupCallCount
+}
+
+// GetLocksCount returns the number of acquired locks (thread-safe)
+func (m *MockRunLockRepository) GetLocksCount() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.acquiredLocks)
+}
+
 // MockStateLockRepository is a mock implementation of StateLockRepository for testing
 type MockStateLockRepository struct {
+	mu               sync.RWMutex
 	acquiredLocks    map[string]*lock.StateLock
 	heartbeatCounts  map[string]int
 	cleanupCallCount int
@@ -98,6 +143,9 @@ func NewMockStateLockRepository() *MockStateLockRepository {
 }
 
 func (m *MockStateLockRepository) Acquire(ctx context.Context, lockID lock.LockID, lockType lock.LockType, ttl time.Duration) (*lock.StateLock, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if _, exists := m.acquiredLocks[lockID.String()]; exists {
 		return nil, nil // Already acquired
 	}
@@ -113,12 +161,18 @@ func (m *MockStateLockRepository) Acquire(ctx context.Context, lockID lock.LockI
 }
 
 func (m *MockStateLockRepository) Release(ctx context.Context, lockID lock.LockID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	delete(m.acquiredLocks, lockID.String())
 	delete(m.heartbeatCounts, lockID.String())
 	return nil
 }
 
 func (m *MockStateLockRepository) Find(ctx context.Context, lockID lock.LockID) (*lock.StateLock, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if stateLock, exists := m.acquiredLocks[lockID.String()]; exists {
 		return stateLock, nil
 	}
@@ -126,6 +180,9 @@ func (m *MockStateLockRepository) Find(ctx context.Context, lockID lock.LockID) 
 }
 
 func (m *MockStateLockRepository) UpdateHeartbeat(ctx context.Context, lockID lock.LockID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if _, exists := m.acquiredLocks[lockID.String()]; !exists {
 		return lock.ErrLockNotFound
 	}
@@ -134,6 +191,9 @@ func (m *MockStateLockRepository) UpdateHeartbeat(ctx context.Context, lockID lo
 }
 
 func (m *MockStateLockRepository) Extend(ctx context.Context, lockID lock.LockID, duration time.Duration) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if stateLock, exists := m.acquiredLocks[lockID.String()]; exists {
 		// Update expiration in the existing lock
 		_ = stateLock
@@ -143,16 +203,43 @@ func (m *MockStateLockRepository) Extend(ctx context.Context, lockID lock.LockID
 }
 
 func (m *MockStateLockRepository) CleanupExpired(ctx context.Context) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.cleanupCallCount++
 	return 0, nil
 }
 
 func (m *MockStateLockRepository) List(ctx context.Context) ([]*lock.StateLock, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	locks := make([]*lock.StateLock, 0, len(m.acquiredLocks))
 	for _, l := range m.acquiredLocks {
 		locks = append(locks, l)
 	}
 	return locks, nil
+}
+
+// GetHeartbeatCount returns the heartbeat count for a lock (thread-safe)
+func (m *MockStateLockRepository) GetHeartbeatCount(lockID string) int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.heartbeatCounts[lockID]
+}
+
+// GetCleanupCallCount returns the cleanup call count (thread-safe)
+func (m *MockStateLockRepository) GetCleanupCallCount() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.cleanupCallCount
+}
+
+// GetLocksCount returns the number of acquired locks (thread-safe)
+func (m *MockStateLockRepository) GetLocksCount() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.acquiredLocks)
 }
 
 func TestLockService_AcquireAndReleaseRunLock(t *testing.T) {
@@ -182,14 +269,14 @@ func TestLockService_AcquireAndReleaseRunLock(t *testing.T) {
 	assert.Equal(t, lockID, runLock.LockID())
 
 	// Verify lock is in repository
-	assert.Len(t, runLockRepo.acquiredLocks, 1)
+	assert.Equal(t, 1, runLockRepo.GetLocksCount())
 
 	// Release lock
 	err = service.ReleaseRunLock(ctx, lockID)
 	require.NoError(t, err)
 
 	// Verify lock is removed from repository
-	assert.Len(t, runLockRepo.acquiredLocks, 0)
+	assert.Equal(t, 0, runLockRepo.GetLocksCount())
 }
 
 func TestLockService_AcquireAndReleaseStateLock(t *testing.T) {
@@ -220,14 +307,14 @@ func TestLockService_AcquireAndReleaseStateLock(t *testing.T) {
 	assert.Equal(t, lock.LockTypeWrite, stateLock.LockType())
 
 	// Verify lock is in repository
-	assert.Len(t, stateLockRepo.acquiredLocks, 1)
+	assert.Equal(t, 1, stateLockRepo.GetLocksCount())
 
 	// Release lock
 	err = service.ReleaseStateLock(ctx, lockID)
 	require.NoError(t, err)
 
 	// Verify lock is removed from repository
-	assert.Len(t, stateLockRepo.acquiredLocks, 0)
+	assert.Equal(t, 0, stateLockRepo.GetLocksCount())
 }
 
 func TestLockService_RunLockHeartbeat(t *testing.T) {
@@ -258,20 +345,20 @@ func TestLockService_RunLockHeartbeat(t *testing.T) {
 	time.Sleep(350 * time.Millisecond)
 
 	// Verify heartbeats were sent
-	assert.GreaterOrEqual(t, runLockRepo.heartbeatCounts[lockID.String()], 3)
+	assert.GreaterOrEqual(t, runLockRepo.GetHeartbeatCount(lockID.String()), 3)
 
 	// Release lock
 	err = service.ReleaseRunLock(ctx, lockID)
 	require.NoError(t, err)
 
 	// Record heartbeat count after release
-	countAfterRelease := runLockRepo.heartbeatCounts[lockID.String()]
+	countAfterRelease := runLockRepo.GetHeartbeatCount(lockID.String())
 
 	// Wait a bit more
 	time.Sleep(200 * time.Millisecond)
 
 	// Verify heartbeats stopped (count should remain the same)
-	assert.Equal(t, countAfterRelease, runLockRepo.heartbeatCounts[lockID.String()])
+	assert.Equal(t, countAfterRelease, runLockRepo.GetHeartbeatCount(lockID.String()))
 }
 
 func TestLockService_StateLockHeartbeat(t *testing.T) {
@@ -302,20 +389,20 @@ func TestLockService_StateLockHeartbeat(t *testing.T) {
 	time.Sleep(350 * time.Millisecond)
 
 	// Verify heartbeats were sent
-	assert.GreaterOrEqual(t, stateLockRepo.heartbeatCounts[lockID.String()], 3)
+	assert.GreaterOrEqual(t, stateLockRepo.GetHeartbeatCount(lockID.String()), 3)
 
 	// Release lock
 	err = service.ReleaseStateLock(ctx, lockID)
 	require.NoError(t, err)
 
 	// Record heartbeat count after release
-	countAfterRelease := stateLockRepo.heartbeatCounts[lockID.String()]
+	countAfterRelease := stateLockRepo.GetHeartbeatCount(lockID.String())
 
 	// Wait a bit more
 	time.Sleep(200 * time.Millisecond)
 
 	// Verify heartbeats stopped (count should remain the same)
-	assert.Equal(t, countAfterRelease, stateLockRepo.heartbeatCounts[lockID.String()])
+	assert.Equal(t, countAfterRelease, stateLockRepo.GetHeartbeatCount(lockID.String()))
 }
 
 func TestLockService_CleanupScheduler(t *testing.T) {
@@ -339,8 +426,8 @@ func TestLockService_CleanupScheduler(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// Verify cleanup was called multiple times
-	assert.GreaterOrEqual(t, runLockRepo.cleanupCallCount, 2)
-	assert.GreaterOrEqual(t, stateLockRepo.cleanupCallCount, 2)
+	assert.GreaterOrEqual(t, runLockRepo.GetCleanupCallCount(), 2)
+	assert.GreaterOrEqual(t, stateLockRepo.GetCleanupCallCount(), 2)
 }
 
 func TestLockService_Stop(t *testing.T) {
@@ -373,9 +460,9 @@ func TestLockService_Stop(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 
 	// Record counts before stop
-	runHeartbeatsBefore := runLockRepo.heartbeatCounts[lockID1.String()]
-	stateHeartbeatsBefore := stateLockRepo.heartbeatCounts[lockID2.String()]
-	cleanupCallsBefore := runLockRepo.cleanupCallCount
+	runHeartbeatsBefore := runLockRepo.GetHeartbeatCount(lockID1.String())
+	stateHeartbeatsBefore := stateLockRepo.GetHeartbeatCount(lockID2.String())
+	cleanupCallsBefore := runLockRepo.GetCleanupCallCount()
 
 	// Stop service
 	err = service.Stop()
@@ -385,11 +472,11 @@ func TestLockService_Stop(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 
 	// Verify heartbeats stopped
-	assert.Equal(t, runHeartbeatsBefore, runLockRepo.heartbeatCounts[lockID1.String()])
-	assert.Equal(t, stateHeartbeatsBefore, stateLockRepo.heartbeatCounts[lockID2.String()])
+	assert.Equal(t, runHeartbeatsBefore, runLockRepo.GetHeartbeatCount(lockID1.String()))
+	assert.Equal(t, stateHeartbeatsBefore, stateLockRepo.GetHeartbeatCount(lockID2.String()))
 
 	// Verify cleanup stopped
-	assert.Equal(t, cleanupCallsBefore, runLockRepo.cleanupCallCount)
+	assert.Equal(t, cleanupCallsBefore, runLockRepo.GetCleanupCallCount())
 }
 
 func TestLockService_ExtendRunLock(t *testing.T) {

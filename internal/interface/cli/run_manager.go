@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
+	"github.com/YoshitsuguKoike/deespec/internal/domain/model/lock"
 )
 
 // WorkflowRunner defines the interface for workflow execution
@@ -136,19 +136,22 @@ func cleanupStaleLocks() {
 		}
 	}
 
-	// Also check for runlock file - use the proper cleanup function
-	runLockPath := filepath.Join(paths.Var, "runlock")
-	if lockInfo, err := GetLockInfo(runLockPath); err == nil {
-		// Check if lock is expired using the same logic as AcquireLock
-		if isLockExpired(lockInfo) {
-			Info("[Manager Startup] Removing expired runlock from PID %d (expired: %s)\n",
-				lockInfo.PID, lockInfo.ExpiresAt)
-			if err := os.Remove(runLockPath); err != nil {
-				Warn("[Manager Startup] Failed to remove expired runlock: %v\n", err)
+	// Also check for runlock using new Lock Service
+	if container, err := initializeContainer(); err == nil {
+		defer container.Close()
+		lockService := container.GetLockService()
+		ctx := context.Background()
+
+		lockID, _ := lock.NewLockID("system-runlock")
+		if runLock, err := lockService.FindRunLock(ctx, lockID); err == nil && runLock != nil {
+			if runLock.IsExpired() {
+				Info("[Manager Startup] Removing expired runlock from PID %d (expired: %s)\n",
+					runLock.PID(), runLock.ExpiresAt())
+				_ = lockService.ReleaseRunLock(ctx, lockID) // cleanup
+			} else {
+				Info("[Manager Startup] Valid runlock exists from PID %d (expires: %s)\n",
+					runLock.PID(), runLock.ExpiresAt())
 			}
-		} else {
-			Info("[Manager Startup] Valid runlock exists from PID %d (expires: %s)\n",
-				lockInfo.PID, lockInfo.ExpiresAt)
 		}
 	}
 }

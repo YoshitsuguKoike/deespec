@@ -33,43 +33,11 @@ func TestNewClearCmd(t *testing.T) {
 	}
 }
 
-func TestNewCleanupLocksCmd(t *testing.T) {
-	cmd := newCleanupLocksCmd()
-
-	if cmd == nil {
-		t.Fatal("Expected non-nil command")
-	}
-
-	if cmd.Use != "cleanup-locks" {
-		t.Errorf("Expected Use to be 'cleanup-locks', got %s", cmd.Use)
-	}
-
-	if cmd.Short == "" {
-		t.Error("Expected Short description to be set")
-	}
-
-	// Check that show flag exists
-	showFlag := cmd.Flags().Lookup("show")
-	if showFlag == nil {
-		t.Error("Expected --show flag to be registered")
-	}
-
-	// Verify it's a cobra command
-	if _, ok := interface{}(cmd).(*cobra.Command); !ok {
-		t.Error("Expected *cobra.Command type")
-	}
-}
-
 func TestCommandsHaveRunE(t *testing.T) {
 	// Test that commands have RunE functions
 	clearCmd := newClearCmd()
 	if clearCmd.RunE == nil {
 		t.Error("Clear command missing RunE function")
-	}
-
-	cleanupCmd := newCleanupLocksCmd()
-	if cleanupCmd.RunE == nil {
-		t.Error("Cleanup-locks command missing RunE function")
 	}
 }
 
@@ -78,11 +46,6 @@ func TestCommandHelp(t *testing.T) {
 	clearCmd := newClearCmd()
 	if clearCmd.Long == "" {
 		t.Error("Clear command missing Long description")
-	}
-
-	cleanupCmd := newCleanupLocksCmd()
-	if cleanupCmd.Long == "" {
-		t.Error("Cleanup-locks command missing Long description")
 	}
 }
 

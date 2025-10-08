@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
+	"github.com/YoshitsuguKoike/deespec/internal/domain/model/lock"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/external/claudecli"
 )
@@ -655,14 +656,32 @@ func runOnce(autoFB bool) error {
 	}
 	defer releaseFsLock()
 
-	// 1.2) Run-level lock (parallel execution guard)
-	runLockPath := paths.Var + "/runlock"
-	releaseRunLock, acquired, err := AcquireLock(runLockPath, 10*time.Minute)
+	// 1.2) Run-level lock (parallel execution guard using new Lock Service)
+	container, err := initializeContainer()
+	if err != nil {
+		return fmt.Errorf("failed to initialize container: %w", err)
+	}
+	defer container.Close()
+
+	lockService := container.GetLockService()
+	ctx := context.Background()
+
+	// Start lock service for heartbeat monitoring
+	if err := container.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start lock service: %w", err)
+	}
+
+	lockID, err := lock.NewLockID("system-runlock")
+	if err != nil {
+		return fmt.Errorf("failed to create lock ID: %w", err)
+	}
+
+	runLock, err := lockService.AcquireRunLock(ctx, lockID, 10*time.Minute)
 	if err != nil {
 		return fmt.Errorf("failed to acquire run lock: %w", err)
 	}
 
-	if !acquired {
+	if runLock == nil {
 		// Another instance is running - this is normal, not an error
 		// Try to load state to show what's currently running
 		if st, loadErr := loadState(paths.State); loadErr == nil {
@@ -684,11 +703,10 @@ func runOnce(autoFB bool) error {
 
 		return nil // Exit 0 - not an error condition
 	}
+
 	defer func() {
-		if releaseRunLock != nil {
-			if err := releaseRunLock(); err != nil {
-				Warn("failed to release run lock: %v\n", err)
-			}
+		if err := lockService.ReleaseRunLock(ctx, lockID); err != nil {
+			Warn("failed to release run lock: %v\n", err)
 		}
 	}()
 

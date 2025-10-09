@@ -2,6 +2,26 @@ package config
 
 import "time"
 
+// LabelImportConfig holds label import settings
+type LabelImportConfig struct {
+	AutoPrefixFromDir bool     // ディレクトリ名を自動プレフィックス化
+	MaxLineCount      int      // 1ファイルの最大行数
+	ExcludePatterns   []string // 除外パターン
+}
+
+// LabelValidationConfig holds label validation settings
+type LabelValidationConfig struct {
+	AutoSyncOnMismatch bool // ミスマッチ時に自動同期
+	WarnOnLargeFiles   bool // 大きなファイルで警告
+}
+
+// LabelConfig holds label system settings
+type LabelConfig struct {
+	TemplateDirs []string              // テンプレートファイル探索ディレクトリ
+	Import       LabelImportConfig     // インポート設定
+	Validation   LabelValidationConfig // 検証設定
+}
+
 // Config provides read-only access to application configuration.
 // This interface abstracts the configuration source (JSON, ENV, defaults)
 // and ensures the app layer doesn't depend on infrastructure details.
@@ -44,6 +64,9 @@ type Config interface {
 	PolicyPath() string  // Policy file path (DEESPEC_POLICY_PATH)
 	StderrLevel() string // Stderr log level (DEESPEC_STDERR_LEVEL)
 
+	// Label system
+	LabelConfig() LabelConfig // Label system configuration
+
 	// Metadata
 	ConfigSource() string // Source of configuration: "json", "env", or "default"
 	SettingPath() string  // Path to setting.json if loaded from file
@@ -80,6 +103,8 @@ type AppConfig struct {
 	workflow    string
 	policyPath  string
 	stderrLevel string
+
+	labelConfig LabelConfig
 
 	configSource string
 	settingPath  string
@@ -195,6 +220,11 @@ func (c *AppConfig) StderrLevel() string {
 	return c.stderrLevel
 }
 
+// LabelConfig returns the label system configuration
+func (c *AppConfig) LabelConfig() LabelConfig {
+	return c.labelConfig
+}
+
 // ConfigSource returns the source of configuration
 func (c *AppConfig) ConfigSource() string {
 	return c.configSource
@@ -216,6 +246,7 @@ func NewAppConfig(
 	disableMetricsRotation, fsyncAudit bool,
 	testMode, testQuiet bool,
 	workflow, policyPath, stderrLevel string,
+	labelConfig LabelConfig,
 	configSource, settingPath string,
 ) *AppConfig {
 	return &AppConfig{
@@ -240,6 +271,7 @@ func NewAppConfig(
 		workflow:               workflow,
 		policyPath:             policyPath,
 		stderrLevel:            stderrLevel,
+		labelConfig:            labelConfig,
 		configSource:           configSource,
 		settingPath:            settingPath,
 	}

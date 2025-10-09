@@ -196,7 +196,7 @@ func (r *StateLockRepositoryImpl) CleanupExpired(ctx context.Context) (int, erro
 	query := `DELETE FROM state_locks WHERE expires_at < ?`
 
 	db := r.getDB(ctx)
-	result, err := db.ExecContext(ctx, query, time.Now().Format(time.RFC3339))
+	result, err := db.ExecContext(ctx, query, time.Now().UTC().Format(time.RFC3339))
 	if err != nil {
 		return 0, fmt.Errorf("cleanup expired locks: %w", err)
 	}

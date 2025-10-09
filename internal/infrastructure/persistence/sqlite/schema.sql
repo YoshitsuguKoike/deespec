@@ -137,3 +137,46 @@ VALUES (1, 'Initial schema - EPIC/PBI/SBI tables');
 -- Lock systemバージョン記録
 INSERT OR IGNORE INTO schema_migrations (version, description)
 VALUES (2, 'Add Lock tables - run_locks and state_locks');
+
+-- Labels テーブル (Phase 9.1: Label System with File Integrity)
+CREATE TABLE IF NOT EXISTS labels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,              -- ラベル名 (例: "security", "perspective:designer")
+    description TEXT,                       -- 説明文
+    template_paths TEXT,                    -- JSON array: 相対パス ["perspectives/designer.md"]
+    content_hashes TEXT,                    -- JSON object: {"path": "sha256hash"}
+    parent_label_id INTEGER,                -- 親ラベルID（階層化対応）
+    color TEXT,                             -- UI表示用カラー
+    priority INTEGER DEFAULT 0,             -- 指示書マージ優先度（高い方が優先）
+    is_active BOOLEAN DEFAULT 1,            -- 有効/無効フラグ
+    line_count INTEGER,                     -- 総行数（1000行制限チェック用）
+    last_synced_at DATETIME,                -- 最終同期日時
+    metadata TEXT,                          -- JSON: 将来の拡張用
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_label_id) REFERENCES labels(id) ON DELETE SET NULL
+);
+
+-- Task-Label 関連テーブル (多対多関係の管理)
+CREATE TABLE IF NOT EXISTS task_labels (
+    task_id TEXT NOT NULL,                  -- SBI-xxx, PBI-xxx, EPIC-xxx
+    label_id INTEGER NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,    -- ラベル表示順序
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (task_id, label_id),
+    FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
+);
+
+-- Labels パフォーマンス最適化用インデックス
+CREATE INDEX IF NOT EXISTS idx_labels_name ON labels(name);
+CREATE INDEX IF NOT EXISTS idx_labels_parent ON labels(parent_label_id);
+CREATE INDEX IF NOT EXISTS idx_labels_is_active ON labels(is_active);
+CREATE INDEX IF NOT EXISTS idx_labels_last_synced ON labels(last_synced_at);
+
+-- Task-Label パフォーマンス最適化用インデックス
+CREATE INDEX IF NOT EXISTS idx_task_labels_task_id ON task_labels(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_labels_label_id ON task_labels(label_id);
+
+-- Label systemバージョン記録
+INSERT OR IGNORE INTO schema_migrations (version, description)
+VALUES (3, 'Add label management system with integrity check');

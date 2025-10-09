@@ -211,7 +211,7 @@ func (r *RunLockRepositoryImpl) CleanupExpired(ctx context.Context) (int, error)
 	query := `DELETE FROM run_locks WHERE expires_at < ?`
 
 	db := r.getDB(ctx)
-	result, err := db.ExecContext(ctx, query, time.Now().Format(time.RFC3339))
+	result, err := db.ExecContext(ctx, query, time.Now().UTC().Format(time.RFC3339))
 	if err != nil {
 		return 0, fmt.Errorf("cleanup expired locks: %w", err)
 	}

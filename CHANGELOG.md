@@ -6,6 +6,68 @@
 
 ### 追加 (Added)
 
+* **Clean Architecture + DDD リファクタリング Phase 9.1完了**: Label System SQLite化
+  - **Phase 9.1a - Schema Extension**: SQLiteスキーマ拡張
+    - `labels` テーブル: ラベル本体（content_hashes, line_count, last_synced_at追加）
+    - `task_labels` テーブル: タスク-ラベル多対多関連
+    - パフォーマンス最適化用インデックス（name, parent, is_active, last_synced）
+    - マイグレーションバージョン3追加
+  - **Phase 9.1b - Configuration**: setting.json拡張
+    - `LabelConfig`: template_dirs, import, validation設定
+    - デフォルトディレクトリ: `.claude`, `.deespec/prompts/labels`
+    - 1000行制限、除外パターン対応
+    - 5/5評価（完璧な実装）
+  - **Phase 9.1c - Domain/Repository層**: Label実体とRepository実装
+    - `Label` entity: SHA256ハッシュベースの整合性管理（196行）
+    - `LabelRepository` interface: CRUD + 整合性検証（48行）
+    - SQLite実装: ファイル解決、ハッシュ計算、検証（653行）
+    - DI Container統合: lazy initialization対応
+    - 9個のunit tests（全成功）
+    - 5/5評価（完璧な実装）
+  - **Phase 9.1d - CLI層**: labelコマンド群実装
+    - `label register`: 新規ラベル登録（複数テンプレート対応）
+    - `label list`: 一覧表示（table/JSON形式）
+    - `label show`: 詳細情報表示
+    - `label update`: プロパティ更新（activate/deactivate）
+    - `label delete`: ラベル削除（確認プロンプト付き）
+    - `label attach/detach`: タスク関連付け管理
+    - `label templates`: テンプレートファイル表示
+    - `label import`: ディレクトリから一括インポート（261行）
+      - 再帰的スキャン、dry-run、prefix-from-dir対応
+      - 除外パターンマッチング（glob + wildcard）
+      - 1000行制限検証
+    - `label validate`: ファイル整合性検証（240行）
+      - SHA256ハッシュベースの検証
+      - 3種類のステータス（OK, MODIFIED, MISSING）
+      - --sync自動同期、--details詳細表示
+    - 合計1,008行の実装
+    - 5/5評価（完璧な実装）
+  - **Phase 9.1e - EnrichTaskWithLabels改善**: Repository統合
+    - ClaudeCodePromptBuilder に LabelRepository統合
+    - ファイルベース→Repositoryベースへ移行
+    - Runtime整合性検証（AI実行時に自動チェック）
+    - 3種類の警告表示（not found, modified, missing）
+    - Graceful Degradation: DB未登録時はfile-based fallback
+    - 完璧な後方互換性（Null Object Pattern）
+    - 4/5評価（優れた実装、軽微な改善点あり）
+  - **Phase 9.1f - Testing & Documentation**: E2Eテストとドキュメント整備
+    - E2Eテスト: 7テストケース実装（全成功）
+    - ユーザーガイド: 包括的な使用方法（label-system-guide.md）
+    - マイグレーションガイド: 3つの移行戦略（label-system-migration-guide.md）
+    - 古いテストファイル削除（label_cmd_test.go等）
+  - **主要機能**:
+    - File-as-Source-of-Truth: ファイルが正、DBはインデックス
+    - SHA256 hash-based integrity: ファイル変更の自動検出
+    - Multiple template directories: 優先順位付き解決
+    - Hierarchical labels: ディレクトリ構造のサポート
+    - 1000-line limit validation: 大容量ファイルの制限
+    - Runtime validation: AI実行時の整合性チェック
+  - **アーキテクチャ成果**:
+    - Clean Architecture + DDD完全遵守
+    - Repository Pattern適用
+    - Backward compatibility維持（既存ワークフロー影響なし）
+    - Production-Ready CLI設計（dry-run, auto-fix, tip messages）
+
 * **Clean Architecture + DDD リファクタリング Phase 7完了**: Lock System SQLite移行
   - **Domain層**: Lock Models実装
     - `LockID` value object（27行）

@@ -37,7 +37,7 @@ func NewStateLock(lockID LockID, lockType LockType, ttl time.Duration) (*StateLo
 		return nil, fmt.Errorf("get hostname: %w", err)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	return &StateLock{
 		lockID:      lockID,
@@ -72,17 +72,17 @@ func ReconstructStateLock(
 
 // IsExpired checks if the lock has expired
 func (l *StateLock) IsExpired() bool {
-	return time.Now().After(l.expiresAt)
+	return time.Now().UTC().After(l.expiresAt)
 }
 
 // IsHeartbeatStale checks if the heartbeat is stale
 func (l *StateLock) IsHeartbeatStale(maxStaleness time.Duration) bool {
-	return time.Now().Sub(l.heartbeatAt) > maxStaleness
+	return time.Now().UTC().Sub(l.heartbeatAt) > maxStaleness
 }
 
 // UpdateHeartbeat updates the heartbeat timestamp
 func (l *StateLock) UpdateHeartbeat() {
-	l.heartbeatAt = time.Now()
+	l.heartbeatAt = time.Now().UTC()
 }
 
 // Extend extends the lock expiration time

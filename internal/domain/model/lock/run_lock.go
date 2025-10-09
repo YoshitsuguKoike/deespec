@@ -25,7 +25,7 @@ func NewRunLock(lockID LockID, ttl time.Duration) (*RunLock, error) {
 		return nil, fmt.Errorf("get hostname: %w", err)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	return &RunLock{
 		lockID:      lockID,
@@ -63,17 +63,17 @@ func ReconstructRunLock(
 
 // IsExpired checks if the lock has expired
 func (l *RunLock) IsExpired() bool {
-	return time.Now().After(l.expiresAt)
+	return time.Now().UTC().After(l.expiresAt)
 }
 
 // IsHeartbeatStale checks if the heartbeat is stale (no update for TTL duration)
 func (l *RunLock) IsHeartbeatStale(maxStaleness time.Duration) bool {
-	return time.Now().Sub(l.heartbeatAt) > maxStaleness
+	return time.Now().UTC().Sub(l.heartbeatAt) > maxStaleness
 }
 
 // UpdateHeartbeat updates the heartbeat timestamp
 func (l *RunLock) UpdateHeartbeat() {
-	l.heartbeatAt = time.Now()
+	l.heartbeatAt = time.Now().UTC()
 }
 
 // Extend extends the lock expiration time

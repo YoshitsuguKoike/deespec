@@ -49,6 +49,29 @@ type RawSettings struct {
 	Workflow    *string `json:"workflow"`
 	PolicyPath  *string `json:"policy_path"`
 	StderrLevel *string `json:"stderr_level"`
+
+	// Label system configuration
+	LabelConfig *RawLabelConfig `json:"label_config"`
+}
+
+// RawLabelImportConfig represents import settings for labels
+type RawLabelImportConfig struct {
+	AutoPrefixFromDir *bool     `json:"auto_prefix_from_dir"`
+	MaxLineCount      *int      `json:"max_line_count"`
+	ExcludePatterns   *[]string `json:"exclude_patterns"`
+}
+
+// RawLabelValidationConfig represents validation settings for labels
+type RawLabelValidationConfig struct {
+	AutoSyncOnMismatch *bool `json:"auto_sync_on_mismatch"`
+	WarnOnLargeFiles   *bool `json:"warn_on_large_files"`
+}
+
+// RawLabelConfig represents label system configuration in setting.json
+type RawLabelConfig struct {
+	TemplateDirs *[]string                 `json:"template_dirs"`
+	Import       *RawLabelImportConfig     `json:"import"`
+	Validation   *RawLabelValidationConfig `json:"validation"`
 }
 
 // LoadSettings loads configuration from setting.json only.
@@ -185,6 +208,41 @@ func applyDefaults(settings *RawSettings) {
 		v := "warn" // Default to WARN level
 		settings.StderrLevel = &v
 	}
+
+	// Label system configuration
+	if settings.LabelConfig == nil {
+		settings.LabelConfig = &RawLabelConfig{}
+	}
+	if settings.LabelConfig.TemplateDirs == nil {
+		v := []string{".claude", ".deespec/prompts/labels"}
+		settings.LabelConfig.TemplateDirs = &v
+	}
+	if settings.LabelConfig.Import == nil {
+		settings.LabelConfig.Import = &RawLabelImportConfig{}
+	}
+	if settings.LabelConfig.Import.AutoPrefixFromDir == nil {
+		v := true
+		settings.LabelConfig.Import.AutoPrefixFromDir = &v
+	}
+	if settings.LabelConfig.Import.MaxLineCount == nil {
+		v := 1000
+		settings.LabelConfig.Import.MaxLineCount = &v
+	}
+	if settings.LabelConfig.Import.ExcludePatterns == nil {
+		v := []string{"*.secret.md", "settings.*.json", "tmp/**"}
+		settings.LabelConfig.Import.ExcludePatterns = &v
+	}
+	if settings.LabelConfig.Validation == nil {
+		settings.LabelConfig.Validation = &RawLabelValidationConfig{}
+	}
+	if settings.LabelConfig.Validation.AutoSyncOnMismatch == nil {
+		v := false
+		settings.LabelConfig.Validation.AutoSyncOnMismatch = &v
+	}
+	if settings.LabelConfig.Validation.WarnOnLargeFiles == nil {
+		v := true
+		settings.LabelConfig.Validation.WarnOnLargeFiles = &v
+	}
 }
 
 // checkDeprecated warns about deprecated settings
@@ -194,6 +252,20 @@ func checkDeprecated(settings *RawSettings) {
 
 // buildAppConfig converts RawSettings to AppConfig
 func buildAppConfig(settings *RawSettings, configSource, settingPath string) *config.AppConfig {
+	// Convert RawLabelConfig to config.LabelConfig
+	labelConfig := config.LabelConfig{
+		TemplateDirs: *settings.LabelConfig.TemplateDirs,
+		Import: config.LabelImportConfig{
+			AutoPrefixFromDir: *settings.LabelConfig.Import.AutoPrefixFromDir,
+			MaxLineCount:      *settings.LabelConfig.Import.MaxLineCount,
+			ExcludePatterns:   *settings.LabelConfig.Import.ExcludePatterns,
+		},
+		Validation: config.LabelValidationConfig{
+			AutoSyncOnMismatch: *settings.LabelConfig.Validation.AutoSyncOnMismatch,
+			WarnOnLargeFiles:   *settings.LabelConfig.Validation.WarnOnLargeFiles,
+		},
+	}
+
 	return config.NewAppConfig(
 		*settings.Home,
 		*settings.AgentBin,
@@ -216,6 +288,7 @@ func buildAppConfig(settings *RawSettings, configSource, settingPath string) *co
 		*settings.Workflow,
 		*settings.PolicyPath,
 		*settings.StderrLevel,
+		labelConfig,
 		configSource,
 		settingPath,
 	)

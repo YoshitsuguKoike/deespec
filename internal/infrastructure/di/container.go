@@ -13,6 +13,7 @@ import (
 	agentgateway "github.com/YoshitsuguKoike/deespec/internal/adapter/gateway/agent"
 	storagegateway "github.com/YoshitsuguKoike/deespec/internal/adapter/gateway/storage"
 	"github.com/YoshitsuguKoike/deespec/internal/adapter/presenter"
+	appconfig "github.com/YoshitsuguKoike/deespec/internal/app/config"
 	"github.com/YoshitsuguKoike/deespec/internal/application/port/input"
 	"github.com/YoshitsuguKoike/deespec/internal/application/port/output"
 	"github.com/YoshitsuguKoike/deespec/internal/application/service"
@@ -40,6 +41,7 @@ type Container struct {
 	sbiRepo       repository.SBIRepository
 	runLockRepo   repository.RunLockRepository
 	stateLockRepo repository.StateLockRepository
+	labelRepo     repository.LabelRepository
 
 	// Infrastructure Layer - Gateways
 	agentGateway   output.AgentGateway
@@ -93,6 +95,9 @@ type Config struct {
 	// Lock Service configuration
 	LockHeartbeatInterval time.Duration // Heartbeat interval for locks (default: 30s)
 	LockCleanupInterval   time.Duration // Cleanup interval for expired locks (default: 60s)
+
+	// Label system configuration
+	LabelConfig appconfig.LabelConfig
 }
 
 // NewContainer creates and initializes the DI container
@@ -163,6 +168,8 @@ func (c *Container) initializeInfrastructure() error {
 	c.sbiRepo = sqliterepo.NewSBIRepository(db)
 	c.runLockRepo = sqliterepo.NewRunLockRepository(db)
 	c.stateLockRepo = sqliterepo.NewStateLockRepository(db)
+	// Note: labelRepo will be initialized when GetLabelRepository() is called
+	// This allows it to use the loaded config
 
 	// 5. Initialize SQLite Transaction Manager
 	c.txManager = transaction.NewSQLiteTransactionManager(db)
@@ -359,6 +366,15 @@ func (c *Container) GetStorageGateway() output.StorageGateway {
 // GetLockService returns the lock service
 func (c *Container) GetLockService() service.LockService {
 	return c.lockService
+}
+
+// GetLabelRepository returns the label repository
+// Initializes on first call with configured LabelConfig
+func (c *Container) GetLabelRepository() repository.LabelRepository {
+	if c.labelRepo == nil {
+		c.labelRepo = sqliterepo.NewLabelRepository(c.db, c.config.LabelConfig)
+	}
+	return c.labelRepo
 }
 
 // Start starts background services (Lock Service, etc.)

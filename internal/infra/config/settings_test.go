@@ -139,6 +139,114 @@ func TestCreateDefaultSettings(t *testing.T) {
 	}
 }
 
+func TestLoadSettings_LabelConfig(t *testing.T) {
+	tests := []struct {
+		name                 string
+		setupFunc            func(t *testing.T, tmpDir string)
+		wantTemplateDirs     []string
+		wantAutoPrefix       bool
+		wantMaxLineCount     int
+		wantExcludePatterns  []string
+		wantAutoSync         bool
+		wantWarnOnLargeFiles bool
+	}{
+		{
+			name:                 "Default label config",
+			setupFunc:            nil,
+			wantTemplateDirs:     []string{".claude", ".deespec/prompts/labels"},
+			wantAutoPrefix:       true,
+			wantMaxLineCount:     1000,
+			wantExcludePatterns:  []string{"*.secret.md", "settings.*.json", "tmp/**"},
+			wantAutoSync:         false,
+			wantWarnOnLargeFiles: true,
+		},
+		{
+			name: "Custom label config from JSON",
+			setupFunc: func(t *testing.T, tmpDir string) {
+				settings := map[string]interface{}{
+					"label_config": map[string]interface{}{
+						"template_dirs": []string{".custom", ".templates"},
+						"import": map[string]interface{}{
+							"auto_prefix_from_dir": false,
+							"max_line_count":       500,
+							"exclude_patterns":     []string{"*.tmp"},
+						},
+						"validation": map[string]interface{}{
+							"auto_sync_on_mismatch": true,
+							"warn_on_large_files":   false,
+						},
+					},
+				}
+				data, err := json.MarshalIndent(settings, "", "  ")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(tmpDir, "setting.json"), data, 0644); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantTemplateDirs:     []string{".custom", ".templates"},
+			wantAutoPrefix:       false,
+			wantMaxLineCount:     500,
+			wantExcludePatterns:  []string{"*.tmp"},
+			wantAutoSync:         true,
+			wantWarnOnLargeFiles: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create temp directory
+			tmpDir, err := os.MkdirTemp("", "config-label-test-*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(tmpDir)
+
+			// Setup test data
+			if tt.setupFunc != nil {
+				tt.setupFunc(t, tmpDir)
+			}
+
+			// Load settings
+			cfg, err := LoadSettings(tmpDir)
+			if err != nil {
+				t.Fatalf("LoadSettings() error = %v", err)
+			}
+
+			// Check label config
+			labelCfg := cfg.LabelConfig()
+
+			if len(labelCfg.TemplateDirs) != len(tt.wantTemplateDirs) {
+				t.Errorf("TemplateDirs length = %d, want %d", len(labelCfg.TemplateDirs), len(tt.wantTemplateDirs))
+			}
+			for i, dir := range labelCfg.TemplateDirs {
+				if i < len(tt.wantTemplateDirs) && dir != tt.wantTemplateDirs[i] {
+					t.Errorf("TemplateDirs[%d] = %v, want %v", i, dir, tt.wantTemplateDirs[i])
+				}
+			}
+
+			if labelCfg.Import.AutoPrefixFromDir != tt.wantAutoPrefix {
+				t.Errorf("AutoPrefixFromDir = %v, want %v", labelCfg.Import.AutoPrefixFromDir, tt.wantAutoPrefix)
+			}
+			if labelCfg.Import.MaxLineCount != tt.wantMaxLineCount {
+				t.Errorf("MaxLineCount = %v, want %v", labelCfg.Import.MaxLineCount, tt.wantMaxLineCount)
+			}
+
+			if len(labelCfg.Import.ExcludePatterns) != len(tt.wantExcludePatterns) {
+				t.Errorf("ExcludePatterns length = %d, want %d", len(labelCfg.Import.ExcludePatterns), len(tt.wantExcludePatterns))
+			}
+
+			if labelCfg.Validation.AutoSyncOnMismatch != tt.wantAutoSync {
+				t.Errorf("AutoSyncOnMismatch = %v, want %v", labelCfg.Validation.AutoSyncOnMismatch, tt.wantAutoSync)
+			}
+			if labelCfg.Validation.WarnOnLargeFiles != tt.wantWarnOnLargeFiles {
+				t.Errorf("WarnOnLargeFiles = %v, want %v", labelCfg.Validation.WarnOnLargeFiles, tt.wantWarnOnLargeFiles)
+			}
+		})
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && hasSubstring(s, substr)
 }

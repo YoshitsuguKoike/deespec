@@ -78,8 +78,23 @@ func (wm *WorkflowManager) SetSBIRepository(sbiRepo repository.SBIRepository) {
 // TaskInfo holds information about the currently processing task
 type TaskInfo struct {
 	TaskID string
+	Title  string // Task title for display
 	Status string
 	Turn   int // Current turn number (1-based)
+}
+
+// truncateString truncates a string to maxChars characters (counting runes for multibyte support)
+// If truncated, appends "..." to the result
+func truncateString(s string, maxChars int) string {
+	runes := []rune(s)
+	if len(runes) <= maxChars {
+		return s
+	}
+	// Use maxChars-3 to leave room for "..."
+	if maxChars <= 3 {
+		return "..."
+	}
+	return string(runes[:maxChars-3]) + "..."
 }
 
 // getCurrentTaskInfo retrieves the currently processing task ID and status for a workflow
@@ -107,9 +122,10 @@ func (wm *WorkflowManager) getCurrentTaskInfo(workflowName string) *TaskInfo {
 				TaskID: taskID,
 			}
 
-			// Try to get task status and turn from SBI repository if available
+			// Try to get task details from SBI repository if available
 			if wm.sbiRepo != nil && workflowName == "sbi" {
 				if sbi, err := wm.sbiRepo.Find(wm.ctx, repository.SBIID(taskID)); err == nil && sbi != nil {
+					info.Title = truncateString(sbi.Title(), 50)
 					info.Status = string(sbi.Status())
 					info.Turn = sbi.ExecutionState().CurrentTurn.Value()
 				}
@@ -259,18 +275,24 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 				// Try to get current task info from state locks and repository
 				taskInfo := wm.getCurrentTaskInfo(runner.Name())
 				if taskInfo != nil {
+					// Use title if available, otherwise use task ID
+					taskDisplay := taskInfo.TaskID
+					if taskInfo.Title != "" {
+						taskDisplay = taskInfo.Title
+					}
+
 					if taskInfo.Status != "" && taskInfo.Turn > 0 {
 						wm.info("💓 [%s] Processing task %s [%s] (turn #%d)...",
-							runner.Name(), taskInfo.TaskID, taskInfo.Status, taskInfo.Turn)
+							runner.Name(), taskDisplay, taskInfo.Status, taskInfo.Turn)
 					} else if taskInfo.Status != "" {
 						wm.info("💓 [%s] Processing task %s [%s] (execution #%d)...",
-							runner.Name(), taskInfo.TaskID, taskInfo.Status, executionNum)
+							runner.Name(), taskDisplay, taskInfo.Status, executionNum)
 					} else if taskInfo.Turn > 0 {
 						wm.info("💓 [%s] Processing task %s (turn #%d)...",
-							runner.Name(), taskInfo.TaskID, taskInfo.Turn)
+							runner.Name(), taskDisplay, taskInfo.Turn)
 					} else {
 						wm.info("💓 [%s] Processing task %s (execution #%d)...",
-							runner.Name(), taskInfo.TaskID, executionNum)
+							runner.Name(), taskDisplay, executionNum)
 					}
 				} else {
 					wm.info("💓 [%s] Processing task (execution #%d)...", runner.Name(), executionNum)

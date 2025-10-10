@@ -22,13 +22,13 @@
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/adapter/gateway/agent	(cached)
 === RUN   TestLocalStorageGateway_SaveAndLoadArtifact
---- PASS: TestLocalStorageGateway_SaveAndLoadArtifact (0.01s)
+--- PASS: TestLocalStorageGateway_SaveAndLoadArtifact (0.00s)
 === RUN   TestLocalStorageGateway_ListArtifacts
---- PASS: TestLocalStorageGateway_ListArtifacts (0.00s)
+--- PASS: TestLocalStorageGateway_ListArtifacts (0.01s)
 === RUN   TestLocalStorageGateway_ListArtifacts_EmptyTask
 --- PASS: TestLocalStorageGateway_ListArtifacts_EmptyTask (0.00s)
 === RUN   TestLocalStorageGateway_LoadInstruction_AbsolutePath
---- PASS: TestLocalStorageGateway_LoadInstruction_AbsolutePath (0.01s)
+--- PASS: TestLocalStorageGateway_LoadInstruction_AbsolutePath (0.00s)
 === RUN   TestLocalStorageGateway_LoadInstruction_RelativePath
 --- PASS: TestLocalStorageGateway_LoadInstruction_RelativePath (0.00s)
 === RUN   TestLocalStorageGateway_DeleteArtifact
@@ -98,7 +98,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/adapter/presenter	(cached)
 === RUN   TestNormalizeJournalEntryMap_HandlesStringArtifacts
 --- PASS: TestNormalizeJournalEntryMap_HandlesStringArtifacts (0.00s)
 === RUN   TestJournalWriter_Append
---- PASS: TestJournalWriter_Append (0.00s)
+--- PASS: TestJournalWriter_Append (0.01s)
 === RUN   TestJournalWriter_QuickAppend
 --- PASS: TestJournalWriter_QuickAppend (0.01s)
 === RUN   TestJournalWriter_ValidationWarning
@@ -110,7 +110,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/adapter/presenter	(cached)
 === RUN   TestJournalWriterConcurrentAppends
 --- PASS: TestJournalWriterConcurrentAppends (0.02s)
 === RUN   TestJournalWriterNormalization
---- PASS: TestJournalWriterNormalization (0.00s)
+--- PASS: TestJournalWriterNormalization (0.01s)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/app	(cached)
 ?   	github.com/YoshitsuguKoike/deespec/internal/app/config	[no test files]
@@ -119,20 +119,20 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/app	(cached)
 === RUN   TestLoadState/minimal_valid_state
 === RUN   TestLoadState/state_with_defaults
 === RUN   TestLoadState/legacy_current_field
-2025/10/08 22:51:49 INFO: Migrating 'current' field to 'step' in state.json
+2025/10/11 00:02:15 INFO: Migrating 'current' field to 'step' in state.json
 === RUN   TestLoadState/invalid_step_value
-2025/10/08 22:51:49 WARN: Invalid step value 'foo' in state.json (expected: plan, implement, test, review, or done)
+2025/10/11 00:02:15 WARN: Invalid step value 'foo' in state.json (expected: plan, implement, test, review, or done)
 === RUN   TestLoadState/both_step_and_current_(step_wins)
---- PASS: TestLoadState (0.08s)
-    --- PASS: TestLoadState/minimal_valid_state (0.03s)
-    --- PASS: TestLoadState/state_with_defaults (0.01s)
-    --- PASS: TestLoadState/legacy_current_field (0.02s)
-    --- PASS: TestLoadState/invalid_step_value (0.01s)
+--- PASS: TestLoadState (0.01s)
+    --- PASS: TestLoadState/minimal_valid_state (0.00s)
+    --- PASS: TestLoadState/state_with_defaults (0.00s)
+    --- PASS: TestLoadState/legacy_current_field (0.00s)
+    --- PASS: TestLoadState/invalid_step_value (0.00s)
     --- PASS: TestLoadState/both_step_and_current_(step_wins) (0.00s)
 === RUN   TestSaveStateAtomic
---- PASS: TestSaveStateAtomic (0.01s)
+--- PASS: TestSaveStateAtomic (0.00s)
 === RUN   TestSaveStateAtomicOverwrite
---- PASS: TestSaveStateAtomicOverwrite (0.01s)
+--- PASS: TestSaveStateAtomicOverwrite (0.00s)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/app/state	(cached)
 ?   	github.com/YoshitsuguKoike/deespec/internal/application/dto	[no test files]
@@ -163,7 +163,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/application/port/output	(cached
 === RUN   TestAgentPool_Reset
 --- PASS: TestAgentPool_Reset (0.00s)
 === RUN   TestAgentPool_ConcurrentAccess
-    agent_pool_test.go:241: Max concurrent: 4 out of 20 goroutines
+    agent_pool_test.go:241: Max concurrent: 2 out of 20 goroutines
 --- PASS: TestAgentPool_ConcurrentAccess (0.00s)
 === RUN   TestAgentPool_MultipleAgents
 --- PASS: TestAgentPool_MultipleAgents (0.00s)
@@ -195,7 +195,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/application/port/output	(cached
 --- PASS: TestAgentPool_ConcurrentAcquireRelease (0.00s)
 === RUN   TestAgentPool_StressTest
     agent_pool_test.go:410: Stress test: 1000 goroutines, max concurrent: 10
---- PASS: TestAgentPool_StressTest (0.00s)
+--- PASS: TestAgentPool_StressTest (0.01s)
 === RUN   TestConflictDetector_NewConflictDetector
 --- PASS: TestConflictDetector_NewConflictDetector (0.00s)
 === RUN   TestConflictDetector_RegisterAndUnregister
@@ -273,9 +273,9 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/application/service	(cached)
 === RUN   TestWorkflowManager_GetEnabledWorkflows
 --- PASS: TestWorkflowManager_GetEnabledWorkflows (0.00s)
 === RUN   TestWorkflowManager_RunWorkflow
---- PASS: TestWorkflowManager_RunWorkflow (0.21s)
+--- PASS: TestWorkflowManager_RunWorkflow (0.20s)
 === RUN   TestWorkflowManager_RunAll
---- PASS: TestWorkflowManager_RunAll (0.21s)
+--- PASS: TestWorkflowManager_RunAll (0.20s)
 === RUN   TestWorkflowManager_ErrorHandling
 --- PASS: TestWorkflowManager_ErrorHandling (0.20s)
 === RUN   TestWorkflowManager_Stats
@@ -283,7 +283,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/application/service	(cached)
 === RUN   TestWorkflowManager_ConcurrentAccess
 --- PASS: TestWorkflowManager_ConcurrentAccess (0.11s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/application/workflow	1.251s
+ok  	github.com/YoshitsuguKoike/deespec/internal/application/workflow	(cached)
 ?   	github.com/YoshitsuguKoike/deespec/internal/buildinfo	[no test files]
 ?   	github.com/YoshitsuguKoike/deespec/internal/domain	[no test files]
 === RUN   TestNewSBIExecution
@@ -417,9 +417,9 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/hello	(cached)
 === RUN   TestLoadSettings
 === RUN   TestLoadSettings/Default_values_only
 === RUN   TestLoadSettings/JSON_file_only
---- PASS: TestLoadSettings (0.00s)
+--- PASS: TestLoadSettings (0.01s)
     --- PASS: TestLoadSettings/Default_values_only (0.00s)
-    --- PASS: TestLoadSettings/JSON_file_only (0.00s)
+    --- PASS: TestLoadSettings/JSON_file_only (0.01s)
 === RUN   TestToBool
 === RUN   TestToBool/1
 === RUN   TestToBool/true
@@ -473,178 +473,178 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/infra/config	(cached)
 === RUN   TestFsyncFile
 --- PASS: TestFsyncFile (0.01s)
 === RUN   TestFsyncDir
---- PASS: TestFsyncDir (0.02s)
+--- PASS: TestFsyncDir (0.01s)
 === RUN   TestAtomicRename
 --- PASS: TestAtomicRename (0.01s)
 === RUN   TestWriteFileSync
---- PASS: TestWriteFileSync (0.03s)
+--- PASS: TestWriteFileSync (0.02s)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/infra/fs	(cached)
 === RUN   TestChecksumMismatchRecoveryIntegration
 === RUN   TestChecksumMismatchRecoveryIntegration/ChecksumMismatchFailsGracefully
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_323827000/stage/test_file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_345286000/stage/test_file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_323827000/stage/test_file.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=34 actual_size=30
+ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_345286000/stage/test_file.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=34 actual_size=30
 
 === RUN   TestChecksumMismatchRecoveryIntegration/RecoveryDetectsCorruptedTransaction
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_371765000/stage/recovery_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_387790000/stage/recovery_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-[TXN-SCAN] 2025/10/09 17:25:14 WARN: Found transaction with intent but no commit txn.id=txn_1759998314_323827000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:14 WARN: Found transaction with intent but no commit txn.id=txn_1759998314_371765000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:14 SUMMARY: Transaction scan complete txn.scan.total=2 txn.scan.timestamp=2025-10-09T08:25:14Z
-[TXN-SCAN] 2025/10/09 17:25:14   - Forward recovery needed txn.scan.intent_only_count=2 txn.scan.intent_only_ids=[txn_1759998314_323827000,txn_1759998314_371765000]
-[TXN-SCAN] 2025/10/09 17:25:14 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
-ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_323827000/stage/test_file.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=34 actual_size=30
+[TXN-SCAN] 2025/10/11 00:02:36 WARN: Found transaction with intent but no commit txn.id=txn_1760108556_345286000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:36 WARN: Found transaction with intent but no commit txn.id=txn_1760108556_387790000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:36 SUMMARY: Transaction scan complete txn.scan.total=2 txn.scan.timestamp=2025-10-10T15:02:36Z
+[TXN-SCAN] 2025/10/11 00:02:36   - Forward recovery needed txn.scan.intent_only_count=2 txn.scan.intent_only_ids=[txn_1760108556_345286000,txn_1760108556_387790000]
+[TXN-SCAN] 2025/10/11 00:02:36 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_345286000/stage/test_file.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=34 actual_size=30
 
-WARN: Transaction recovery timeout/cancelled txn.id=txn_1759998314_323827000 txn.retry.attempt=0
+WARN: Transaction recovery timeout/cancelled txn.id=txn_1760108556_345286000 txn.retry.attempt=0
 
-ERROR: Failed to recover transaction txn.recover.forward.failed=txn_1759998314_323827000 error=transaction recovery failed after 4 attempts: failed to complete commit during recovery: staged file checksum validation failed for test_file.txt: file size mismatch: expected 34 bytes, got 30 bytes
+ERROR: Failed to recover transaction txn.recover.forward.failed=txn_1760108556_345286000 error=transaction recovery failed after 4 attempts: failed to complete commit during recovery: staged file checksum validation failed for test_file.txt: file size mismatch: expected 34 bytes, got 30 bytes
 
-ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_371765000/stage/recovery_test.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=21 actual_size=26
+ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_387790000/stage/recovery_test.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=21 actual_size=26
 
-WARN: Transaction recovery timeout/cancelled txn.id=txn_1759998314_371765000 txn.retry.attempt=0
+WARN: Transaction recovery timeout/cancelled txn.id=txn_1760108556_387790000 txn.retry.attempt=0
 
-ERROR: Failed to recover transaction txn.recover.forward.failed=txn_1759998314_371765000 error=transaction recovery failed after 4 attempts: failed to complete commit during recovery: staged file checksum validation failed for recovery_test.txt: file size mismatch: expected 21 bytes, got 26 bytes
+ERROR: Failed to recover transaction txn.recover.forward.failed=txn_1760108556_387790000 error=transaction recovery failed after 4 attempts: failed to complete commit during recovery: staged file checksum validation failed for recovery_test.txt: file size mismatch: expected 21 bytes, got 26 bytes
 
-INFO: Recovery complete txn.recover.forward.count=2 txn.recover.forward.success=0 txn.cleanup.success=0 txn.recover.duration_ms=0
+INFO: Recovery complete txn.recover.forward.count=2 txn.recover.forward.success=0 txn.cleanup.success=0 txn.recover.duration_ms=2
 
 === RUN   TestChecksumMismatchRecoveryIntegration/ParallelChecksumValidationDuringRecovery
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4284796511/001/.deespec/var/txn/txn_1759998314_405205000/stage/parallel_test_A.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4168651955/001/.deespec/var/txn/txn_1760108556_427595000/stage/parallel_test_A.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4284796511/001/.deespec/var/txn/txn_1759998314_439113000/stage/parallel_test_B.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4168651955/001/.deespec/var/txn/txn_1760108556_465898000/stage/parallel_test_B.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4284796511/001/.deespec/var/txn/txn_1759998314_475288000/stage/parallel_test_C.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4168651955/001/.deespec/var/txn/txn_1760108556_505853000/stage/parallel_test_C.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-[TXN-SCAN] 2025/10/09 17:25:14 WARN: Found transaction with intent but no commit txn.id=txn_1759998314_405205000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:14 WARN: Found transaction with intent but no commit txn.id=txn_1759998314_439113000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:14 WARN: Found transaction with intent but no commit txn.id=txn_1759998314_475288000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:14 SUMMARY: Transaction scan complete txn.scan.total=3 txn.scan.timestamp=2025-10-09T08:25:14Z
-[TXN-SCAN] 2025/10/09 17:25:14   - Forward recovery needed txn.scan.intent_only_count=3 txn.scan.intent_only_ids=[txn_1759998314_405205000,txn_1759998314_439113000,txn_1759998314_475288000]
-[TXN-SCAN] 2025/10/09 17:25:14 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4284796511/001/.deespec/var/txn/txn_1759998314_405205000/stage/parallel_test_A.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+[TXN-SCAN] 2025/10/11 00:02:36 WARN: Found transaction with intent but no commit txn.id=txn_1760108556_427595000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:36 WARN: Found transaction with intent but no commit txn.id=txn_1760108556_465898000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:36 WARN: Found transaction with intent but no commit txn.id=txn_1760108556_505853000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:36 SUMMARY: Transaction scan complete txn.scan.total=3 txn.scan.timestamp=2025-10-10T15:02:36Z
+[TXN-SCAN] 2025/10/11 00:02:36   - Forward recovery needed txn.scan.intent_only_count=3 txn.scan.intent_only_ids=[txn_1760108556_427595000,txn_1760108556_465898000,txn_1760108556_505853000]
+[TXN-SCAN] 2025/10/11 00:02:36 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4168651955/001/.deespec/var/txn/txn_1760108556_427595000/stage/parallel_test_A.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4284796511/001/.deespec/parallel_test_A.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4168651955/001/.deespec/parallel_test_A.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998314_405205000
+WARN: Forward recovery without journal callback for txn_1760108556_427595000
 
-INFO: Recovered transaction txn.recover.forward.success=txn_1759998314_405205000
+INFO: Recovered transaction txn.recover.forward.success=txn_1760108556_427595000
 
-ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4284796511/001/.deespec/var/txn/txn_1759998314_439113000/stage/parallel_test_B.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=23 actual_size=26
+ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4168651955/001/.deespec/var/txn/txn_1760108556_465898000/stage/parallel_test_B.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=23 actual_size=26
 
-WARN: Transaction recovery timeout/cancelled txn.id=txn_1759998314_439113000 txn.retry.attempt=0
+WARN: Transaction recovery timeout/cancelled txn.id=txn_1760108556_465898000 txn.retry.attempt=0
 
-ERROR: Failed to recover transaction txn.recover.forward.failed=txn_1759998314_439113000 error=transaction recovery failed after 4 attempts: failed to complete commit during recovery: staged file checksum validation failed for parallel_test_B.txt: file size mismatch: expected 23 bytes, got 26 bytes
+ERROR: Failed to recover transaction txn.recover.forward.failed=txn_1760108556_465898000 error=transaction recovery failed after 4 attempts: failed to complete commit during recovery: staged file checksum validation failed for parallel_test_B.txt: file size mismatch: expected 23 bytes, got 26 bytes
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4284796511/001/.deespec/var/txn/txn_1759998314_475288000/stage/parallel_test_C.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4168651955/001/.deespec/var/txn/txn_1760108556_505853000/stage/parallel_test_C.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4284796511/001/.deespec/parallel_test_C.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestChecksumMismatchRecoveryIntegrationParallelChecksumValidationDuringRecovery4168651955/001/.deespec/parallel_test_C.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998314_475288000
+WARN: Forward recovery without journal callback for txn_1760108556_505853000
 
-INFO: Recovered transaction txn.recover.forward.success=txn_1759998314_475288000
+INFO: Recovered transaction txn.recover.forward.success=txn_1760108556_505853000
 
-INFO: Recovery complete txn.recover.forward.count=3 txn.recover.forward.success=2 txn.cleanup.success=0 txn.recover.duration_ms=48
+INFO: Recovery complete txn.recover.forward.count=3 txn.recover.forward.success=2 txn.cleanup.success=0 txn.recover.duration_ms=41
 
 === RUN   TestChecksumMismatchRecoveryIntegration/LargeTransactionWorkerPoolValidation
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_0.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_0.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_4.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_4.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_5.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_5.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_6.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_6.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_7.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_7.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_0.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_0.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_4.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_4.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_5.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_5.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_6.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_7.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_6.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_7.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
 INFO: Using parallel checksum validation txn.checksum.parallel=true txn.files=8 txn.workers=4
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_0.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_4.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_0.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_4.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_5.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_5.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_6.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_6.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_7.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/var/txn/txn_1759998314_558685000/stage/worker_test_7.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Parallel checksum calculation completed txn.checksum.calculation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/var/txn/txn_1760108556_591635000/stage/worker_test_2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/worker_test_0.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/worker_test_0.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/worker_test_1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/worker_test_1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/worker_test_2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/worker_test_2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/worker_test_3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/worker_test_3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/worker_test_4.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/worker_test_4.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/worker_test_5.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/worker_test_5.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/worker_test_6.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/worker_test_6.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_815763198/.deespec/worker_test_7.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_recovery_test_2763671360/.deespec/worker_test_7.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998314_558685000
+WARN: Forward recovery without journal callback for txn_1760108556_591635000
 
---- PASS: TestChecksumMismatchRecoveryIntegration (0.41s)
-    --- PASS: TestChecksumMismatchRecoveryIntegration/ChecksumMismatchFailsGracefully (0.05s)
-    --- PASS: TestChecksumMismatchRecoveryIntegration/RecoveryDetectsCorruptedTransaction (0.03s)
-    --- PASS: TestChecksumMismatchRecoveryIntegration/ParallelChecksumValidationDuringRecovery (0.15s)
-    --- PASS: TestChecksumMismatchRecoveryIntegration/LargeTransactionWorkerPoolValidation (0.17s)
+--- PASS: TestChecksumMismatchRecoveryIntegration (0.48s)
+    --- PASS: TestChecksumMismatchRecoveryIntegration/ChecksumMismatchFailsGracefully (0.04s)
+    --- PASS: TestChecksumMismatchRecoveryIntegration/RecoveryDetectsCorruptedTransaction (0.04s)
+    --- PASS: TestChecksumMismatchRecoveryIntegration/ParallelChecksumValidationDuringRecovery (0.16s)
+    --- PASS: TestChecksumMismatchRecoveryIntegration/LargeTransactionWorkerPoolValidation (0.23s)
 === RUN   TestChecksumCalculation
 --- PASS: TestChecksumCalculation (0.00s)
 === RUN   TestChecksumValidation
 --- PASS: TestChecksumValidation (0.00s)
 === RUN   TestFileChecksumValidation
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_test_1231515586/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_test_4283688950/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_test_1231515586/test.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=26 actual_size=21
+ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/checksum_test_4283688950/test.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=26 actual_size=21
 
 --- PASS: TestFileChecksumValidation (0.00s)
 === RUN   TestTransactionChecksumIntegration
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_checksum_test_1058545787/.deespec/var/txn/txn_1759998314_733437000/stage/checksum_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_checksum_test_2791208661/.deespec/var/txn/txn_1760108556_824415000/stage/checksum_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_checksum_test_1058545787/.deespec/var/txn/txn_1759998314_733437000/stage/checksum_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_checksum_test_2791208661/.deespec/var/txn/txn_1760108556_824415000/stage/checksum_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_checksum_test_1058545787/.deespec/checksum_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_checksum_test_2791208661/.deespec/checksum_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998314_733437000
+WARN: Forward recovery without journal callback for txn_1760108556_824415000
 
---- PASS: TestTransactionChecksumIntegration (0.09s)
+--- PASS: TestTransactionChecksumIntegration (0.06s)
 === RUN   TestChecksumCorruptionDetection
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/corruption_test_2677555994/.deespec/var/txn/txn_1759998314_818705000/stage/corrupt_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/corruption_test_3539963098/.deespec/var/txn/txn_1760108556_882175000/stage/corrupt_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/corruption_test_2677555994/.deespec/var/txn/txn_1759998314_818705000/stage/corrupt_test.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=25 actual_size=17
+ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/corruption_test_3539963098/.deespec/var/txn/txn_1760108556_882175000/stage/corrupt_test.txt txn.checksum.calculation.duration_ms=0ms error=size_mismatch expected_size=25 actual_size=17
 
---- PASS: TestChecksumCorruptionDetection (0.06s)
+--- PASS: TestChecksumCorruptionDetection (0.04s)
 === RUN   TestUnsupportedChecksumAlgorithm
 --- PASS: TestUnsupportedChecksumAlgorithm (0.00s)
 === RUN   TestCompareFileChecksums
@@ -654,34 +654,34 @@ ERROR: Checksum validation failed txn.checksum.validation.failed=/var/folders/m1
 === RUN   TestMetricsRaceConditions/ConcurrentReadWrite
 === RUN   TestMetricsRaceConditions/ConcurrentFileAccess
 === RUN   TestMetricsRaceConditions/ConcurrentSnapshotOperations
-INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_2039664950/snapshots/metrics_20251009_082515_955462000.json
+INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_280720151/snapshots/metrics_20251010_150237_863483000.json
 
-INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_2039664950/snapshots/metrics_20251009_082515_955543000.json
+INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_280720151/snapshots/metrics_20251010_150237_863762000.json
 
-INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_2039664950/snapshots/metrics_20251009_082515_955775000.json
+INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_280720151/snapshots/metrics_20251010_150237_863472000.json
 
-INFO: Metrics rotated and reset counters=false
-INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_2039664950/snapshots/metrics_20251009_082515_955479000.json
+INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_280720151/snapshots/metrics_20251010_150237_863731000.json
 
-INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_2039664950/snapshots/metrics_20251009_082515_955555000.json
-
-INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_2039664950/snapshots/metrics_20251009_082515_956029000.json
+INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_280720151/snapshots/metrics_20251010_150237_864068000.json
 
 INFO: Metrics rotated and reset counters=false
-INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_2039664950/snapshots/metrics_20251009_082515_955963000.json
+INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_280720151/snapshots/metrics_20251010_150237_864152000.json
 
 INFO: Metrics rotated and reset counters=false
-INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_2039664950/snapshots/metrics_20251009_082515_955912000.json
+INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_280720151/snapshots/metrics_20251010_150237_864228000.json
 
 INFO: Metrics rotated and reset counters=false
---- PASS: TestMetricsRaceConditions (1.07s)
+INFO: Metrics snapshot created path=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/metrics_race_test_280720151/snapshots/metrics_20251010_150237_864312000.json
+
+INFO: Metrics rotated and reset counters=false
+--- PASS: TestMetricsRaceConditions (0.94s)
     --- PASS: TestMetricsRaceConditions/ConcurrentIncrements (0.00s)
     --- PASS: TestMetricsRaceConditions/ConcurrentReadWrite (0.00s)
-    --- PASS: TestMetricsRaceConditions/ConcurrentFileAccess (1.07s)
+    --- PASS: TestMetricsRaceConditions/ConcurrentFileAccess (0.93s)
     --- PASS: TestMetricsRaceConditions/ConcurrentSnapshotOperations (0.00s)
 === RUN   TestMetricsDeadlockDetection
     metrics_race_test.go:282: Deadlock test completed successfully
---- PASS: TestMetricsDeadlockDetection (0.43s)
+--- PASS: TestMetricsDeadlockDetection (0.23s)
 === RUN   TestMultiProcessConcurrentMetrics
     multiprocess_e2e_test.go:108: Final metrics after 3 processes × 20 operations:
     multiprocess_e2e_test.go:109:   CommitSuccess: 15
@@ -691,125 +691,125 @@ INFO: Metrics rotated and reset counters=false
     multiprocess_e2e_test.go:113:   SchemaVersion: 1
 --- PASS: TestMultiProcessConcurrentMetrics (0.27s)
 === RUN   TestMultiProcessRegisterAndStateTransactions
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_662111000/stage/specs/process-0-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_361708000/stage/specs/process-0-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_662114000/stage/specs/process-1-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_361727000/stage/specs/process-1-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_662111000/stage/specs/process-0-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_361727000/stage/specs/process-1-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_662114000/stage/specs/process-1-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_361708000/stage/specs/process-0-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_662111000/stage/specs/process-0-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_361708000/stage/specs/process-0-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_662111000/stage/specs/process-0-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_361708000/stage/specs/process-0-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_662114000/stage/specs/process-1-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_361727000/stage/specs/process-1-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_662114000/stage/specs/process-1-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_361727000/stage/specs/process-1-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=1ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=1ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-0/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-0/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_822768000/stage/specs/process-0-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_513916000/stage/specs/process-0-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_834718000/stage/specs/process-1-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_517087000/stage/specs/process-1-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=1ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_822768000/stage/specs/process-0-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_513916000/stage/specs/process-0-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_834718000/stage/specs/process-1-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_517087000/stage/specs/process-1-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_822768000/stage/specs/process-0-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_513916000/stage/specs/process-0-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_822768000/stage/specs/process-0-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_513916000/stage/specs/process-0-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_834718000/stage/specs/process-1-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_517087000/stage/specs/process-1-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_517087000/stage/specs/process-1-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_834718000/stage/specs/process-1-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-1/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-1/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=1ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_975339000/stage/specs/process-0-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_679108000/stage/specs/process-0-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_975339000/stage/specs/process-0-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_683261000/stage/specs/process-1-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_988366000/stage/specs/process-1-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_679108000/stage/specs/process-0-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_988366000/stage/specs/process-1-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_683261000/stage/specs/process-1-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_975339000/stage/specs/process-0-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_679108000/stage/specs/process-0-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_975339000/stage/specs/process-0-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_679108000/stage/specs/process-0-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_683261000/stage/specs/process-1-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_683261000/stage/specs/process-1-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_988366000/stage/specs/process-1-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998316_988366000/stage/specs/process-1-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-2/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-2/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_123161000/stage/specs/process-0-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_835821000/stage/specs/process-0-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_123161000/stage/specs/process-0-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_839154000/stage/specs/process-1-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_141227000/stage/specs/process-1-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_835821000/stage/specs/process-0-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_141227000/stage/specs/process-1-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_839154000/stage/specs/process-1-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_123161000/stage/specs/process-0-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_835821000/stage/specs/process-0-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_123161000/stage/specs/process-0-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_835821000/stage/specs/process-0-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_839154000/stage/specs/process-1-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_141227000/stage/specs/process-1-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_839154000/stage/specs/process-1-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_141227000/stage/specs/process-1-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-3/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-3/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_277455000/stage/specs/process-0-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=2ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_995767000/stage/specs/process-0-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_292773000/stage/specs/process-1-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_999175000/stage/specs/process-1-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_277455000/stage/specs/process-0-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_995767000/stage/specs/process-0-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_292773000/stage/specs/process-1-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_999175000/stage/specs/process-1-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_277455000/stage/specs/process-0-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_995767000/stage/specs/process-0-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_277455000/stage/specs/process-0-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_995767000/stage/specs/process-0-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_292773000/stage/specs/process-1-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_999175000/stage/specs/process-1-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/var/txn/txn_1759998317_292773000/stage/specs/process-1-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/var/txn/txn_1760108558_999175000/stage/specs/process-1-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-4/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-0-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-1-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1820596126/.deespec/specs/process-1-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/multiprocess_register_e2e_1354485471/.deespec/specs/process-0-txn-4/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
     multiprocess_e2e_test.go:248: Multi-process register/state-tx test completed:
     multiprocess_e2e_test.go:249:   Expected successes: 10
@@ -825,237 +825,237 @@ INFO: Checksum validation successful txn.checksum.validation.success=/var/folder
     multiprocess_e2e_test.go:370:   Minimum expected: 500
     multiprocess_e2e_test.go:371:   Actual final count: 500
     multiprocess_e2e_test.go:377: Multi-process consistency test passed - file locking prevented data corruption
---- PASS: TestMultiProcessMetricsConsistency (2.46s)
+--- PASS: TestMultiProcessMetricsConsistency (2.18s)
 === RUN   TestForwardRecovery
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2053158627/.deespec/var/txn/txn_1759998319_936546000/stage/test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2493331485/.deespec/var/txn/txn_1760108561_353045000/stage/test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2053158627/.deespec/var/txn/txn_1759998319_936546000/stage/test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2493331485/.deespec/var/txn/txn_1760108561_353045000/stage/test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-[TXN-SCAN] 2025/10/09 17:25:19 WARN: Found transaction with intent but no commit txn.id=txn_1759998319_936546000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:19 SUMMARY: Transaction scan complete txn.scan.total=1 txn.scan.timestamp=2025-10-09T08:25:19Z
-[TXN-SCAN] 2025/10/09 17:25:19   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_1759998319_936546000]
-[TXN-SCAN] 2025/10/09 17:25:19 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2053158627/.deespec/var/txn/txn_1759998319_936546000/stage/test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+[TXN-SCAN] 2025/10/11 00:02:41 WARN: Found transaction with intent but no commit txn.id=txn_1760108561_353045000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:41 SUMMARY: Transaction scan complete txn.scan.total=1 txn.scan.timestamp=2025-10-10T15:02:41Z
+[TXN-SCAN] 2025/10/11 00:02:41   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_1760108561_353045000]
+[TXN-SCAN] 2025/10/11 00:02:41 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2493331485/.deespec/var/txn/txn_1760108561_353045000/stage/test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2053158627/.deespec/var/txn/txn_1759998319_936546000/stage/test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2493331485/.deespec/var/txn/txn_1760108561_353045000/stage/test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2053158627/.deespec/test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2493331485/.deespec/test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2053158627/.deespec/test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_test_2493331485/.deespec/test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998319_936546000
+WARN: Forward recovery without journal callback for txn_1760108561_353045000
 
-INFO: Recovered transaction txn.recover.forward.success=txn_1759998319_936546000
+INFO: Recovered transaction txn.recover.forward.success=txn_1760108561_353045000
 
-INFO: Recovery complete txn.recover.forward.count=1 txn.recover.forward.success=1 txn.cleanup.success=0 txn.recover.duration_ms=24
+INFO: Recovery complete txn.recover.forward.count=1 txn.recover.forward.success=1 txn.cleanup.success=0 txn.recover.duration_ms=27
 
---- PASS: TestForwardRecovery (0.09s)
+--- PASS: TestForwardRecovery (0.08s)
 === RUN   TestIdempotentCommit
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/idempotent_test_2899483951/.deespec/var/txn/txn_1759998320_23748000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/idempotent_test_1649327040/.deespec/var/txn/txn_1760108561_435901000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/idempotent_test_2899483951/.deespec/var/txn/txn_1759998320_23748000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/idempotent_test_1649327040/.deespec/var/txn/txn_1760108561_435901000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/idempotent_test_2899483951/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/idempotent_test_1649327040/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_23748000
+WARN: Forward recovery without journal callback for txn_1760108561_435901000
 
-INFO: Transaction already committed (no-op) txn.commit.idempotent=true txn.id=txn_1759998320_23748000
+INFO: Transaction already committed (no-op) txn.commit.idempotent=true txn.id=txn_1760108561_435901000
 
 --- PASS: TestIdempotentCommit (0.06s)
 === RUN   TestCleanupAfterCommit
-[TXN-SCAN] 2025/10/09 17:25:20 INFO: Found completed transaction txn.id=txn_test_cleanup txn.state=committed txn.action=cleanup_ready
-[TXN-SCAN] 2025/10/09 17:25:20 SUMMARY: Transaction scan complete txn.scan.total=1 txn.scan.timestamp=2025-10-09T08:25:20Z
-[TXN-SCAN] 2025/10/09 17:25:20   - Ready for cleanup txn.scan.committed_count=1 txn.scan.committed_ids=[txn_test_cleanup]
-[TXN-SCAN] 2025/10/09 17:25:20 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+[TXN-SCAN] 2025/10/11 00:02:41 INFO: Found completed transaction txn.id=txn_test_cleanup txn.state=committed txn.action=cleanup_ready
+[TXN-SCAN] 2025/10/11 00:02:41 SUMMARY: Transaction scan complete txn.scan.total=1 txn.scan.timestamp=2025-10-10T15:02:41Z
+[TXN-SCAN] 2025/10/11 00:02:41   - Ready for cleanup txn.scan.committed_count=1 txn.scan.committed_ids=[txn_test_cleanup]
+[TXN-SCAN] 2025/10/11 00:02:41 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
 INFO: Cleaned up transaction txn.cleanup.success=txn_test_cleanup
 
-INFO: Recovery complete txn.recover.forward.count=0 txn.recover.forward.success=0 txn.cleanup.success=1 txn.recover.duration_ms=0
+INFO: Recovery complete txn.recover.forward.count=0 txn.recover.forward.success=0 txn.cleanup.success=1 txn.recover.duration_ms=1
 
 --- PASS: TestCleanupAfterCommit (0.00s)
 === RUN   TestEarlyEXDEVDetection
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/exdev_test_3332272228/.deespec/var/txn/txn_1759998320_89583000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=2ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/exdev_test_3367178625/.deespec/var/txn/txn_1760108561_500470000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
     recovery_test.go:214: Same filesystem - no EXDEV error (expected)
 --- PASS: TestEarlyEXDEVDetection (0.03s)
 === RUN   TestE2ECrashRecoveryWithRetry
 === RUN   TestE2ECrashRecoveryWithRetry/MultipleTransactionCrashRecovery
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/var/txn/txn_1759998320_123044000/stage/artifacts/fileA.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/var/txn/txn_1760108561_533383000/stage/artifacts/fileA.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/var/txn/txn_1759998320_158417000/stage/artifacts/fileB.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/var/txn/txn_1760108561_573834000/stage/artifacts/fileB.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/var/txn/txn_1759998320_197332000/stage/artifacts/fileC.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/var/txn/txn_1760108561_612788000/stage/artifacts/fileC.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found transaction with intent but no commit txn.id=txn_1759998320_123044000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found transaction with intent but no commit txn.id=txn_1759998320_158417000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found transaction with intent but no commit txn.id=txn_1759998320_197332000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:20 SUMMARY: Transaction scan complete txn.scan.total=3 txn.scan.timestamp=2025-10-09T08:25:20Z
-[TXN-SCAN] 2025/10/09 17:25:20   - Forward recovery needed txn.scan.intent_only_count=3 txn.scan.intent_only_ids=[txn_1759998320_123044000,txn_1759998320_158417000,txn_1759998320_197332000]
-[TXN-SCAN] 2025/10/09 17:25:20 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/var/txn/txn_1759998320_123044000/stage/artifacts/fileA.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+[TXN-SCAN] 2025/10/11 00:02:41 WARN: Found transaction with intent but no commit txn.id=txn_1760108561_533383000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:41 WARN: Found transaction with intent but no commit txn.id=txn_1760108561_573834000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:41 WARN: Found transaction with intent but no commit txn.id=txn_1760108561_612788000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:41 SUMMARY: Transaction scan complete txn.scan.total=3 txn.scan.timestamp=2025-10-10T15:02:41Z
+[TXN-SCAN] 2025/10/11 00:02:41   - Forward recovery needed txn.scan.intent_only_count=3 txn.scan.intent_only_ids=[txn_1760108561_533383000,txn_1760108561_573834000,txn_1760108561_612788000]
+[TXN-SCAN] 2025/10/11 00:02:41 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/var/txn/txn_1760108561_533383000/stage/artifacts/fileA.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/artifacts/fileA.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=1ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/artifacts/fileA.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_123044000
+WARN: Forward recovery without journal callback for txn_1760108561_533383000
 
-INFO: Recovered transaction txn.recover.forward.success=txn_1759998320_123044000
+INFO: Recovered transaction txn.recover.forward.success=txn_1760108561_533383000
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/var/txn/txn_1759998320_158417000/stage/artifacts/fileB.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/var/txn/txn_1760108561_573834000/stage/artifacts/fileB.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/artifacts/fileB.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/artifacts/fileB.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_158417000
+WARN: Forward recovery without journal callback for txn_1760108561_573834000
 
-INFO: Recovered transaction txn.recover.forward.success=txn_1759998320_158417000
+INFO: Recovered transaction txn.recover.forward.success=txn_1760108561_573834000
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/var/txn/txn_1759998320_197332000/stage/artifacts/fileC.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/var/txn/txn_1760108561_612788000/stage/artifacts/fileC.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/artifacts/fileC.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=1ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/artifacts/fileC.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_197332000
+WARN: Forward recovery without journal callback for txn_1760108561_612788000
 
-INFO: Recovered transaction txn.recover.forward.success=txn_1759998320_197332000
+INFO: Recovered transaction txn.recover.forward.success=txn_1760108561_612788000
 
-INFO: Recovery complete txn.recover.forward.count=3 txn.recover.forward.success=3 txn.cleanup.success=0 txn.recover.duration_ms=50
+INFO: Recovery complete txn.recover.forward.count=3 txn.recover.forward.success=3 txn.cleanup.success=0 txn.recover.duration_ms=61
 
 === RUN   TestE2ECrashRecoveryWithRetry/RecoveryWithTimeout
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/var/txn/txn_1759998320_290382000/stage/timeout_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=8ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/var/txn/txn_1760108561_710629000/stage/timeout_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-[TXN-SCAN] 2025/10/09 17:25:20 INFO: Found completed transaction txn.id=txn_1759998320_123044000 txn.state=committed txn.action=cleanup_ready
-[TXN-SCAN] 2025/10/09 17:25:20 INFO: Found completed transaction txn.id=txn_1759998320_158417000 txn.state=committed txn.action=cleanup_ready
-[TXN-SCAN] 2025/10/09 17:25:20 INFO: Found completed transaction txn.id=txn_1759998320_197332000 txn.state=committed txn.action=cleanup_ready
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found transaction with intent but no commit txn.id=txn_1759998320_290382000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:20 SUMMARY: Transaction scan complete txn.scan.total=4 txn.scan.timestamp=2025-10-09T08:25:20Z
-[TXN-SCAN] 2025/10/09 17:25:20   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_1759998320_290382000]
-[TXN-SCAN] 2025/10/09 17:25:20   - Ready for cleanup txn.scan.committed_count=3 txn.scan.committed_ids=[txn_1759998320_123044000,txn_1759998320_158417000,txn_1759998320_197332000]
-[TXN-SCAN] 2025/10/09 17:25:20 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/var/txn/txn_1759998320_290382000/stage/timeout_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+[TXN-SCAN] 2025/10/11 00:02:41 INFO: Found completed transaction txn.id=txn_1760108561_533383000 txn.state=committed txn.action=cleanup_ready
+[TXN-SCAN] 2025/10/11 00:02:41 INFO: Found completed transaction txn.id=txn_1760108561_573834000 txn.state=committed txn.action=cleanup_ready
+[TXN-SCAN] 2025/10/11 00:02:41 INFO: Found completed transaction txn.id=txn_1760108561_612788000 txn.state=committed txn.action=cleanup_ready
+[TXN-SCAN] 2025/10/11 00:02:41 WARN: Found transaction with intent but no commit txn.id=txn_1760108561_710629000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:41 SUMMARY: Transaction scan complete txn.scan.total=4 txn.scan.timestamp=2025-10-10T15:02:41Z
+[TXN-SCAN] 2025/10/11 00:02:41   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_1760108561_710629000]
+[TXN-SCAN] 2025/10/11 00:02:41   - Ready for cleanup txn.scan.committed_count=3 txn.scan.committed_ids=[txn_1760108561_533383000,txn_1760108561_573834000,txn_1760108561_612788000]
+[TXN-SCAN] 2025/10/11 00:02:41 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/var/txn/txn_1760108561_710629000/stage/timeout_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/timeout_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/timeout_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_290382000
+WARN: Forward recovery without journal callback for txn_1760108561_710629000
 
-INFO: Recovered transaction txn.recover.forward.success=txn_1759998320_290382000
+INFO: Recovered transaction txn.recover.forward.success=txn_1760108561_710629000
 
-INFO: Cleaned up transaction txn.cleanup.success=txn_1759998320_123044000
+INFO: Cleaned up transaction txn.cleanup.success=txn_1760108561_533383000
 
-INFO: Cleaned up transaction txn.cleanup.success=txn_1759998320_158417000
+INFO: Cleaned up transaction txn.cleanup.success=txn_1760108561_573834000
 
-INFO: Cleaned up transaction txn.cleanup.success=txn_1759998320_197332000
+INFO: Cleaned up transaction txn.cleanup.success=txn_1760108561_612788000
 
-INFO: Recovery complete txn.recover.forward.count=1 txn.recover.forward.success=1 txn.cleanup.success=3 txn.recover.duration_ms=26
+INFO: Recovery complete txn.recover.forward.count=1 txn.recover.forward.success=1 txn.cleanup.success=3 txn.recover.duration_ms=24
 
     recovery_test.go:352: Recovery succeeded despite short timeout
 === RUN   TestE2ECrashRecoveryWithRetry/RecoveryWithCorruptedTransaction
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_830377700/.deespec/var/txn/txn_1759998320_404897000/stage/corrupted_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/e2e_crash_test_838489306/.deespec/var/txn/txn_1760108561_772702000/stage/corrupted_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-[TXN-SCAN] 2025/10/09 17:25:20 INFO: Found completed transaction txn.id=txn_1759998320_290382000 txn.state=committed txn.action=cleanup_ready
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found transaction with intent but no commit txn.id=txn_1759998320_404897000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:20 SUMMARY: Transaction scan complete txn.scan.total=2 txn.scan.timestamp=2025-10-09T08:25:20Z
-[TXN-SCAN] 2025/10/09 17:25:20   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_1759998320_404897000]
-[TXN-SCAN] 2025/10/09 17:25:20   - Ready for cleanup txn.scan.committed_count=1 txn.scan.committed_ids=[txn_1759998320_290382000]
-[TXN-SCAN] 2025/10/09 17:25:20 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
-WARN: Transaction recovery timeout/cancelled txn.id=txn_1759998320_404897000 txn.retry.attempt=0
+[TXN-SCAN] 2025/10/11 00:02:41 INFO: Found completed transaction txn.id=txn_1760108561_710629000 txn.state=committed txn.action=cleanup_ready
+[TXN-SCAN] 2025/10/11 00:02:41 WARN: Found transaction with intent but no commit txn.id=txn_1760108561_772702000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:41 SUMMARY: Transaction scan complete txn.scan.total=2 txn.scan.timestamp=2025-10-10T15:02:41Z
+[TXN-SCAN] 2025/10/11 00:02:41   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_1760108561_772702000]
+[TXN-SCAN] 2025/10/11 00:02:41   - Ready for cleanup txn.scan.committed_count=1 txn.scan.committed_ids=[txn_1760108561_710629000]
+[TXN-SCAN] 2025/10/11 00:02:41 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+WARN: Transaction recovery timeout/cancelled txn.id=txn_1760108561_772702000 txn.retry.attempt=0
 
-ERROR: Failed to recover transaction txn.recover.forward.failed=txn_1759998320_404897000 error=transaction recovery failed after 4 attempts: failed to parse manifest: invalid character 'c' looking for beginning of value
+ERROR: Failed to recover transaction txn.recover.forward.failed=txn_1760108561_772702000 error=transaction recovery failed after 4 attempts: failed to parse manifest: invalid character 'c' looking for beginning of value
 
-INFO: Cleaned up transaction txn.cleanup.success=txn_1759998320_290382000
+INFO: Cleaned up transaction txn.cleanup.success=txn_1760108561_710629000
 
-INFO: Recovery complete txn.recover.forward.count=1 txn.recover.forward.success=0 txn.cleanup.success=1 txn.recover.duration_ms=18
+INFO: Recovery complete txn.recover.forward.count=1 txn.recover.forward.success=0 txn.cleanup.success=1 txn.recover.duration_ms=1
 
---- PASS: TestE2ECrashRecoveryWithRetry (0.34s)
-    --- PASS: TestE2ECrashRecoveryWithRetry/MultipleTransactionCrashRecovery (0.17s)
-    --- PASS: TestE2ECrashRecoveryWithRetry/RecoveryWithTimeout (0.11s)
-    --- PASS: TestE2ECrashRecoveryWithRetry/RecoveryWithCorruptedTransaction (0.05s)
+--- PASS: TestE2ECrashRecoveryWithRetry (0.28s)
+    --- PASS: TestE2ECrashRecoveryWithRetry/MultipleTransactionCrashRecovery (0.18s)
+    --- PASS: TestE2ECrashRecoveryWithRetry/RecoveryWithTimeout (0.06s)
+    --- PASS: TestE2ECrashRecoveryWithRetry/RecoveryWithCorruptedTransaction (0.04s)
 === RUN   TestRecoveryMetrics
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_597419757/.deespec/var/txn/txn_1759998320_459635000/stage/metrics_test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_979687030/.deespec/var/txn/txn_1760108561_814607000/stage/metrics_test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_597419757/.deespec/var/txn/txn_1759998320_504113000/stage/metrics_test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_979687030/.deespec/var/txn/txn_1760108561_850859000/stage/metrics_test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_597419757/.deespec/var/txn/txn_1759998320_504113000/stage/metrics_test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_979687030/.deespec/var/txn/txn_1760108561_850859000/stage/metrics_test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_597419757/.deespec/metrics_test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_979687030/.deespec/metrics_test2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_504113000
+WARN: Forward recovery without journal callback for txn_1760108561_850859000
 
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found transaction with intent but no commit txn.id=txn_1759998320_459635000 txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:20 INFO: Found completed transaction txn.id=txn_1759998320_504113000 txn.state=committed txn.action=cleanup_ready
-[TXN-SCAN] 2025/10/09 17:25:20 SUMMARY: Transaction scan complete txn.scan.total=2 txn.scan.timestamp=2025-10-09T08:25:20Z
-[TXN-SCAN] 2025/10/09 17:25:20   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_1759998320_459635000]
-[TXN-SCAN] 2025/10/09 17:25:20   - Ready for cleanup txn.scan.committed_count=1 txn.scan.committed_ids=[txn_1759998320_504113000]
-[TXN-SCAN] 2025/10/09 17:25:20 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_597419757/.deespec/var/txn/txn_1759998320_459635000/stage/metrics_test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+[TXN-SCAN] 2025/10/11 00:02:41 WARN: Found transaction with intent but no commit txn.id=txn_1760108561_814607000 txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:41 INFO: Found completed transaction txn.id=txn_1760108561_850859000 txn.state=committed txn.action=cleanup_ready
+[TXN-SCAN] 2025/10/11 00:02:41 SUMMARY: Transaction scan complete txn.scan.total=2 txn.scan.timestamp=2025-10-10T15:02:41Z
+[TXN-SCAN] 2025/10/11 00:02:41   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_1760108561_814607000]
+[TXN-SCAN] 2025/10/11 00:02:41   - Ready for cleanup txn.scan.committed_count=1 txn.scan.committed_ids=[txn_1760108561_850859000]
+[TXN-SCAN] 2025/10/11 00:02:41 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_979687030/.deespec/var/txn/txn_1760108561_814607000/stage/metrics_test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_597419757/.deespec/metrics_test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/recovery_metrics_test_979687030/.deespec/metrics_test1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_459635000
+WARN: Forward recovery without journal callback for txn_1760108561_814607000
 
-INFO: Recovered transaction txn.recover.forward.success=txn_1759998320_459635000
+INFO: Recovered transaction txn.recover.forward.success=txn_1760108561_814607000
 
-INFO: Cleaned up transaction txn.cleanup.success=txn_1759998320_504113000
+INFO: Cleaned up transaction txn.cleanup.success=txn_1760108561_850859000
 
-INFO: Recovery complete txn.recover.forward.count=1 txn.recover.forward.success=1 txn.cleanup.success=1 txn.recover.duration_ms=20
+INFO: Recovery complete txn.recover.forward.count=1 txn.recover.forward.success=1 txn.cleanup.success=1 txn.recover.duration_ms=22
 
---- PASS: TestRecoveryMetrics (0.13s)
+--- PASS: TestRecoveryMetrics (0.12s)
 === RUN   TestRollbackBasic
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_test_86262105/.deespec/var/txn/txn_1759998320_587002000/stage/test_file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_test_4254172581/.deespec/var/txn/txn_1760108561_930747000/stage/test_file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Rolling back transaction txn.register.rollback.count=txn_1759998320_587002000 reason=test rollback
+INFO: Rolling back transaction txn.register.rollback.count=txn_1760108561_930747000 reason=test rollback
 
-INFO: Transaction rollback completed txn.rollback.success=txn_1759998320_587002000 undo_performed=false duration_ms=4ms
+INFO: Transaction rollback completed txn.rollback.success=txn_1760108561_930747000 undo_performed=false duration_ms=6ms
 
 --- PASS: TestRollbackBasic (0.05s)
 === RUN   TestRollbackWithUndo
-INFO: Rolling back transaction txn.register.rollback.count=txn_1759998320_633705000 reason=test undo rollback
+INFO: Rolling back transaction txn.register.rollback.count=txn_1760108561_977067000 reason=test undo rollback
 
-INFO: Transaction rollback completed txn.rollback.success=txn_1759998320_633705000 undo_performed=true duration_ms=8ms
+INFO: Transaction rollback completed txn.rollback.success=txn_1760108561_977067000 undo_performed=true duration_ms=9ms
 
---- PASS: TestRollbackWithUndo (0.02s)
+--- PASS: TestRollbackWithUndo (0.03s)
 === RUN   TestRollbackCommittedTransaction
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_committed_test_1101799071/.deespec/var/txn/txn_1759998320_655897000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_committed_test_190955653/.deespec/var/txn/txn_1760108562_3574000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_committed_test_1101799071/.deespec/var/txn/txn_1759998320_655897000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_committed_test_190955653/.deespec/var/txn/txn_1760108562_3574000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_committed_test_1101799071/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_committed_test_190955653/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_655897000
+WARN: Forward recovery without journal callback for txn_1760108562_3574000
 
-INFO: Rolling back transaction txn.register.rollback.count=txn_1759998320_655897000 reason=should fail
+INFO: Rolling back transaction txn.register.rollback.count=txn_1760108562_3574000 reason=should fail
 
-ERROR: Cannot rollback committed transaction txn.rollback.failed=txn_1759998320_655897000
+ERROR: Cannot rollback committed transaction txn.rollback.failed=txn_1760108562_3574000
 
---- PASS: TestRollbackCommittedTransaction (0.05s)
+--- PASS: TestRollbackCommittedTransaction (0.06s)
 === RUN   TestRollbackMetrics
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_metrics_test_1494431815/.deespec/var/txn/txn_1759998320_705998000/stage/metrics_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/rollback_metrics_test_146974795/.deespec/var/txn/txn_1760108562_63492000/stage/metrics_test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Rolling back transaction txn.register.rollback.count=txn_1759998320_705998000 reason=metrics test
+INFO: Rolling back transaction txn.register.rollback.count=txn_1760108562_63492000 reason=metrics test
 
-INFO: Transaction rollback completed txn.rollback.success=txn_1759998320_705998000 undo_performed=false duration_ms=5ms
+INFO: Transaction rollback completed txn.rollback.success=txn_1760108562_63492000 undo_performed=false duration_ms=5ms
 
---- PASS: TestRollbackMetrics (0.03s)
+--- PASS: TestRollbackMetrics (0.04s)
 === RUN   TestNewScanner
 --- PASS: TestNewScanner (0.00s)
 === RUN   TestScanNoDirectory
-[TXN-SCAN] 2025/10/09 17:25:20 INFO: No transaction directory found txn.base_dir=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestScanNoDirectory3119071339/001/non-existent txn.state=clean txn.count=0
+[TXN-SCAN] 2025/10/11 00:02:42 INFO: No transaction directory found txn.base_dir=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/TestScanNoDirectory2930368983/001/non-existent txn.state=clean txn.count=0
 --- PASS: TestScanNoDirectory (0.00s)
 === RUN   TestScanWithTransactions
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found abandoned transaction txn.id=txn_abandoned txn.state=abandoned txn.markers=none
-[TXN-SCAN] 2025/10/09 17:25:20 INFO: Found completed transaction txn.id=txn_committed txn.state=committed txn.action=cleanup_ready
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found incomplete transaction txn.id=txn_incomplete txn.state=incomplete txn.staging=partial
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found transaction with intent but no commit txn.id=txn_intent_only txn.state=intent_only txn.action=forward_recovery_needed
-[TXN-SCAN] 2025/10/09 17:25:20 SUMMARY: Transaction scan complete txn.scan.total=4 txn.scan.timestamp=2025-10-09T08:25:20Z
-[TXN-SCAN] 2025/10/09 17:25:20   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_intent_only]
-[TXN-SCAN] 2025/10/09 17:25:20   - Incomplete transactions txn.scan.incomplete_count=1 txn.scan.incomplete_ids=[txn_incomplete]
-[TXN-SCAN] 2025/10/09 17:25:20   - Abandoned transactions txn.scan.abandoned_count=1 txn.scan.abandoned_ids=[txn_abandoned]
-[TXN-SCAN] 2025/10/09 17:25:20   - Ready for cleanup txn.scan.committed_count=1 txn.scan.committed_ids=[txn_committed]
-[TXN-SCAN] 2025/10/09 17:25:20 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
---- PASS: TestScanWithTransactions (0.00s)
+[TXN-SCAN] 2025/10/11 00:02:42 WARN: Found abandoned transaction txn.id=txn_abandoned txn.state=abandoned txn.markers=none
+[TXN-SCAN] 2025/10/11 00:02:42 INFO: Found completed transaction txn.id=txn_committed txn.state=committed txn.action=cleanup_ready
+[TXN-SCAN] 2025/10/11 00:02:42 WARN: Found incomplete transaction txn.id=txn_incomplete txn.state=incomplete txn.staging=partial
+[TXN-SCAN] 2025/10/11 00:02:42 WARN: Found transaction with intent but no commit txn.id=txn_intent_only txn.state=intent_only txn.action=forward_recovery_needed
+[TXN-SCAN] 2025/10/11 00:02:42 SUMMARY: Transaction scan complete txn.scan.total=4 txn.scan.timestamp=2025-10-10T15:02:42Z
+[TXN-SCAN] 2025/10/11 00:02:42   - Forward recovery needed txn.scan.intent_only_count=1 txn.scan.intent_only_ids=[txn_intent_only]
+[TXN-SCAN] 2025/10/11 00:02:42   - Incomplete transactions txn.scan.incomplete_count=1 txn.scan.incomplete_ids=[txn_incomplete]
+[TXN-SCAN] 2025/10/11 00:02:42   - Abandoned transactions txn.scan.abandoned_count=1 txn.scan.abandoned_ids=[txn_abandoned]
+[TXN-SCAN] 2025/10/11 00:02:42   - Ready for cleanup txn.scan.committed_count=1 txn.scan.committed_ids=[txn_committed]
+[TXN-SCAN] 2025/10/11 00:02:42 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+--- PASS: TestScanWithTransactions (0.01s)
 === RUN   TestCheckTransactionState
 === RUN   TestCheckTransactionState/committed
 === RUN   TestCheckTransactionState/intent_only
 === RUN   TestCheckTransactionState/incomplete_with_manifest
 === RUN   TestCheckTransactionState/incomplete_with_stage
 === RUN   TestCheckTransactionState/abandoned
---- PASS: TestCheckTransactionState (0.00s)
+--- PASS: TestCheckTransactionState (0.01s)
     --- PASS: TestCheckTransactionState/committed (0.00s)
     --- PASS: TestCheckTransactionState/intent_only (0.00s)
     --- PASS: TestCheckTransactionState/incomplete_with_manifest (0.00s)
@@ -1072,79 +1072,79 @@ INFO: Transaction rollback completed txn.rollback.success=txn_1759998320_7059980
     --- PASS: TestFormatTxnIDs/three (0.00s)
     --- PASS: TestFormatTxnIDs/many (0.00s)
 === RUN   TestScanWithErrors
-[TXN-SCAN] 2025/10/09 17:25:20 WARN: Found abandoned transaction txn.id=good_txn txn.state=abandoned txn.markers=none
-[TXN-SCAN] 2025/10/09 17:25:20 SUMMARY: Transaction scan complete txn.scan.total=1 txn.scan.timestamp=2025-10-09T08:25:20Z
-[TXN-SCAN] 2025/10/09 17:25:20   - Abandoned transactions txn.scan.abandoned_count=1 txn.scan.abandoned_ids=[good_txn]
-[TXN-SCAN] 2025/10/09 17:25:20 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
+[TXN-SCAN] 2025/10/11 00:02:42 WARN: Found abandoned transaction txn.id=good_txn txn.state=abandoned txn.markers=none
+[TXN-SCAN] 2025/10/11 00:02:42 SUMMARY: Transaction scan complete txn.scan.total=1 txn.scan.timestamp=2025-10-10T15:02:42Z
+[TXN-SCAN] 2025/10/11 00:02:42   - Abandoned transactions txn.scan.abandoned_count=1 txn.scan.abandoned_ids=[good_txn]
+[TXN-SCAN] 2025/10/11 00:02:42 NOTE: Recovery disabled txn.scan.recovery_action=none txn.cleanup_policy=pending_step8
 --- PASS: TestScanWithErrors (0.00s)
 === RUN   TestTransactionLifecycle
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_test_1577876240/.deespec/var/txn/txn_1759998320_747781000/stage/test/file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_test_2268915288/.deespec/var/txn/txn_1760108562_117988000/stage/test/file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_test_1577876240/.deespec/var/txn/txn_1759998320_747781000/stage/test/file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_test_2268915288/.deespec/var/txn/txn_1760108562_117988000/stage/test/file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_test_1577876240/test/file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_test_2268915288/test/file.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
 --- PASS: TestTransactionLifecycle (0.06s)
 === RUN   TestTransactionStateValidation
 === RUN   TestTransactionStateValidation/Cannot_commit_without_intent
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_validation_2779730657/.deespec/var/txn/txn_1759998320_805680000/stage/dummy.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_validation_1373932025/.deespec/var/txn/txn_1760108562_183005000/stage/dummy.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
 === RUN   TestTransactionStateValidation/Cannot_stage_after_intent
 === RUN   TestTransactionStateValidation/Cannot_mark_intent_twice
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_validation_2779730657/.deespec/var/txn/txn_1759998320_805680000/stage/dummy.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_validation_1373932025/.deespec/var/txn/txn_1760108562_183005000/stage/dummy.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_validation_2779730657/dummy.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_validation_1373932025/dummy.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_805680000
+WARN: Forward recovery without journal callback for txn_1760108562_183005000
 
 === RUN   TestTransactionStateValidation/Idempotent_commit
-INFO: Transaction already committed (no-op) txn.commit.idempotent=true txn.id=txn_1759998320_805680000
+INFO: Transaction already committed (no-op) txn.commit.idempotent=true txn.id=txn_1760108562_183005000
 
 === RUN   TestTransactionStateValidation/Cannot_cleanup_uncommitted_transaction
---- PASS: TestTransactionStateValidation (0.06s)
+--- PASS: TestTransactionStateValidation (0.08s)
     --- PASS: TestTransactionStateValidation/Cannot_commit_without_intent (0.00s)
     --- PASS: TestTransactionStateValidation/Cannot_stage_after_intent (0.00s)
     --- PASS: TestTransactionStateValidation/Cannot_mark_intent_twice (0.00s)
     --- PASS: TestTransactionStateValidation/Idempotent_commit (0.00s)
     --- PASS: TestTransactionStateValidation/Cannot_cleanup_uncommitted_transaction (0.01s)
 === RUN   TestMultipleFileStaging
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2466950064/.deespec/var/txn/txn_1759998320_866107000/stage/dir2/file3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2209731191/.deespec/var/txn/txn_1760108562_261678000/stage/dir1/file1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2466950064/.deespec/var/txn/txn_1759998320_866107000/stage/dir1/file1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2209731191/.deespec/var/txn/txn_1760108562_261678000/stage/dir1/file2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2466950064/.deespec/var/txn/txn_1759998320_866107000/stage/dir1/file2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2209731191/.deespec/var/txn/txn_1760108562_261678000/stage/dir2/file3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2466950064/.deespec/var/txn/txn_1759998320_866107000/stage/dir2/file3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2209731191/.deespec/var/txn/txn_1760108562_261678000/stage/dir1/file1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2466950064/.deespec/var/txn/txn_1759998320_866107000/stage/dir1/file1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2209731191/.deespec/var/txn/txn_1760108562_261678000/stage/dir1/file2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2466950064/.deespec/var/txn/txn_1759998320_866107000/stage/dir1/file2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2209731191/.deespec/var/txn/txn_1760108562_261678000/stage/dir2/file3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2466950064/dir2/file3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2209731191/dir1/file1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2466950064/dir1/file1.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2209731191/dir1/file2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2466950064/dir1/file2.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_multi_2209731191/dir2/file3.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998320_866107000
+WARN: Forward recovery without journal callback for txn_1760108562_261678000
 
---- PASS: TestMultipleFileStaging (0.10s)
+--- PASS: TestMultipleFileStaging (0.11s)
 === RUN   TestManifestValidation
---- PASS: TestManifestValidation (0.01s)
+--- PASS: TestManifestValidation (0.02s)
 === RUN   TestIntentMarkerFormat
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_format_3964538789/.deespec/var/txn/txn_1759998320_977747000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_format_3743644126/.deespec/var/txn/txn_1760108562_386820000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
---- PASS: TestIntentMarkerFormat (0.03s)
+--- PASS: TestIntentMarkerFormat (0.04s)
 === RUN   TestCommitMarkerFormat
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_commit_1481046523/.deespec/var/txn/txn_1759998321_12533000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_commit_1991190816/.deespec/var/txn/txn_1760108562_424615000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_commit_1481046523/.deespec/var/txn/txn_1759998321_12533000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_commit_1991190816/.deespec/var/txn/txn_1760108562_424615000/stage/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_commit_1481046523/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/txn_commit_1991190816/test.txt txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-WARN: Forward recovery without journal callback for txn_1759998321_12533000
+WARN: Forward recovery without journal callback for txn_1760108562_424615000
 
---- PASS: TestCommitMarkerFormat (0.05s)
+--- PASS: TestCommitMarkerFormat (0.06s)
 === RUN   TestTxnStatus
 --- PASS: TestTxnStatus (0.00s)
 === RUN   TestStatusIsValid
@@ -1241,28 +1241,38 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/infra/fs/txn	(cached)
 --- PASS: TestWriteFileAtomic_RenameFailure (0.00s)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/infra/persistence/file	(cached)
+# github.com/YoshitsuguKoike/deespec/internal/infrastructure/di.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-1340728065/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestContainer_LockServiceIntegration
---- PASS: TestContainer_LockServiceIntegration (0.28s)
+--- PASS: TestContainer_LockServiceIntegration (0.27s)
 === RUN   TestContainer_LockServiceCleanup
---- PASS: TestContainer_LockServiceCleanup (1.55s)
+    container_test.go:140: Lock still exists. Expired: true, ExpiresAt: 2025-10-10 15:11:18 +0000 UTC, Now: 2025-10-11 00:11:18.970336 +0900 JST m=+1.281686418
+    container_test.go:144: 
+        	Error Trace:	/Users/yoshitsugukoike/workspace/deespec/internal/infrastructure/di/container_test.go:144
+        	Error:      	An error is expected but got nil.
+        	Test:       	TestContainer_LockServiceCleanup
+        	Messages:   	Lock should be cleaned up after expiration
+--- FAIL: TestContainer_LockServiceCleanup (1.01s)
 === RUN   TestContainer_DefaultConfiguration
 --- PASS: TestContainer_DefaultConfiguration (0.02s)
 === RUN   TestContainer_CloseStopsLockService
---- PASS: TestContainer_CloseStopsLockService (0.03s)
+--- PASS: TestContainer_CloseStopsLockService (0.02s)
 === RUN   TestContainer_MultipleLocksSimultaneously
---- PASS: TestContainer_MultipleLocksSimultaneously (0.06s)
+--- PASS: TestContainer_MultipleLocksSimultaneously (0.02s)
 === RUN   TestContainer_LockConflict
---- PASS: TestContainer_LockConflict (0.02s)
+--- PASS: TestContainer_LockConflict (0.01s)
 === RUN   TestContainer_WALModeEnabled
---- PASS: TestContainer_WALModeEnabled (0.02s)
+--- PASS: TestContainer_WALModeEnabled (0.01s)
 === RUN   TestContainer_ConcurrentAccess
 --- PASS: TestContainer_ConcurrentAccess (0.02s)
-PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/infrastructure/di	2.724s
+FAIL
+FAIL	github.com/YoshitsuguKoike/deespec/internal/infrastructure/di	1.673s
+# github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/sqlite.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-3194294051/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestMigration_NewDatabase
 --- PASS: TestMigration_NewDatabase (0.01s)
 === RUN   TestMigration_ExistingDatabase
-    migration_test.go:224: Backfilled data: sequence=1, registered_at=2025-10-10T12:46:57Z
+    migration_test.go:224: Backfilled data: sequence=1, registered_at=2025-10-10T15:02:50Z
 --- PASS: TestMigration_ExistingDatabase (0.01s)
 === RUN   TestRunLockRepository_AcquireAndRelease
 --- PASS: TestRunLockRepository_AcquireAndRelease (0.00s)
@@ -1279,7 +1289,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/infrastructure/di	2.724s
 === RUN   TestRunLockRepository_List
 --- PASS: TestRunLockRepository_List (0.00s)
 === RUN   TestRunLockRepository_AcquireExpiredLock
---- PASS: TestRunLockRepository_AcquireExpiredLock (2.00s)
+--- PASS: TestRunLockRepository_AcquireExpiredLock (2.01s)
 === RUN   TestStateLockRepository_AcquireAndRelease
 --- PASS: TestStateLockRepository_AcquireAndRelease (0.00s)
 === RUN   TestStateLockRepository_Find
@@ -1293,39 +1303,41 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/infrastructure/di	2.724s
 === RUN   TestStateLockRepository_CleanupExpired
 --- PASS: TestStateLockRepository_CleanupExpired (2.01s)
 === RUN   TestStateLockRepository_List
---- PASS: TestStateLockRepository_List (0.01s)
+--- PASS: TestStateLockRepository_List (0.00s)
 === RUN   TestStateLockRepository_AcquireExpiredLock
 --- PASS: TestStateLockRepository_AcquireExpiredLock (2.01s)
 === RUN   TestStateLockRepository_ReadWriteLockTypes
---- PASS: TestStateLockRepository_ReadWriteLockTypes (0.00s)
+--- PASS: TestStateLockRepository_ReadWriteLockTypes (0.01s)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/sqlite	(cached)
 ?   	github.com/YoshitsuguKoike/deespec/internal/infrastructure/repository	[no test files]
 ?   	github.com/YoshitsuguKoike/deespec/internal/infrastructure/repository/mock	[no test files]
 === RUN   TestExecuteRegisterTransaction
-INFO: Checksum validation successful txn.checksum.validation.success=.deespec/var/txn/txn_1760101732_990151000/stage/specs/test-001_test_specification/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=.deespec/var/txn/txn_1760108583_128959000/stage/specs/test-001_test_specification/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=.deespec/var/txn/txn_1760101732_990151000/stage/specs/test-001_test_specification/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=.deespec/var/txn/txn_1760108583_128959000/stage/specs/test-001_test_specification/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=.deespec/var/txn/txn_1760101732_990151000/stage/specs/test-001_test_specification/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=.deespec/var/txn/txn_1760108583_128959000/stage/specs/test-001_test_specification/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
-INFO: Checksum validation successful txn.checksum.validation.success=.deespec/var/txn/txn_1760101732_990151000/stage/specs/test-001_test_specification/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
+INFO: Checksum validation successful txn.checksum.validation.success=.deespec/var/txn/txn_1760108583_128959000/stage/specs/test-001_test_specification/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
 INFO: Checksum validation successful txn.checksum.validation.success=.deespec/specs/test-001_test_specification/meta.yaml txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
 INFO: Checksum validation successful txn.checksum.validation.success=.deespec/specs/test-001_test_specification/spec.md txn.checksum.algorithm=sha256 txn.checksum.calculation.duration_ms=0ms
 
---- PASS: TestExecuteRegisterTransaction (0.08s)
+--- PASS: TestExecuteRegisterTransaction (0.11s)
 === RUN   TestExecuteRegisterTransactionFailure
 --- PASS: TestExecuteRegisterTransactionFailure (0.00s)
 === RUN   TestExecuteRegisterTransactionEmptySpecPath
 --- PASS: TestExecuteRegisterTransactionEmptySpecPath (0.00s)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/infrastructure/transaction	(cached)
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-2077487219/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestPackageLeaks
 --- PASS: TestPackageLeaks (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli	0.564s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli	(cached)
 === RUN   TestLoadExternalPrompt_Success
 === RUN   TestLoadExternalPrompt_Success/WIP_status_loads_WIP.md
 === RUN   TestLoadExternalPrompt_Success/READY_status_loads_WIP.md
@@ -1352,81 +1364,84 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli	0.564s
 --- PASS: TestPlaceholderReplacement (0.00s)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/claude_prompt	(cached)
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/clear.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-454574420/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestClear
 === RUN   TestClear/successful_clear_without_WIP
-[00:19:29.113] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.114] INFO: Creating archive at: .deespec/archives/2025-10-11T00-19-29_01K77B992TVCFPFHP7252X4Q9B
-[00:19:29.114] INFO: Archived journal.ndjson
-[00:19:29.119] INFO: Moved 1 items from specs to archive
-[00:19:29.119] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
-[00:19:29.122] INFO: Reset state files
-[00:19:29.122] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-19-29_01K77B992TVCFPFHP7252X4Q9B
-[00:19:29.122] WARN: LoadState is deprecated - DB-based state management should be used instead
---- PASS: TestClear (0.02s)
-    --- PASS: TestClear/successful_clear_without_WIP (0.01s)
+[00:11:21.378] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:11:21.379] INFO: Creating archive at: .deespec/archives/2025-10-11T00-11-21_01K77ATCS3HNZ7Z5369APM0BNX
+[00:11:21.379] INFO: Archived journal.ndjson
+[00:11:21.380] INFO: Moved 1 items from specs to archive
+[00:11:21.380] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
+[00:11:21.381] INFO: Reset state files
+[00:11:21.381] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-11-21_01K77ATCS3HNZ7Z5369APM0BNX
+[00:11:21.381] WARN: LoadState is deprecated - DB-based state management should be used instead
+--- PASS: TestClear (0.01s)
+    --- PASS: TestClear/successful_clear_without_WIP (0.00s)
 === RUN   TestClear_WithWIP
 === RUN   TestClear_WithWIP/WIP_without_lease_should_succeed
-[00:19:29.134] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.137] WARN: Clearing with WIP but no lease (WIP: TASK-001 may be stale)
-[00:19:29.138] INFO: Creating archive at: .deespec/archives/2025-10-11T00-19-29_01K77B993HNT2D4MHZRQPGQYTA
-[00:19:29.138] INFO: No journal.ndjson to archive
-[00:19:29.138] INFO: No specs directory to archive
-[00:19:29.138] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
-[00:19:29.146] INFO: Reset state files
-[00:19:29.146] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-19-29_01K77B993HNT2D4MHZRQPGQYTA
+[00:11:21.384] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:11:21.385] INFO: Creating archive at: .deespec/archives/2025-10-11T00-11-21_01K77ATCS89M4YYHV6AY8CT252
+[00:11:21.385] INFO: No journal.ndjson to archive
+[00:11:21.385] INFO: No specs directory to archive
+[00:11:21.385] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
+[00:11:21.386] INFO: Reset state files
+[00:11:21.386] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-11-21_01K77ATCS89M4YYHV6AY8CT252
 === RUN   TestClear_WithWIP/WIP_with_active_lease_should_fail
-[00:19:29.147] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.147] WARN: LeaseExpired is deprecated - use lock service instead
---- PASS: TestClear_WithWIP (0.02s)
-    --- PASS: TestClear_WithWIP/WIP_without_lease_should_succeed (0.01s)
-    --- PASS: TestClear_WithWIP/WIP_with_active_lease_should_fail (0.00s)
-=== RUN   TestClear_WithActiveLease
-[00:19:29.155] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.155] WARN: LeaseExpired is deprecated - use lock service instead
---- PASS: TestClear_WithActiveLease (0.00s)
-=== RUN   TestClear_NoState
-[00:19:29.157] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.158] INFO: Creating archive at: .deespec/archives/2025-10-11T00-19-29_01K77B994533TQKQDSETM8JA8Y
-[00:19:29.158] INFO: No journal.ndjson to archive
-[00:19:29.158] INFO: No specs directory to archive
-[00:19:29.158] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
-[00:19:29.161] INFO: Reset state files
-[00:19:29.161] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-19-29_01K77B994533TQKQDSETM8JA8Y
---- PASS: TestClear_NoState (0.01s)
-=== RUN   TestArchiveJournal
-[00:19:29.164] INFO: Archived journal.ndjson
---- PASS: TestArchiveJournal (0.00s)
-=== RUN   TestArchiveJournal_NoFile
-[00:19:29.166] INFO: No journal.ndjson to archive
---- PASS: TestArchiveJournal_NoFile (0.00s)
-=== RUN   TestArchiveSpecs
-[00:19:29.169] INFO: Moved 1 items from specs to archive
---- PASS: TestArchiveSpecs (0.01s)
-=== RUN   TestArchiveSpecs_NoSpecs
-[00:19:29.175] INFO: No specs directory to archive
---- PASS: TestArchiveSpecs_NoSpecs (0.00s)
-PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/clear	0.321s
+[00:11:21.387] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:11:21.387] INFO: Creating archive at: .deespec/archives/2025-10-11T00-11-21_01K77ATCSBASF0TA8SNHJ5884F
+[00:11:21.387] INFO: No journal.ndjson to archive
+[00:11:21.387] INFO: No specs directory to archive
+[00:11:21.387] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
+[00:11:21.388] INFO: Reset state files
+[00:11:21.388] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-11-21_01K77ATCSBASF0TA8SNHJ5884F
+    clear_test.go:145: Expected error when WIP with active lease exists, got nil
+--- FAIL: TestClear_WithWIP (0.01s)
+    --- PASS: TestClear_WithWIP/WIP_without_lease_should_succeed (0.00s)
+    --- FAIL: TestClear_WithWIP/WIP_with_active_lease_should_fail (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+	panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x18 pc=0x104fea50c]
+
+goroutine 8 [running]:
+testing.tRunner.func1.2({0x1051fb460, 0x105388b40})
+	/opt/homebrew/Cellar/go/1.23.0/libexec/src/testing/testing.go:1632 +0x2c4
+testing.tRunner.func1()
+	/opt/homebrew/Cellar/go/1.23.0/libexec/src/testing/testing.go:1635 +0x47c
+panic({0x1051fb460?, 0x105388b40?})
+	/opt/homebrew/Cellar/go/1.23.0/libexec/src/runtime/panic.go:785 +0x124
+github.com/YoshitsuguKoike/deespec/internal/interface/cli/clear.TestClear_WithWIP.func2(0xc0002d4820)
+	/Users/yoshitsugukoike/workspace/deespec/internal/interface/cli/clear/clear_test.go:147 +0x25c
+testing.tRunner(0xc0002d4820, 0xc000025c40)
+	/opt/homebrew/Cellar/go/1.23.0/libexec/src/testing/testing.go:1690 +0x188
+created by testing.(*T).Run in goroutine 6
+	/opt/homebrew/Cellar/go/1.23.0/libexec/src/testing/testing.go:1743 +0x5e4
+FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/clear	0.386s
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/common.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-934347902/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestStateHelpers
 --- PASS: TestStateHelpers (0.00s)
 === RUN   TestStateIO
-[00:19:30.694] WARN: LoadState is deprecated - DB-based state management should be used instead
---- PASS: TestStateIO (0.00s)
+[00:11:23.144] WARN: LoadState is deprecated - DB-based state management should be used instead
+    additional_test.go:121: Expected error when loading non-existent file
+--- FAIL: TestStateIO (0.00s)
 === RUN   TestLoggerFunctions
-[00:19:30.694] INFO: Test info message arg
-[00:19:30.694] WARN: Test warning message 42
-[00:19:30.694] ERROR: Test error message
-[00:19:30.694] DEBUG: Debug level message
-[00:19:30.694] WARN: Warn level message
-[00:19:30.694] ERROR: Error level message
+[00:11:23.144] INFO: Test info message arg
+[00:11:23.144] WARN: Test warning message 42
+[00:11:23.144] ERROR: Test error message
+[00:11:23.144] DEBUG: Debug level message
+[00:11:23.144] WARN: Warn level message
+[00:11:23.144] ERROR: Error level message
 --- PASS: TestLoggerFunctions (0.00s)
-PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/common	0.236s
+FAIL
+FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/common	0.443s
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/doctor.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-75214383/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestDoctorPromptValidation
 === RUN   TestDoctorPromptValidation/all_prompts_exist_and_readable
 === RUN   TestDoctorPromptValidation/prompt_file_missing
 === RUN   TestDoctorPromptValidation/prompt_path_is_directory
---- PASS: TestDoctorPromptValidation (0.00s)
+--- PASS: TestDoctorPromptValidation (0.01s)
     --- PASS: TestDoctorPromptValidation/all_prompts_exist_and_readable (0.00s)
     --- PASS: TestDoctorPromptValidation/prompt_file_missing (0.00s)
     --- PASS: TestDoctorPromptValidation/prompt_path_is_directory (0.00s)
@@ -1508,10 +1523,12 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/common	0.236s
     --- PASS: TestContainsHelper/Empty_string (0.00s)
     --- PASS: TestContainsHelper/Full_match (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/doctor	0.241s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/doctor	(cached)
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/health	[no test files]
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/init	[no test files]
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/journal	[no test files]
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/label.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-1621707669/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestLabelE2E
 === RUN   TestLabelE2E/Register
 === RUN   TestLabelE2E/FindByName
@@ -1520,7 +1537,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/doctor	0.241s
 === RUN   TestLabelE2E/ValidateIntegrity
 === RUN   TestLabelE2E/Deactivate
 === RUN   TestLabelE2E/Delete
---- PASS: TestLabelE2E (0.01s)
+--- PASS: TestLabelE2E (0.02s)
     --- PASS: TestLabelE2E/Register (0.00s)
     --- PASS: TestLabelE2E/FindByName (0.00s)
     --- PASS: TestLabelE2E/ListActive (0.00s)
@@ -1529,12 +1546,14 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/doctor	0.241s
     --- PASS: TestLabelE2E/Deactivate (0.00s)
     --- PASS: TestLabelE2E/Delete (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/label	0.458s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/label	(cached)
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/lock_cmd	[no test files]
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/register.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-778860252/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestDryRun_NoSideEffects
---- PASS: TestDryRun_NoSideEffects (0.02s)
+--- PASS: TestDryRun_NoSideEffects (0.01s)
 === RUN   TestDryRun_Precedence
---- PASS: TestDryRun_Precedence (0.01s)
+--- PASS: TestDryRun_Precedence (0.00s)
 === RUN   TestDryRun_CollisionErrorMode_Fails
     dry_run_test.go:138: Created collision path: .deespec/specs/sbi/TEST-COLL-001_test
     dry_run_test.go:184: Dry-run resolution:
@@ -1545,27 +1564,27 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/label	0.458s
     dry_run_test.go:189:   Collision detected: true
 --- PASS: TestDryRun_CollisionErrorMode_Fails (0.01s)
 === RUN   TestDryRun_CollisionSuffixMode_Succeeds
---- PASS: TestDryRun_CollisionSuffixMode_Succeeds (0.00s)
+--- PASS: TestDryRun_CollisionSuffixMode_Succeeds (0.01s)
 === RUN   TestDryRun_PathSafety
---- PASS: TestDryRun_PathSafety (0.01s)
+--- PASS: TestDryRun_PathSafety (0.00s)
 === RUN   TestDryRun_JournalPreviewSchema
 INFO: no policy file found, using defaults
---- PASS: TestDryRun_JournalPreviewSchema (0.00s)
+--- PASS: TestDryRun_JournalPreviewSchema (0.01s)
 === RUN   TestDryRun_OutputSchemaStable
 INFO: no policy file found, using defaults
 INFO: no policy file found, using defaults
 INFO: no policy file found, using defaults
 --- PASS: TestDryRun_OutputSchemaStable (0.01s)
 === RUN   TestDryRun_StderrLevel
---- PASS: TestDryRun_StderrLevel (0.03s)
+--- PASS: TestDryRun_StderrLevel (0.00s)
 === RUN   TestPrintEffectiveConfig_NoPolicy_Defaults
 --- PASS: TestPrintEffectiveConfig_NoPolicy_Defaults (0.00s)
 === RUN   TestPrintEffectiveConfig_PolicyAndCLI_Precedence
---- PASS: TestPrintEffectiveConfig_PolicyAndCLI_Precedence (0.01s)
+--- PASS: TestPrintEffectiveConfig_PolicyAndCLI_Precedence (0.00s)
 === RUN   TestPrintEffectiveConfig_FormatCompact
 --- PASS: TestPrintEffectiveConfig_FormatCompact (0.00s)
 === RUN   TestPrintEffectiveConfig_InvalidPolicy
---- PASS: TestPrintEffectiveConfig_InvalidPolicy (0.02s)
+--- PASS: TestPrintEffectiveConfig_InvalidPolicy (0.00s)
 === RUN   TestEffectiveConfig_ContainsPathInputs
 --- PASS: TestEffectiveConfig_ContainsPathInputs (0.00s)
 === RUN   TestEffectiveConfig_StableKeyOrder
@@ -1573,7 +1592,7 @@ INFO: no policy file found, using defaults
 === RUN   TestEffectiveConfig_MetadataFields
 --- PASS: TestEffectiveConfig_MetadataFields (0.00s)
 === RUN   TestRunPrintEffectiveConfig_Integration
---- PASS: TestRunPrintEffectiveConfig_Integration (0.02s)
+--- PASS: TestRunPrintEffectiveConfig_Integration (0.00s)
 === RUN   TestSlugifyTitle
 === RUN   TestSlugifyTitle/simple
 === RUN   TestSlugifyTitle/with_numbers
@@ -1594,24 +1613,24 @@ INFO: no policy file found, using defaults
 === RUN   TestSlugifyTitle/lpt9
 === RUN   TestSlugifyTitle/long_title
 === RUN   TestSlugifyTitle/long_with_dash
---- PASS: TestSlugifyTitle (0.10s)
+--- PASS: TestSlugifyTitle (0.02s)
     --- PASS: TestSlugifyTitle/simple (0.00s)
     --- PASS: TestSlugifyTitle/with_numbers (0.00s)
     --- PASS: TestSlugifyTitle/with_hyphens (0.00s)
     --- PASS: TestSlugifyTitle/japanese (0.00s)
     --- PASS: TestSlugifyTitle/mixed (0.00s)
-    --- PASS: TestSlugifyTitle/full-width (0.01s)
-    --- PASS: TestSlugifyTitle/special_chars (0.01s)
-    --- PASS: TestSlugifyTitle/spaces (0.01s)
+    --- PASS: TestSlugifyTitle/full-width (0.00s)
+    --- PASS: TestSlugifyTitle/special_chars (0.00s)
+    --- PASS: TestSlugifyTitle/spaces (0.00s)
     --- PASS: TestSlugifyTitle/leading/trailing (0.00s)
     --- PASS: TestSlugifyTitle/empty (0.00s)
     --- PASS: TestSlugifyTitle/all_special (0.00s)
-    --- PASS: TestSlugifyTitle/dots_and_spaces (0.01s)
+    --- PASS: TestSlugifyTitle/dots_and_spaces (0.00s)
     --- PASS: TestSlugifyTitle/con (0.00s)
     --- PASS: TestSlugifyTitle/prn (0.00s)
     --- PASS: TestSlugifyTitle/aux (0.00s)
-    --- PASS: TestSlugifyTitle/com1 (0.01s)
-    --- PASS: TestSlugifyTitle/lpt9 (0.02s)
+    --- PASS: TestSlugifyTitle/com1 (0.00s)
+    --- PASS: TestSlugifyTitle/lpt9 (0.00s)
     --- PASS: TestSlugifyTitle/long_title (0.00s)
     --- PASS: TestSlugifyTitle/long_with_dash (0.00s)
 === RUN   TestIsWindowsReserved
@@ -1659,7 +1678,7 @@ INFO: no policy file found, using defaults
 === RUN   TestIsPathSafe/path_equals_base
 === RUN   TestIsPathSafe/path_outside_base
 === RUN   TestIsPathSafe/path_with_..
---- PASS: TestIsPathSafe (0.02s)
+--- PASS: TestIsPathSafe (0.00s)
     --- PASS: TestIsPathSafe/path_within_base (0.00s)
     --- PASS: TestIsPathSafe/path_equals_base (0.00s)
     --- PASS: TestIsPathSafe/path_outside_base (0.00s)
@@ -1668,7 +1687,7 @@ INFO: no policy file found, using defaults
 === RUN   TestCheckForSymlinks/path_without_symlinks
 === RUN   TestCheckForSymlinks/path_with_symlink
 === RUN   TestCheckForSymlinks/non-existent_path
---- PASS: TestCheckForSymlinks (0.01s)
+--- PASS: TestCheckForSymlinks (0.00s)
     --- PASS: TestCheckForSymlinks/path_without_symlinks (0.00s)
     --- PASS: TestCheckForSymlinks/path_with_symlink (0.00s)
     --- PASS: TestCheckForSymlinks/non-existent_path (0.00s)
@@ -1680,7 +1699,7 @@ INFO: no policy file found, using defaults
 === RUN   TestResolveCollision/replace_mode_-_no_collision
 === RUN   TestResolveCollision/replace_mode_-_with_collision
 === RUN   TestResolveCollision/invalid_mode
---- PASS: TestResolveCollision (0.03s)
+--- PASS: TestResolveCollision (0.00s)
     --- PASS: TestResolveCollision/error_mode_-_no_collision (0.00s)
     --- PASS: TestResolveCollision/error_mode_-_with_collision (0.00s)
     --- PASS: TestResolveCollision/suffix_mode_-_no_collision (0.00s)
@@ -1689,7 +1708,7 @@ INFO: no policy file found, using defaults
     --- PASS: TestResolveCollision/replace_mode_-_with_collision (0.00s)
     --- PASS: TestResolveCollision/invalid_mode (0.00s)
 === RUN   TestCollisionSuffixExhaustion
---- PASS: TestCollisionSuffixExhaustion (0.01s)
+--- PASS: TestCollisionSuffixExhaustion (0.00s)
 === RUN   TestRegisterCommand
 === RUN   TestRegisterCommand/valid_YAML_input_with_new_ID_format
     register_test.go:274: expected exit code 0, got 1
@@ -1722,19 +1741,19 @@ INFO: no policy file found, using defaults
 === RUN   TestRegisterCommand/labels_are_optional
     register_test.go:274: expected exit code 0, got 1
     register_test.go:279: expected ok=true, got ok=false
---- FAIL: TestRegisterCommand (1.43s)
-    --- FAIL: TestRegisterCommand/valid_YAML_input_with_new_ID_format (0.15s)
-    --- FAIL: TestRegisterCommand/valid_JSON_input (0.12s)
-    --- FAIL: TestRegisterCommand/new_ID_format_-_uppercase_letters_and_numbers (0.64s)
+--- FAIL: TestRegisterCommand (0.45s)
+    --- FAIL: TestRegisterCommand/valid_YAML_input_with_new_ID_format (0.07s)
+    --- FAIL: TestRegisterCommand/valid_JSON_input (0.07s)
+    --- FAIL: TestRegisterCommand/new_ID_format_-_uppercase_letters_and_numbers (0.06s)
     --- PASS: TestRegisterCommand/invalid_ID_-_lowercase_letters (0.00s)
-    --- PASS: TestRegisterCommand/invalid_ID_-_special_characters (0.01s)
-    --- PASS: TestRegisterCommand/ID_too_long (0.03s)
+    --- PASS: TestRegisterCommand/invalid_ID_-_special_characters (0.00s)
+    --- PASS: TestRegisterCommand/ID_too_long (0.00s)
     --- PASS: TestRegisterCommand/empty_title (0.00s)
-    --- PASS: TestRegisterCommand/title_too_long (0.05s)
-    --- FAIL: TestRegisterCommand/labels_with_valid_format (0.10s)
-    --- PASS: TestRegisterCommand/invalid_label_format_-_uppercase (0.01s)
-    --- FAIL: TestRegisterCommand/duplicate_labels_-_warning (0.14s)
-    --- FAIL: TestRegisterCommand/too_many_labels_-_warning (0.13s)
+    --- PASS: TestRegisterCommand/title_too_long (0.00s)
+    --- FAIL: TestRegisterCommand/labels_with_valid_format (0.06s)
+    --- PASS: TestRegisterCommand/invalid_label_format_-_uppercase (0.00s)
+    --- FAIL: TestRegisterCommand/duplicate_labels_-_warning (0.06s)
+    --- FAIL: TestRegisterCommand/too_many_labels_-_warning (0.06s)
     --- PASS: TestRegisterCommand/unknown_fields (0.00s)
     --- FAIL: TestRegisterCommand/labels_are_optional (0.06s)
 === RUN   TestValidationFunctions
@@ -1747,14 +1766,14 @@ INFO: no policy file found, using defaults
     --- PASS: TestValidationFunctions/validateLabels (0.00s)
 === RUN   TestInputSizeLimit
 ERROR: failed to read input: input size exceeds limit of 65536 bytes
---- PASS: TestInputSizeLimit (0.00s)
+--- PASS: TestInputSizeLimit (0.01s)
 === RUN   TestBuildSpecPath
 === RUN   TestBuildSpecPath/Simple_Title
 === RUN   TestBuildSpecPath/Title_With__Multiple___Spaces
 === RUN   TestBuildSpecPath/Title-With-Hyphens
 === RUN   TestBuildSpecPath/Title_With_Underscores
 === RUN   TestBuildSpecPath/Title123With456Numbers
---- PASS: TestBuildSpecPath (0.00s)
+--- PASS: TestBuildSpecPath (0.01s)
     --- PASS: TestBuildSpecPath/Simple_Title (0.00s)
     --- PASS: TestBuildSpecPath/Title_With__Multiple___Spaces (0.00s)
     --- PASS: TestBuildSpecPath/Title-With-Hyphens (0.00s)
@@ -1769,20 +1788,22 @@ ERROR: failed to read input: input size exceeds limit of 65536 bytes
 === RUN   TestRegisterValidationBehavior/Valid_spec_-_TX
 --- PASS: TestRegisterValidationBehavior (0.02s)
     --- PASS: TestRegisterValidationBehavior/Fatal_validation_error_-_both_paths (0.00s)
-    --- PASS: TestRegisterValidationBehavior/Fatal_validation_error_-_TX_path (0.01s)
+    --- PASS: TestRegisterValidationBehavior/Fatal_validation_error_-_TX_path (0.02s)
     --- PASS: TestRegisterValidationBehavior/Duplicate_label_warning_-_non-TX (0.00s)
     --- PASS: TestRegisterValidationBehavior/Duplicate_label_warning_-_TX (0.00s)
     --- PASS: TestRegisterValidationBehavior/Valid_spec_-_non-TX (0.00s)
     --- PASS: TestRegisterValidationBehavior/Valid_spec_-_TX (0.00s)
 FAIL
-FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
+FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	0.902s
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/run.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-196776405/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestParseInterval
 === RUN   TestParseInterval/Empty_string_uses_default
 === RUN   TestParseInterval/Valid_duration
 === RUN   TestParseInterval/Below_minimum_uses_minimum
-[00:19:39.035] WARN: Interval 500ms too small, using minimum 1s
+[00:03:19.837] WARN: Interval 500ms too small, using minimum 1s
 === RUN   TestParseInterval/Above_maximum_uses_maximum
-[00:19:39.035] WARN: Interval 1h0m0s too large, using maximum 10m0s
+[00:03:19.837] WARN: Interval 1h0m0s too large, using maximum 10m0s
 === RUN   TestParseInterval/Invalid_format
 --- PASS: TestParseInterval (0.00s)
     --- PASS: TestParseInterval/Empty_string_uses_default (0.00s)
@@ -1803,33 +1824,33 @@ FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
     --- PASS: TestSummarizeText/Empty_text (0.00s)
     --- PASS: TestSummarizeText/Exact_line_count (0.00s)
 === RUN   TestBuildImplementPrompt
-[00:19:39.087] INFO: Using default prompt (external prompt not found: unknown status: )
+[00:03:19.892] INFO: Using default prompt (external prompt not found: unknown status: )
 --- PASS: TestBuildImplementPrompt (0.00s)
 === RUN   TestBuildReviewPrompt
-[00:19:39.087] INFO: Using default prompt (external prompt not found: unknown status: )
+[00:03:19.893] INFO: Using default prompt (external prompt not found: unknown status: )
 --- PASS: TestBuildReviewPrompt (0.00s)
 === RUN   TestGetCurrentWorkDir
 --- PASS: TestGetCurrentWorkDir (0.00s)
 === RUN   TestLogClaudeInteraction
-[00:19:39.088] INFO: ┌─ Claude Code Execution ─────────────────────────────────
-[00:19:39.088] INFO: │ Start: 00:19:39.087
-[00:19:39.088] INFO: │ Prompt: 11 chars, 1 lines
-[00:19:39.088] INFO: │ Type: Test prompt
-[00:19:39.088] INFO: │ End: 00:19:41.087 (Duration: 2.0s)
-[00:19:39.088] INFO: │ Response: 11 chars, 1 lines
-[00:19:39.088] WARN: │ Warning: Unusually short response (11 chars)
-[00:19:39.088] WARN: │ Full content: Test result
-[00:19:39.088] INFO: ┌─ AI Response Content ─────────────────────────────────────
-[00:19:39.088] INFO: │    1: Test result
-[00:19:39.088] INFO: └──────────────────────────────────────────────────────────
-[00:19:39.088] INFO: └──────────────────────────────────────────────────────────
-[00:19:39.088] INFO: ┌─ Claude Code Execution ─────────────────────────────────
-[00:19:39.088] INFO: │ Start: 00:19:39.087
-[00:19:39.088] INFO: │ Prompt: 11 chars, 1 lines
-[00:19:39.088] INFO: │ Type: Test prompt
-[00:19:39.088] INFO: │ End: 00:19:40.087 (Duration: 1.0s)
-[00:19:39.088] INFO: │ Status: ERROR - test error
-[00:19:39.088] INFO: └──────────────────────────────────────────────────────────
+[00:03:19.894] INFO: ┌─ Claude Code Execution ─────────────────────────────────
+[00:03:19.894] INFO: │ Start: 00:03:19.894
+[00:03:19.894] INFO: │ Prompt: 11 chars, 1 lines
+[00:03:19.894] INFO: │ Type: Test prompt
+[00:03:19.894] INFO: │ End: 00:03:21.894 (Duration: 2.0s)
+[00:03:19.894] INFO: │ Response: 11 chars, 1 lines
+[00:03:19.894] WARN: │ Warning: Unusually short response (11 chars)
+[00:03:19.894] WARN: │ Full content: Test result
+[00:03:19.894] INFO: ┌─ AI Response Content ─────────────────────────────────────
+[00:03:19.894] INFO: │    1: Test result
+[00:03:19.894] INFO: └──────────────────────────────────────────────────────────
+[00:03:19.894] INFO: └──────────────────────────────────────────────────────────
+[00:03:19.894] INFO: ┌─ Claude Code Execution ─────────────────────────────────
+[00:03:19.894] INFO: │ Start: 00:03:19.894
+[00:03:19.894] INFO: │ Prompt: 11 chars, 1 lines
+[00:03:19.894] INFO: │ Type: Test prompt
+[00:03:19.895] INFO: │ End: 00:03:20.894 (Duration: 1.0s)
+[00:03:19.895] INFO: │ Status: ERROR - test error
+[00:03:19.895] INFO: └──────────────────────────────────────────────────────────
 --- PASS: TestLogClaudeInteraction (0.00s)
 === RUN   TestGetTaskDescription
 === RUN   TestGetTaskDescription/With_WIP_task
@@ -1853,11 +1874,11 @@ FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
     --- PASS: TestDetermineStep/Empty_status (0.00s)
 === RUN   TestBuildPromptByStatus
 === RUN   TestBuildPromptByStatus/WIP_status
-[00:19:39.088] INFO: Using default prompt (external prompt not found: open .deespec/prompts/WIP.md: no such file or directory)
+[00:03:19.897] INFO: Using default prompt (external prompt not found: open .deespec/prompts/WIP.md: no such file or directory)
 === RUN   TestBuildPromptByStatus/REVIEW_status
-[00:19:39.088] INFO: Using default prompt (external prompt not found: open .deespec/prompts/REVIEW.md: no such file or directory)
+[00:03:19.897] INFO: Using default prompt (external prompt not found: open .deespec/prompts/REVIEW.md: no such file or directory)
 === RUN   TestBuildPromptByStatus/REVIEW&WIP_status
-[00:19:39.089] INFO: Using default prompt (external prompt not found: open .deespec/prompts/REVIEW_AND_WIP.md: no such file or directory)
+[00:03:19.897] INFO: Using default prompt (external prompt not found: open .deespec/prompts/REVIEW_AND_WIP.md: no such file or directory)
 --- PASS: TestBuildPromptByStatus (0.00s)
     --- PASS: TestBuildPromptByStatus/WIP_status (0.00s)
     --- PASS: TestBuildPromptByStatus/REVIEW_status (0.00s)
@@ -1866,27 +1887,27 @@ FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
 --- PASS: TestGetCurrentWorkingDirectory (0.00s)
 === RUN   TestParseDecision
 === RUN   TestParseDecision/Simple_SUCCEEDED
-[00:19:39.089] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:03:19.898] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Simple_FAILED
-[00:19:39.089] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:03:19.899] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Simple_NEEDS_CHANGES
-[00:19:39.089] INFO: Decision extracted: NEEDS_CHANGES (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:03:19.899] INFO: Decision extracted: NEEDS_CHANGES (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/FAILED_with_leading_asterisks
-[00:19:39.089] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:03:19.899] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/SUCCEEDED_with_trailing_asterisks
-[00:19:39.089] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:03:19.899] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Mixed_case_decision
-[00:19:39.089] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:03:19.900] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Decision_with_extra_whitespace
-[00:19:39.089] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:03:19.900] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/No_decision_found_-_default_to_NEEDS_CHANGES
-[00:19:39.089] INFO: No valid DECISION found in response, defaulting to NEEDS_CHANGES
+[00:03:19.900] INFO: No valid DECISION found in response, defaulting to NEEDS_CHANGES
 === RUN   TestParseDecision/Invalid_decision_value_-_default_to_NEEDS_CHANGES
-[00:19:39.089] INFO: No valid DECISION found in response, defaulting to NEEDS_CHANGES
+[00:03:19.901] INFO: No valid DECISION found in response, defaulting to NEEDS_CHANGES
 === RUN   TestParseDecision/Decision_in_middle_of_text
-[00:19:39.089] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:03:19.901] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Multiple_decisions_-_takes_first
-[00:19:39.089] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:03:19.901] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 --- PASS: TestParseDecision (0.00s)
     --- PASS: TestParseDecision/Simple_SUCCEEDED (0.00s)
     --- PASS: TestParseDecision/Simple_FAILED (0.00s)
@@ -1900,7 +1921,9 @@ FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
     --- PASS: TestParseDecision/Decision_in_middle_of_text (0.00s)
     --- PASS: TestParseDecision/Multiple_decisions_-_takes_first (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/run	0.282s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/run	(cached)
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-4098643667/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestNewSBIRegisterCommand
 --- PASS: TestNewSBIRegisterCommand (0.00s)
 === RUN   TestSBIRegister_MissingTitle
@@ -1994,9 +2017,11 @@ Flags:
 --- PASS: TestNewSBIRunCommand_NotNil (0.00s)
     --- PASS: TestNewSBIRunCommand_NotNil/NewSBIRunCommand (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi	0.274s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi	(cached)
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/status	[no test files]
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/version	[no test files]
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_config.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-182484003/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestLoadWorkflowConfig_DefaultConfig
 --- PASS: TestLoadWorkflowConfig_DefaultConfig (0.00s)
 === RUN   TestLoadWorkflowConfig_ValidFile
@@ -2016,22 +2041,24 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi	0.274s
 === RUN   TestGenerateExampleConfig
 --- PASS: TestGenerateExampleConfig (0.00s)
 === RUN   TestCreateManagerFromConfig
-[00:19:40.885] INFO: Registered workflow: sbi (Spec Backlog Item processing workflow)
-[00:19:40.885] INFO: Stopping all workflows...
-[00:19:40.885] INFO: All workflows stopped
+[00:03:24.011] INFO: Registered workflow: sbi (Spec Backlog Item processing workflow)
+[00:03:24.011] INFO: Stopping all workflows...
+[00:03:24.011] INFO: All workflows stopped
 --- PASS: TestCreateManagerFromConfig (0.00s)
 === RUN   TestWorkflowConfigBuilder
 --- PASS: TestWorkflowConfigBuilder (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_config	0.265s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_config	(cached)
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_sbi.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-2849233452/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
 === RUN   TestParallelSBIWorkflowRunner_ConcurrencyControl
---- PASS: TestParallelSBIWorkflowRunner_ConcurrencyControl (0.06s)
+--- PASS: TestParallelSBIWorkflowRunner_ConcurrencyControl (0.07s)
 === RUN   TestParallelSBIWorkflowRunner_LockContention
---- PASS: TestParallelSBIWorkflowRunner_LockContention (0.11s)
+--- PASS: TestParallelSBIWorkflowRunner_LockContention (0.12s)
 === RUN   TestParallelSBIWorkflowRunner_ErrorHandling
 --- PASS: TestParallelSBIWorkflowRunner_ErrorHandling (0.01s)
 === RUN   TestParallelSBIWorkflowRunner_ContextCancellation
---- PASS: TestParallelSBIWorkflowRunner_ContextCancellation (0.00s)
+--- PASS: TestParallelSBIWorkflowRunner_ContextCancellation (0.01s)
 === RUN   TestParallelSBIWorkflowRunner_Validate
 === RUN   TestParallelSBIWorkflowRunner_Validate/Valid_configuration
 === RUN   TestParallelSBIWorkflowRunner_Validate/Invalid_maxParallel_(-1)
@@ -2045,15 +2072,15 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_config	0
 === RUN   TestParallelSBIWorkflowRunner_BasicMethods
 --- PASS: TestParallelSBIWorkflowRunner_BasicMethods (0.01s)
 === RUN   TestParallelSBIWorkflowRunner_NoTasksAvailable
---- PASS: TestParallelSBIWorkflowRunner_NoTasksAvailable (0.01s)
+--- PASS: TestParallelSBIWorkflowRunner_NoTasksAvailable (0.00s)
 === RUN   TestParallelSBIWorkflowRunner_LoadTest
-    parallel_runner_test.go:484: Load test completed: 5 SBIs in 13.051541ms (avg: 2.610308ms per SBI)
---- PASS: TestParallelSBIWorkflowRunner_LoadTest (0.02s)
+    parallel_runner_test.go:484: Load test completed: 5 SBIs in 15.166625ms (avg: 3.033325ms per SBI)
+--- PASS: TestParallelSBIWorkflowRunner_LoadTest (0.03s)
 === RUN   TestParallelSBIWorkflowRunner_FileConflictDetection
-    parallel_runner_test.go:588: Execution order: [SBI-004 SBI-002 SBI-001]
---- PASS: TestParallelSBIWorkflowRunner_FileConflictDetection (0.11s)
+    parallel_runner_test.go:588: Execution order: [SBI-004 SBI-001 SBI-002]
+--- PASS: TestParallelSBIWorkflowRunner_FileConflictDetection (0.12s)
 === RUN   TestParallelSBIWorkflowRunner_AgentPoolControl
-    parallel_runner_test.go:745: Executed SBIs: [SBI-002 SBI-001 SBI-004]
+    parallel_runner_test.go:745: Executed SBIs: [SBI-001 SBI-002 SBI-004]
     parallel_runner_test.go:746: Agent counts: map[claude-code:2 gemini-cli:1]
 --- PASS: TestParallelSBIWorkflowRunner_AgentPoolControl (0.06s)
 === RUN   TestSBIWorkflowRunner_NewSBIWorkflowRunner
@@ -2079,13 +2106,13 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_config	0
 === RUN   TestSBIWorkflowRunner_Integration_WithManager
 --- PASS: TestSBIWorkflowRunner_Integration_WithManager (0.05s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_sbi	0.703s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_sbi	(cached)
 === RUN   TestStreamEvent_JSON
 --- PASS: TestStreamEvent_JSON (0.00s)
 === RUN   TestStreamContext_HistoryPath
 --- PASS: TestStreamContext_HistoryPath (0.00s)
 === RUN   TestRunWithStream_CreatesHistoryDir
---- PASS: TestRunWithStream_CreatesHistoryDir (0.01s)
+--- PASS: TestRunWithStream_CreatesHistoryDir (0.00s)
 === RUN   TestPackageLeaks
 --- PASS: TestPackageLeaks (0.00s)
 PASS
@@ -2146,7 +2173,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/pkg/specpath	(cached)
 === RUN   TestReadPromptWithLimit/small_file_with_small_limit
 === RUN   TestReadPromptWithLimit/2KB_file_with_1KB_limit
 --- PASS: TestReadPromptWithLimit (0.01s)
-    --- PASS: TestReadPromptWithLimit/file_within_limit (0.01s)
+    --- PASS: TestReadPromptWithLimit/file_within_limit (0.00s)
     --- PASS: TestReadPromptWithLimit/file_at_exact_limit (0.00s)
     --- PASS: TestReadPromptWithLimit/file_over_limit (0.00s)
     --- PASS: TestReadPromptWithLimit/large_file_with_higher_limit (0.00s)
@@ -2155,7 +2182,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/pkg/specpath	(cached)
 === RUN   TestReadPromptWithLimit_FileNotFound
 --- PASS: TestReadPromptWithLimit_FileNotFound (0.00s)
 === RUN   TestReadPromptWithLimit_ErrorMessage
---- PASS: TestReadPromptWithLimit_ErrorMessage (0.01s)
+--- PASS: TestReadPromptWithLimit_ErrorMessage (0.00s)
 === RUN   TestParseDecision
 === RUN   TestParseDecision/OK_decision_at_end
 === RUN   TestParseDecision/NEEDS_CHANGES_decision_at_end
@@ -2193,9 +2220,9 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/pkg/specpath	(cached)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/runner	(cached)
 === RUN   Test_NoAbsolutePathsInTests
---- PASS: Test_NoAbsolutePathsInTests (0.24s)
+--- PASS: Test_NoAbsolutePathsInTests (0.33s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/testutil	0.490s
+ok  	github.com/YoshitsuguKoike/deespec/internal/testutil	1.618s
 ?   	github.com/YoshitsuguKoike/deespec/internal/usecase	[no test files]
 === RUN   TestNormalizeCRLFToLF
 === RUN   TestNormalizeCRLFToLF/CRLF_to_LF
@@ -2215,14 +2242,14 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/testutil	0.490s
 === RUN   TestWriteFileAtomic/overwrites_existing_file
 === RUN   TestWriteFileAtomic/normalizes_CRLF_to_LF
 === RUN   TestWriteFileAtomic/cleans_up_temp_file_on_failure
---- PASS: TestWriteFileAtomic (0.04s)
-    --- PASS: TestWriteFileAtomic/happy_path (0.01s)
+--- PASS: TestWriteFileAtomic (0.01s)
+    --- PASS: TestWriteFileAtomic/happy_path (0.00s)
     --- PASS: TestWriteFileAtomic/adds_trailing_newline (0.00s)
-    --- PASS: TestWriteFileAtomic/preserves_existing_newline (0.01s)
+    --- PASS: TestWriteFileAtomic/preserves_existing_newline (0.00s)
     --- PASS: TestWriteFileAtomic/creates_directory_if_needed (0.00s)
-    --- PASS: TestWriteFileAtomic/overwrites_existing_file (0.01s)
-    --- PASS: TestWriteFileAtomic/normalizes_CRLF_to_LF (0.01s)
-    --- PASS: TestWriteFileAtomic/cleans_up_temp_file_on_failure (0.01s)
+    --- PASS: TestWriteFileAtomic/overwrites_existing_file (0.00s)
+    --- PASS: TestWriteFileAtomic/normalizes_CRLF_to_LF (0.00s)
+    --- PASS: TestWriteFileAtomic/cleans_up_temp_file_on_failure (0.00s)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/util	(cached)
 === RUN   TestLoadAgents
@@ -2234,15 +2261,15 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/util	(cached)
 === RUN   TestLoadAgents/unknown_fields
 === RUN   TestLoadAgents/invalid_YAML
 === RUN   TestLoadAgents/empty_agent_name
---- PASS: TestLoadAgents (0.04s)
+--- PASS: TestLoadAgents (0.01s)
     --- PASS: TestLoadAgents/file_not_exists_-_use_builtin (0.00s)
-    --- PASS: TestLoadAgents/valid_agents.yaml (0.01s)
+    --- PASS: TestLoadAgents/valid_agents.yaml (0.00s)
     --- PASS: TestLoadAgents/empty_agents_array (0.00s)
     --- PASS: TestLoadAgents/duplicate_agents (0.00s)
-    --- PASS: TestLoadAgents/invalid_agent_name (0.01s)
-    --- PASS: TestLoadAgents/unknown_fields (0.01s)
+    --- PASS: TestLoadAgents/invalid_agent_name (0.00s)
+    --- PASS: TestLoadAgents/unknown_fields (0.00s)
     --- PASS: TestLoadAgents/invalid_YAML (0.00s)
-    --- PASS: TestLoadAgents/empty_agent_name (0.01s)
+    --- PASS: TestLoadAgents/empty_agent_name (0.00s)
 === RUN   TestValidateAgents
 === RUN   TestValidateAgents/valid_agents
 === RUN   TestValidateAgents/empty_array
@@ -2272,24 +2299,24 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/validator/agents	(cached)
 === RUN   TestValidateHealthFile/ok/error_consistency_warning_-_ok=false_without_error
 === RUN   TestValidateHealthFile/valid_ok=false_with_error
 === RUN   TestValidateHealthFile/multiple_errors
---- PASS: TestValidateHealthFile (0.07s)
-    --- PASS: TestValidateHealthFile/valid_health.json (0.01s)
+--- PASS: TestValidateHealthFile (0.02s)
+    --- PASS: TestValidateHealthFile/valid_health.json (0.00s)
     --- PASS: TestValidateHealthFile/missing_required_key (0.00s)
-    --- PASS: TestValidateHealthFile/invalid_timestamp_format (0.01s)
+    --- PASS: TestValidateHealthFile/invalid_timestamp_format (0.00s)
     --- PASS: TestValidateHealthFile/negative_turn (0.00s)
-    --- PASS: TestValidateHealthFile/invalid_step (0.01s)
-    --- PASS: TestValidateHealthFile/invalid_ok_type (0.01s)
-    --- PASS: TestValidateHealthFile/invalid_error_type (0.01s)
-    --- PASS: TestValidateHealthFile/ok/error_consistency_warning_-_ok=true_with_error (0.01s)
-    --- PASS: TestValidateHealthFile/ok/error_consistency_warning_-_ok=false_without_error (0.01s)
-    --- PASS: TestValidateHealthFile/valid_ok=false_with_error (0.01s)
-    --- PASS: TestValidateHealthFile/multiple_errors (0.01s)
+    --- PASS: TestValidateHealthFile/invalid_step (0.00s)
+    --- PASS: TestValidateHealthFile/invalid_ok_type (0.00s)
+    --- PASS: TestValidateHealthFile/invalid_error_type (0.00s)
+    --- PASS: TestValidateHealthFile/ok/error_consistency_warning_-_ok=true_with_error (0.00s)
+    --- PASS: TestValidateHealthFile/ok/error_consistency_warning_-_ok=false_without_error (0.00s)
+    --- PASS: TestValidateHealthFile/valid_ok=false_with_error (0.00s)
+    --- PASS: TestValidateHealthFile/multiple_errors (0.00s)
 === RUN   TestValidateHealthFile_NotFound
 --- PASS: TestValidateHealthFile_NotFound (0.00s)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/validator/health	(cached)
 === RUN   TestIntegratedValidation
---- PASS: TestIntegratedValidation (0.00s)
+--- PASS: TestIntegratedValidation (0.01s)
 === RUN   TestIntegratedValidationWithErrors
 --- PASS: TestIntegratedValidationWithErrors (0.00s)
 === RUN   TestComponentStatus
@@ -2383,17 +2410,17 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/validator/journal	(cached)
 === RUN   TestValidateStateFile/invalid_JSON
 === RUN   TestValidateStateFile/type_mismatch_-_version_string
 === RUN   TestValidateStateFile/type_mismatch_-_meta.updated_at_number
---- PASS: TestValidateStateFile (0.10s)
-    --- PASS: TestValidateStateFile/valid_state.json (0.01s)
-    --- PASS: TestValidateStateFile/missing_required_key (0.01s)
-    --- PASS: TestValidateStateFile/forbidden_key_present (0.01s)
-    --- PASS: TestValidateStateFile/invalid_version (0.01s)
-    --- PASS: TestValidateStateFile/invalid_step (0.01s)
+--- PASS: TestValidateStateFile (0.01s)
+    --- PASS: TestValidateStateFile/valid_state.json (0.00s)
+    --- PASS: TestValidateStateFile/missing_required_key (0.00s)
+    --- PASS: TestValidateStateFile/forbidden_key_present (0.00s)
+    --- PASS: TestValidateStateFile/invalid_version (0.00s)
+    --- PASS: TestValidateStateFile/invalid_step (0.00s)
     --- PASS: TestValidateStateFile/negative_turn (0.00s)
     --- PASS: TestValidateStateFile/invalid_timestamp_format (0.00s)
-    --- PASS: TestValidateStateFile/invalid_JSON (0.01s)
-    --- PASS: TestValidateStateFile/type_mismatch_-_version_string (0.01s)
-    --- PASS: TestValidateStateFile/type_mismatch_-_meta.updated_at_number (0.02s)
+    --- PASS: TestValidateStateFile/invalid_JSON (0.00s)
+    --- PASS: TestValidateStateFile/type_mismatch_-_version_string (0.00s)
+    --- PASS: TestValidateStateFile/type_mismatch_-_meta.updated_at_number (0.00s)
 === RUN   TestValidateStateFile_NotFound
 --- PASS: TestValidateStateFile_NotFound (0.00s)
 PASS
@@ -2407,7 +2434,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/validator/state	(cached)
 === RUN   TestConstraintsNormalization/boundary_value_1
 === RUN   TestConstraintsNormalization/boundary_value_512
 === RUN   TestConstraintsNormalization/boundary_value_513_falls_back
---- PASS: TestConstraintsNormalization (0.01s)
+--- PASS: TestConstraintsNormalization (0.02s)
     --- PASS: TestConstraintsNormalization/no_constraints_uses_default (0.00s)
     --- PASS: TestConstraintsNormalization/valid_constraint_value (0.00s)
     --- PASS: TestConstraintsNormalization/zero_falls_back_to_default (0.00s)
@@ -2449,7 +2476,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/validator/state	(cached)
 === RUN   TestLoadWorkflow/constraints_with_zero_max_prompt_kb_falls_back_to_default
 === RUN   TestLoadWorkflow/constraints_with_negative_max_prompt_kb_falls_back_to_default
 === RUN   TestLoadWorkflow/constraints_with_too_large_max_prompt_kb_falls_back_to_default
---- PASS: TestLoadWorkflow (0.02s)
+--- PASS: TestLoadWorkflow (0.05s)
     --- PASS: TestLoadWorkflow/minimal_valid_workflow (0.00s)
     --- PASS: TestLoadWorkflow/review_step_with_decision_regex (0.00s)
     --- PASS: TestLoadWorkflow/missing_name (0.00s)
@@ -2541,5 +2568,5 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/validator/state	(cached)
     --- PASS: TestBuildVarMap/workflow_vars_override_defaults (0.00s)
     --- PASS: TestBuildVarMap/nil_state_handled (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/workflow	0.284s
+ok  	github.com/YoshitsuguKoike/deespec/internal/workflow	1.341s
 FAIL

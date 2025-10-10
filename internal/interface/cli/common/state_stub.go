@@ -1,8 +1,11 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
+	"time"
 )
 
 // State represents the legacy state.json structure (deprecated)
@@ -33,16 +36,40 @@ func GetFileName(filePath string) string {
 	return filepath.Base(filePath)
 }
 
-// LoadState loads state from state.json (deprecated - returns empty state)
-// This is kept as a stub for backward compatibility
+// LoadState loads state from state.json (deprecated - still functional for backward compatibility)
+// This is kept as a stub for backward compatibility with commands like `clear`
 // New code should use DB-based state management instead
 func LoadState(path string) (*State, error) {
 	Warn("LoadState is deprecated - DB-based state management should be used instead")
-	return &State{
-		Version: "0.1.14",
-		Meta:    make(map[string]interface{}),
-		Inputs:  make(map[string]interface{}),
-	}, nil
+
+	// Try to read the file if it exists (for backward compatibility)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Return empty state if file doesn't exist
+			return &State{
+				Version: "0.1.14",
+				Meta:    make(map[string]interface{}),
+				Inputs:  make(map[string]interface{}),
+			}, err
+		}
+		return nil, err
+	}
+
+	var state State
+	if err := json.Unmarshal(data, &state); err != nil {
+		return nil, fmt.Errorf("failed to parse state.json: %w", err)
+	}
+
+	// Initialize maps if nil
+	if state.Meta == nil {
+		state.Meta = make(map[string]interface{})
+	}
+	if state.Inputs == nil {
+		state.Inputs = make(map[string]interface{})
+	}
+
+	return &state, nil
 }
 
 // SaveStateCAS saves state to state.json with CAS (deprecated - no-op)
@@ -53,10 +80,21 @@ func SaveStateCAS(path string, state *State, expectedSerial int) error {
 	return fmt.Errorf("state.json is no longer supported - use DB-based state management")
 }
 
-// LeaseExpired checks if the lease has expired (deprecated - always returns false)
-// This is kept as a stub for backward compatibility
+// LeaseExpired checks if the lease has expired (deprecated - still functional for backward compatibility)
+// This is kept as a stub for backward compatibility with commands like `clear`
 // New code should use lock service for lease management
 func LeaseExpired(state *State) bool {
 	Warn("LeaseExpired is deprecated - use lock service instead")
-	return false
+
+	if state.LeaseExpiresAt == "" {
+		return true // No lease means it's "expired" (or never existed)
+	}
+
+	expiresAt, err := time.Parse(time.RFC3339, state.LeaseExpiresAt)
+	if err != nil {
+		// If we can't parse the time, consider it expired for safety
+		return true
+	}
+
+	return time.Now().After(expiresAt)
 }

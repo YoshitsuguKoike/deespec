@@ -273,9 +273,9 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/application/service	(cached)
 === RUN   TestWorkflowManager_GetEnabledWorkflows
 --- PASS: TestWorkflowManager_GetEnabledWorkflows (0.00s)
 === RUN   TestWorkflowManager_RunWorkflow
---- PASS: TestWorkflowManager_RunWorkflow (0.21s)
+--- PASS: TestWorkflowManager_RunWorkflow (0.20s)
 === RUN   TestWorkflowManager_RunAll
---- PASS: TestWorkflowManager_RunAll (0.21s)
+--- PASS: TestWorkflowManager_RunAll (0.20s)
 === RUN   TestWorkflowManager_ErrorHandling
 --- PASS: TestWorkflowManager_ErrorHandling (0.20s)
 === RUN   TestWorkflowManager_Stats
@@ -283,7 +283,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/application/service	(cached)
 === RUN   TestWorkflowManager_ConcurrentAccess
 --- PASS: TestWorkflowManager_ConcurrentAccess (0.11s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/application/workflow	1.251s
+ok  	github.com/YoshitsuguKoike/deespec/internal/application/workflow	1.138s
 ?   	github.com/YoshitsuguKoike/deespec/internal/buildinfo	[no test files]
 ?   	github.com/YoshitsuguKoike/deespec/internal/domain	[no test files]
 === RUN   TestNewSBIExecution
@@ -1242,15 +1242,15 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/infra/fs/txn	(cached)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/infra/persistence/file	(cached)
 === RUN   TestContainer_LockServiceIntegration
---- PASS: TestContainer_LockServiceIntegration (0.28s)
+--- PASS: TestContainer_LockServiceIntegration (0.27s)
 === RUN   TestContainer_LockServiceCleanup
---- PASS: TestContainer_LockServiceCleanup (1.55s)
+--- PASS: TestContainer_LockServiceCleanup (1.53s)
 === RUN   TestContainer_DefaultConfiguration
 --- PASS: TestContainer_DefaultConfiguration (0.02s)
 === RUN   TestContainer_CloseStopsLockService
---- PASS: TestContainer_CloseStopsLockService (0.03s)
+--- PASS: TestContainer_CloseStopsLockService (0.02s)
 === RUN   TestContainer_MultipleLocksSimultaneously
---- PASS: TestContainer_MultipleLocksSimultaneously (0.06s)
+--- PASS: TestContainer_MultipleLocksSimultaneously (0.02s)
 === RUN   TestContainer_LockConflict
 --- PASS: TestContainer_LockConflict (0.02s)
 === RUN   TestContainer_WALModeEnabled
@@ -1258,7 +1258,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/infra/persistence/file	(cached)
 === RUN   TestContainer_ConcurrentAccess
 --- PASS: TestContainer_ConcurrentAccess (0.02s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/infrastructure/di	2.724s
+ok  	github.com/YoshitsuguKoike/deespec/internal/infrastructure/di	(cached)
 === RUN   TestMigration_NewDatabase
 --- PASS: TestMigration_NewDatabase (0.01s)
 === RUN   TestMigration_ExistingDatabase
@@ -1325,7 +1325,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/infrastructure/transaction	(cac
 === RUN   TestPackageLeaks
 --- PASS: TestPackageLeaks (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli	0.564s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli	0.249s
 === RUN   TestLoadExternalPrompt_Success
 === RUN   TestLoadExternalPrompt_Success/WIP_status_loads_WIP.md
 === RUN   TestLoadExternalPrompt_Success/READY_status_loads_WIP.md
@@ -1354,79 +1354,79 @@ PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/claude_prompt	(cached)
 === RUN   TestClear
 === RUN   TestClear/successful_clear_without_WIP
-[00:19:29.113] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.114] INFO: Creating archive at: .deespec/archives/2025-10-11T00-19-29_01K77B992TVCFPFHP7252X4Q9B
-[00:19:29.114] INFO: Archived journal.ndjson
-[00:19:29.119] INFO: Moved 1 items from specs to archive
-[00:19:29.119] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
-[00:19:29.122] INFO: Reset state files
-[00:19:29.122] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-19-29_01K77B992TVCFPFHP7252X4Q9B
-[00:19:29.122] WARN: LoadState is deprecated - DB-based state management should be used instead
---- PASS: TestClear (0.02s)
-    --- PASS: TestClear/successful_clear_without_WIP (0.01s)
+[00:27:31.496] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:27:31.513] INFO: Creating archive at: .deespec/archives/2025-10-11T00-27-31_01K77BR05SGX2GYM2BZSRHDETB
+[00:27:31.514] INFO: Archived journal.ndjson
+[00:27:31.515] INFO: Moved 1 items from specs to archive
+[00:27:31.515] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
+[00:27:31.521] INFO: Reset state files
+[00:27:31.521] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-27-31_01K77BR05SGX2GYM2BZSRHDETB
+[00:27:31.521] WARN: LoadState is deprecated - DB-based state management should be used instead
+--- PASS: TestClear (0.03s)
+    --- PASS: TestClear/successful_clear_without_WIP (0.03s)
 === RUN   TestClear_WithWIP
 === RUN   TestClear_WithWIP/WIP_without_lease_should_succeed
-[00:19:29.134] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.137] WARN: Clearing with WIP but no lease (WIP: TASK-001 may be stale)
-[00:19:29.138] INFO: Creating archive at: .deespec/archives/2025-10-11T00-19-29_01K77B993HNT2D4MHZRQPGQYTA
-[00:19:29.138] INFO: No journal.ndjson to archive
-[00:19:29.138] INFO: No specs directory to archive
-[00:19:29.138] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
-[00:19:29.146] INFO: Reset state files
-[00:19:29.146] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-19-29_01K77B993HNT2D4MHZRQPGQYTA
+[00:27:31.529] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:27:31.529] WARN: Clearing with WIP but no lease (WIP: TASK-001 may be stale)
+[00:27:31.529] INFO: Creating archive at: .deespec/archives/2025-10-11T00-27-31_01K77BR069ZMD1Z2GP7ZSAKMFC
+[00:27:31.529] INFO: No journal.ndjson to archive
+[00:27:31.529] INFO: No specs directory to archive
+[00:27:31.529] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
+[00:27:31.530] INFO: Reset state files
+[00:27:31.530] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-27-31_01K77BR069ZMD1Z2GP7ZSAKMFC
 === RUN   TestClear_WithWIP/WIP_with_active_lease_should_fail
-[00:19:29.147] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.147] WARN: LeaseExpired is deprecated - use lock service instead
---- PASS: TestClear_WithWIP (0.02s)
-    --- PASS: TestClear_WithWIP/WIP_without_lease_should_succeed (0.01s)
+[00:27:31.530] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:27:31.531] WARN: LeaseExpired is deprecated - use lock service instead
+--- PASS: TestClear_WithWIP (0.01s)
+    --- PASS: TestClear_WithWIP/WIP_without_lease_should_succeed (0.00s)
     --- PASS: TestClear_WithWIP/WIP_with_active_lease_should_fail (0.00s)
 === RUN   TestClear_WithActiveLease
-[00:19:29.155] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.155] WARN: LeaseExpired is deprecated - use lock service instead
+[00:27:31.536] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:27:31.536] WARN: LeaseExpired is deprecated - use lock service instead
 --- PASS: TestClear_WithActiveLease (0.00s)
 === RUN   TestClear_NoState
-[00:19:29.157] WARN: LoadState is deprecated - DB-based state management should be used instead
-[00:19:29.158] INFO: Creating archive at: .deespec/archives/2025-10-11T00-19-29_01K77B994533TQKQDSETM8JA8Y
-[00:19:29.158] INFO: No journal.ndjson to archive
-[00:19:29.158] INFO: No specs directory to archive
-[00:19:29.158] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
-[00:19:29.161] INFO: Reset state files
-[00:19:29.161] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-19-29_01K77B994533TQKQDSETM8JA8Y
---- PASS: TestClear_NoState (0.01s)
+[00:27:31.539] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:27:31.539] INFO: Creating archive at: .deespec/archives/2025-10-11T00-27-31_01K77BR06KGD6X1A8149NEQSS7
+[00:27:31.539] INFO: No journal.ndjson to archive
+[00:27:31.539] INFO: No specs directory to archive
+[00:27:31.539] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
+[00:27:31.540] INFO: Reset state files
+[00:27:31.540] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-27-31_01K77BR06KGD6X1A8149NEQSS7
+--- PASS: TestClear_NoState (0.00s)
 === RUN   TestArchiveJournal
-[00:19:29.164] INFO: Archived journal.ndjson
+[00:27:31.543] INFO: Archived journal.ndjson
 --- PASS: TestArchiveJournal (0.00s)
 === RUN   TestArchiveJournal_NoFile
-[00:19:29.166] INFO: No journal.ndjson to archive
+[00:27:31.545] INFO: No journal.ndjson to archive
 --- PASS: TestArchiveJournal_NoFile (0.00s)
 === RUN   TestArchiveSpecs
-[00:19:29.169] INFO: Moved 1 items from specs to archive
---- PASS: TestArchiveSpecs (0.01s)
+[00:27:31.548] INFO: Moved 1 items from specs to archive
+--- PASS: TestArchiveSpecs (0.00s)
 === RUN   TestArchiveSpecs_NoSpecs
-[00:19:29.175] INFO: No specs directory to archive
+[00:27:31.552] INFO: No specs directory to archive
 --- PASS: TestArchiveSpecs_NoSpecs (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/clear	0.321s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/clear	0.572s
 === RUN   TestStateHelpers
 --- PASS: TestStateHelpers (0.00s)
 === RUN   TestStateIO
-[00:19:30.694] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:27:34.800] WARN: LoadState is deprecated - DB-based state management should be used instead
 --- PASS: TestStateIO (0.00s)
 === RUN   TestLoggerFunctions
-[00:19:30.694] INFO: Test info message arg
-[00:19:30.694] WARN: Test warning message 42
-[00:19:30.694] ERROR: Test error message
-[00:19:30.694] DEBUG: Debug level message
-[00:19:30.694] WARN: Warn level message
-[00:19:30.694] ERROR: Error level message
+[00:27:34.800] INFO: Test info message arg
+[00:27:34.800] WARN: Test warning message 42
+[00:27:34.800] ERROR: Test error message
+[00:27:34.800] DEBUG: Debug level message
+[00:27:34.800] WARN: Warn level message
+[00:27:34.800] ERROR: Error level message
 --- PASS: TestLoggerFunctions (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/common	0.236s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/common	0.574s
 === RUN   TestDoctorPromptValidation
 === RUN   TestDoctorPromptValidation/all_prompts_exist_and_readable
 === RUN   TestDoctorPromptValidation/prompt_file_missing
 === RUN   TestDoctorPromptValidation/prompt_path_is_directory
---- PASS: TestDoctorPromptValidation (0.00s)
+--- PASS: TestDoctorPromptValidation (0.01s)
     --- PASS: TestDoctorPromptValidation/all_prompts_exist_and_readable (0.00s)
     --- PASS: TestDoctorPromptValidation/prompt_file_missing (0.00s)
     --- PASS: TestDoctorPromptValidation/prompt_path_is_directory (0.00s)
@@ -1436,7 +1436,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/common	0.236s
 === RUN   TestDoctorPromptSizeAndEncoding/UTF-8_BOM_warning
 === RUN   TestDoctorPromptSizeAndEncoding/CRLF_warning
 === RUN   TestDoctorPromptSizeAndEncoding/invalid_UTF-8
---- PASS: TestDoctorPromptSizeAndEncoding (0.01s)
+--- PASS: TestDoctorPromptSizeAndEncoding (0.02s)
     --- PASS: TestDoctorPromptSizeAndEncoding/prompt_within_size_limit (0.00s)
     --- PASS: TestDoctorPromptSizeAndEncoding/prompt_exceeds_size_limit (0.00s)
     --- PASS: TestDoctorPromptSizeAndEncoding/UTF-8_BOM_warning (0.00s)
@@ -1508,7 +1508,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/common	0.236s
     --- PASS: TestContainsHelper/Empty_string (0.00s)
     --- PASS: TestContainsHelper/Full_match (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/doctor	0.241s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/doctor	0.603s
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/health	[no test files]
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/init	[no test files]
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/journal	[no test files]
@@ -1520,21 +1520,21 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/doctor	0.241s
 === RUN   TestLabelE2E/ValidateIntegrity
 === RUN   TestLabelE2E/Deactivate
 === RUN   TestLabelE2E/Delete
---- PASS: TestLabelE2E (0.01s)
-    --- PASS: TestLabelE2E/Register (0.00s)
+--- PASS: TestLabelE2E (0.03s)
+    --- PASS: TestLabelE2E/Register (0.01s)
     --- PASS: TestLabelE2E/FindByName (0.00s)
     --- PASS: TestLabelE2E/ListActive (0.00s)
     --- PASS: TestLabelE2E/Update (0.00s)
-    --- PASS: TestLabelE2E/ValidateIntegrity (0.00s)
+    --- PASS: TestLabelE2E/ValidateIntegrity (0.01s)
     --- PASS: TestLabelE2E/Deactivate (0.00s)
     --- PASS: TestLabelE2E/Delete (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/label	0.458s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/label	0.376s
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/lock_cmd	[no test files]
 === RUN   TestDryRun_NoSideEffects
---- PASS: TestDryRun_NoSideEffects (0.02s)
+--- PASS: TestDryRun_NoSideEffects (0.00s)
 === RUN   TestDryRun_Precedence
---- PASS: TestDryRun_Precedence (0.01s)
+--- PASS: TestDryRun_Precedence (0.00s)
 === RUN   TestDryRun_CollisionErrorMode_Fails
     dry_run_test.go:138: Created collision path: .deespec/specs/sbi/TEST-COLL-001_test
     dry_run_test.go:184: Dry-run resolution:
@@ -1547,7 +1547,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/label	0.458s
 === RUN   TestDryRun_CollisionSuffixMode_Succeeds
 --- PASS: TestDryRun_CollisionSuffixMode_Succeeds (0.00s)
 === RUN   TestDryRun_PathSafety
---- PASS: TestDryRun_PathSafety (0.01s)
+--- PASS: TestDryRun_PathSafety (0.00s)
 === RUN   TestDryRun_JournalPreviewSchema
 INFO: no policy file found, using defaults
 --- PASS: TestDryRun_JournalPreviewSchema (0.00s)
@@ -1555,17 +1555,17 @@ INFO: no policy file found, using defaults
 INFO: no policy file found, using defaults
 INFO: no policy file found, using defaults
 INFO: no policy file found, using defaults
---- PASS: TestDryRun_OutputSchemaStable (0.01s)
+--- PASS: TestDryRun_OutputSchemaStable (0.00s)
 === RUN   TestDryRun_StderrLevel
---- PASS: TestDryRun_StderrLevel (0.03s)
+--- PASS: TestDryRun_StderrLevel (0.00s)
 === RUN   TestPrintEffectiveConfig_NoPolicy_Defaults
 --- PASS: TestPrintEffectiveConfig_NoPolicy_Defaults (0.00s)
 === RUN   TestPrintEffectiveConfig_PolicyAndCLI_Precedence
---- PASS: TestPrintEffectiveConfig_PolicyAndCLI_Precedence (0.01s)
+--- PASS: TestPrintEffectiveConfig_PolicyAndCLI_Precedence (0.00s)
 === RUN   TestPrintEffectiveConfig_FormatCompact
 --- PASS: TestPrintEffectiveConfig_FormatCompact (0.00s)
 === RUN   TestPrintEffectiveConfig_InvalidPolicy
---- PASS: TestPrintEffectiveConfig_InvalidPolicy (0.02s)
+--- PASS: TestPrintEffectiveConfig_InvalidPolicy (0.00s)
 === RUN   TestEffectiveConfig_ContainsPathInputs
 --- PASS: TestEffectiveConfig_ContainsPathInputs (0.00s)
 === RUN   TestEffectiveConfig_StableKeyOrder
@@ -1573,7 +1573,7 @@ INFO: no policy file found, using defaults
 === RUN   TestEffectiveConfig_MetadataFields
 --- PASS: TestEffectiveConfig_MetadataFields (0.00s)
 === RUN   TestRunPrintEffectiveConfig_Integration
---- PASS: TestRunPrintEffectiveConfig_Integration (0.02s)
+--- PASS: TestRunPrintEffectiveConfig_Integration (0.00s)
 === RUN   TestSlugifyTitle
 === RUN   TestSlugifyTitle/simple
 === RUN   TestSlugifyTitle/with_numbers
@@ -1594,24 +1594,24 @@ INFO: no policy file found, using defaults
 === RUN   TestSlugifyTitle/lpt9
 === RUN   TestSlugifyTitle/long_title
 === RUN   TestSlugifyTitle/long_with_dash
---- PASS: TestSlugifyTitle (0.10s)
+--- PASS: TestSlugifyTitle (0.00s)
     --- PASS: TestSlugifyTitle/simple (0.00s)
     --- PASS: TestSlugifyTitle/with_numbers (0.00s)
     --- PASS: TestSlugifyTitle/with_hyphens (0.00s)
     --- PASS: TestSlugifyTitle/japanese (0.00s)
     --- PASS: TestSlugifyTitle/mixed (0.00s)
-    --- PASS: TestSlugifyTitle/full-width (0.01s)
-    --- PASS: TestSlugifyTitle/special_chars (0.01s)
-    --- PASS: TestSlugifyTitle/spaces (0.01s)
+    --- PASS: TestSlugifyTitle/full-width (0.00s)
+    --- PASS: TestSlugifyTitle/special_chars (0.00s)
+    --- PASS: TestSlugifyTitle/spaces (0.00s)
     --- PASS: TestSlugifyTitle/leading/trailing (0.00s)
     --- PASS: TestSlugifyTitle/empty (0.00s)
     --- PASS: TestSlugifyTitle/all_special (0.00s)
-    --- PASS: TestSlugifyTitle/dots_and_spaces (0.01s)
+    --- PASS: TestSlugifyTitle/dots_and_spaces (0.00s)
     --- PASS: TestSlugifyTitle/con (0.00s)
     --- PASS: TestSlugifyTitle/prn (0.00s)
     --- PASS: TestSlugifyTitle/aux (0.00s)
-    --- PASS: TestSlugifyTitle/com1 (0.01s)
-    --- PASS: TestSlugifyTitle/lpt9 (0.02s)
+    --- PASS: TestSlugifyTitle/com1 (0.00s)
+    --- PASS: TestSlugifyTitle/lpt9 (0.00s)
     --- PASS: TestSlugifyTitle/long_title (0.00s)
     --- PASS: TestSlugifyTitle/long_with_dash (0.00s)
 === RUN   TestIsWindowsReserved
@@ -1659,7 +1659,7 @@ INFO: no policy file found, using defaults
 === RUN   TestIsPathSafe/path_equals_base
 === RUN   TestIsPathSafe/path_outside_base
 === RUN   TestIsPathSafe/path_with_..
---- PASS: TestIsPathSafe (0.02s)
+--- PASS: TestIsPathSafe (0.00s)
     --- PASS: TestIsPathSafe/path_within_base (0.00s)
     --- PASS: TestIsPathSafe/path_equals_base (0.00s)
     --- PASS: TestIsPathSafe/path_outside_base (0.00s)
@@ -1668,7 +1668,7 @@ INFO: no policy file found, using defaults
 === RUN   TestCheckForSymlinks/path_without_symlinks
 === RUN   TestCheckForSymlinks/path_with_symlink
 === RUN   TestCheckForSymlinks/non-existent_path
---- PASS: TestCheckForSymlinks (0.01s)
+--- PASS: TestCheckForSymlinks (0.00s)
     --- PASS: TestCheckForSymlinks/path_without_symlinks (0.00s)
     --- PASS: TestCheckForSymlinks/path_with_symlink (0.00s)
     --- PASS: TestCheckForSymlinks/non-existent_path (0.00s)
@@ -1680,7 +1680,7 @@ INFO: no policy file found, using defaults
 === RUN   TestResolveCollision/replace_mode_-_no_collision
 === RUN   TestResolveCollision/replace_mode_-_with_collision
 === RUN   TestResolveCollision/invalid_mode
---- PASS: TestResolveCollision (0.03s)
+--- PASS: TestResolveCollision (0.00s)
     --- PASS: TestResolveCollision/error_mode_-_no_collision (0.00s)
     --- PASS: TestResolveCollision/error_mode_-_with_collision (0.00s)
     --- PASS: TestResolveCollision/suffix_mode_-_no_collision (0.00s)
@@ -1689,54 +1689,37 @@ INFO: no policy file found, using defaults
     --- PASS: TestResolveCollision/replace_mode_-_with_collision (0.00s)
     --- PASS: TestResolveCollision/invalid_mode (0.00s)
 === RUN   TestCollisionSuffixExhaustion
---- PASS: TestCollisionSuffixExhaustion (0.01s)
+--- PASS: TestCollisionSuffixExhaustion (0.00s)
 === RUN   TestRegisterCommand
 === RUN   TestRegisterCommand/valid_YAML_input_with_new_ID_format
-    register_test.go:274: expected exit code 0, got 1
-    register_test.go:279: expected ok=true, got ok=false
-    register_test.go:54: unexpected spec_path: 
 === RUN   TestRegisterCommand/valid_JSON_input
-    register_test.go:274: expected exit code 0, got 1
-    register_test.go:279: expected ok=true, got ok=false
 === RUN   TestRegisterCommand/new_ID_format_-_uppercase_letters_and_numbers
-    register_test.go:274: expected exit code 0, got 1
-    register_test.go:279: expected ok=true, got ok=false
 === RUN   TestRegisterCommand/invalid_ID_-_lowercase_letters
 === RUN   TestRegisterCommand/invalid_ID_-_special_characters
 === RUN   TestRegisterCommand/ID_too_long
 === RUN   TestRegisterCommand/empty_title
 === RUN   TestRegisterCommand/title_too_long
 === RUN   TestRegisterCommand/labels_with_valid_format
-    register_test.go:274: expected exit code 0, got 1
-    register_test.go:279: expected ok=true, got ok=false
 === RUN   TestRegisterCommand/invalid_label_format_-_uppercase
 === RUN   TestRegisterCommand/duplicate_labels_-_warning
-    register_test.go:274: expected exit code 0, got 1
-    register_test.go:279: expected ok=true, got ok=false
-    register_test.go:171: expected duplicate label warning
 === RUN   TestRegisterCommand/too_many_labels_-_warning
-    register_test.go:274: expected exit code 0, got 1
-    register_test.go:279: expected ok=true, got ok=false
-    register_test.go:198: expected labels count warning
 === RUN   TestRegisterCommand/unknown_fields
 === RUN   TestRegisterCommand/labels_are_optional
-    register_test.go:274: expected exit code 0, got 1
-    register_test.go:279: expected ok=true, got ok=false
---- FAIL: TestRegisterCommand (1.43s)
-    --- FAIL: TestRegisterCommand/valid_YAML_input_with_new_ID_format (0.15s)
-    --- FAIL: TestRegisterCommand/valid_JSON_input (0.12s)
-    --- FAIL: TestRegisterCommand/new_ID_format_-_uppercase_letters_and_numbers (0.64s)
-    --- PASS: TestRegisterCommand/invalid_ID_-_lowercase_letters (0.00s)
+--- PASS: TestRegisterCommand (0.70s)
+    --- PASS: TestRegisterCommand/valid_YAML_input_with_new_ID_format (0.10s)
+    --- PASS: TestRegisterCommand/valid_JSON_input (0.08s)
+    --- PASS: TestRegisterCommand/new_ID_format_-_uppercase_letters_and_numbers (0.09s)
+    --- PASS: TestRegisterCommand/invalid_ID_-_lowercase_letters (0.01s)
     --- PASS: TestRegisterCommand/invalid_ID_-_special_characters (0.01s)
-    --- PASS: TestRegisterCommand/ID_too_long (0.03s)
-    --- PASS: TestRegisterCommand/empty_title (0.00s)
-    --- PASS: TestRegisterCommand/title_too_long (0.05s)
-    --- FAIL: TestRegisterCommand/labels_with_valid_format (0.10s)
-    --- PASS: TestRegisterCommand/invalid_label_format_-_uppercase (0.01s)
-    --- FAIL: TestRegisterCommand/duplicate_labels_-_warning (0.14s)
-    --- FAIL: TestRegisterCommand/too_many_labels_-_warning (0.13s)
+    --- PASS: TestRegisterCommand/ID_too_long (0.01s)
+    --- PASS: TestRegisterCommand/empty_title (0.01s)
+    --- PASS: TestRegisterCommand/title_too_long (0.00s)
+    --- PASS: TestRegisterCommand/labels_with_valid_format (0.12s)
+    --- PASS: TestRegisterCommand/invalid_label_format_-_uppercase (0.00s)
+    --- PASS: TestRegisterCommand/duplicate_labels_-_warning (0.09s)
+    --- PASS: TestRegisterCommand/too_many_labels_-_warning (0.08s)
     --- PASS: TestRegisterCommand/unknown_fields (0.00s)
-    --- FAIL: TestRegisterCommand/labels_are_optional (0.06s)
+    --- PASS: TestRegisterCommand/labels_are_optional (0.09s)
 === RUN   TestValidationFunctions
 === RUN   TestValidationFunctions/validateID
 === RUN   TestValidationFunctions/validateTitle
@@ -1747,7 +1730,7 @@ INFO: no policy file found, using defaults
     --- PASS: TestValidationFunctions/validateLabels (0.00s)
 === RUN   TestInputSizeLimit
 ERROR: failed to read input: input size exceeds limit of 65536 bytes
---- PASS: TestInputSizeLimit (0.00s)
+--- PASS: TestInputSizeLimit (0.01s)
 === RUN   TestBuildSpecPath
 === RUN   TestBuildSpecPath/Simple_Title
 === RUN   TestBuildSpecPath/Title_With__Multiple___Spaces
@@ -1769,20 +1752,20 @@ ERROR: failed to read input: input size exceeds limit of 65536 bytes
 === RUN   TestRegisterValidationBehavior/Valid_spec_-_TX
 --- PASS: TestRegisterValidationBehavior (0.02s)
     --- PASS: TestRegisterValidationBehavior/Fatal_validation_error_-_both_paths (0.00s)
-    --- PASS: TestRegisterValidationBehavior/Fatal_validation_error_-_TX_path (0.01s)
+    --- PASS: TestRegisterValidationBehavior/Fatal_validation_error_-_TX_path (0.02s)
     --- PASS: TestRegisterValidationBehavior/Duplicate_label_warning_-_non-TX (0.00s)
     --- PASS: TestRegisterValidationBehavior/Duplicate_label_warning_-_TX (0.00s)
     --- PASS: TestRegisterValidationBehavior/Valid_spec_-_non-TX (0.00s)
     --- PASS: TestRegisterValidationBehavior/Valid_spec_-_TX (0.00s)
-FAIL
-FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
+PASS
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	(cached)
 === RUN   TestParseInterval
 === RUN   TestParseInterval/Empty_string_uses_default
 === RUN   TestParseInterval/Valid_duration
 === RUN   TestParseInterval/Below_minimum_uses_minimum
-[00:19:39.035] WARN: Interval 500ms too small, using minimum 1s
+[00:27:45.535] WARN: Interval 500ms too small, using minimum 1s
 === RUN   TestParseInterval/Above_maximum_uses_maximum
-[00:19:39.035] WARN: Interval 1h0m0s too large, using maximum 10m0s
+[00:27:45.536] WARN: Interval 1h0m0s too large, using maximum 10m0s
 === RUN   TestParseInterval/Invalid_format
 --- PASS: TestParseInterval (0.00s)
     --- PASS: TestParseInterval/Empty_string_uses_default (0.00s)
@@ -1803,33 +1786,33 @@ FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
     --- PASS: TestSummarizeText/Empty_text (0.00s)
     --- PASS: TestSummarizeText/Exact_line_count (0.00s)
 === RUN   TestBuildImplementPrompt
-[00:19:39.087] INFO: Using default prompt (external prompt not found: unknown status: )
+[00:27:45.588] INFO: Using default prompt (external prompt not found: unknown status: )
 --- PASS: TestBuildImplementPrompt (0.00s)
 === RUN   TestBuildReviewPrompt
-[00:19:39.087] INFO: Using default prompt (external prompt not found: unknown status: )
+[00:27:45.589] INFO: Using default prompt (external prompt not found: unknown status: )
 --- PASS: TestBuildReviewPrompt (0.00s)
 === RUN   TestGetCurrentWorkDir
 --- PASS: TestGetCurrentWorkDir (0.00s)
 === RUN   TestLogClaudeInteraction
-[00:19:39.088] INFO: ┌─ Claude Code Execution ─────────────────────────────────
-[00:19:39.088] INFO: │ Start: 00:19:39.087
-[00:19:39.088] INFO: │ Prompt: 11 chars, 1 lines
-[00:19:39.088] INFO: │ Type: Test prompt
-[00:19:39.088] INFO: │ End: 00:19:41.087 (Duration: 2.0s)
-[00:19:39.088] INFO: │ Response: 11 chars, 1 lines
-[00:19:39.088] WARN: │ Warning: Unusually short response (11 chars)
-[00:19:39.088] WARN: │ Full content: Test result
-[00:19:39.088] INFO: ┌─ AI Response Content ─────────────────────────────────────
-[00:19:39.088] INFO: │    1: Test result
-[00:19:39.088] INFO: └──────────────────────────────────────────────────────────
-[00:19:39.088] INFO: └──────────────────────────────────────────────────────────
-[00:19:39.088] INFO: ┌─ Claude Code Execution ─────────────────────────────────
-[00:19:39.088] INFO: │ Start: 00:19:39.087
-[00:19:39.088] INFO: │ Prompt: 11 chars, 1 lines
-[00:19:39.088] INFO: │ Type: Test prompt
-[00:19:39.088] INFO: │ End: 00:19:40.087 (Duration: 1.0s)
-[00:19:39.088] INFO: │ Status: ERROR - test error
-[00:19:39.088] INFO: └──────────────────────────────────────────────────────────
+[00:27:45.589] INFO: ┌─ Claude Code Execution ─────────────────────────────────
+[00:27:45.589] INFO: │ Start: 00:27:45.589
+[00:27:45.589] INFO: │ Prompt: 11 chars, 1 lines
+[00:27:45.589] INFO: │ Type: Test prompt
+[00:27:45.589] INFO: │ End: 00:27:47.589 (Duration: 2.0s)
+[00:27:45.589] INFO: │ Response: 11 chars, 1 lines
+[00:27:45.589] WARN: │ Warning: Unusually short response (11 chars)
+[00:27:45.589] WARN: │ Full content: Test result
+[00:27:45.589] INFO: ┌─ AI Response Content ─────────────────────────────────────
+[00:27:45.589] INFO: │    1: Test result
+[00:27:45.589] INFO: └──────────────────────────────────────────────────────────
+[00:27:45.589] INFO: └──────────────────────────────────────────────────────────
+[00:27:45.589] INFO: ┌─ Claude Code Execution ─────────────────────────────────
+[00:27:45.589] INFO: │ Start: 00:27:45.589
+[00:27:45.589] INFO: │ Prompt: 11 chars, 1 lines
+[00:27:45.589] INFO: │ Type: Test prompt
+[00:27:45.589] INFO: │ End: 00:27:46.589 (Duration: 1.0s)
+[00:27:45.589] INFO: │ Status: ERROR - test error
+[00:27:45.589] INFO: └──────────────────────────────────────────────────────────
 --- PASS: TestLogClaudeInteraction (0.00s)
 === RUN   TestGetTaskDescription
 === RUN   TestGetTaskDescription/With_WIP_task
@@ -1853,11 +1836,11 @@ FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
     --- PASS: TestDetermineStep/Empty_status (0.00s)
 === RUN   TestBuildPromptByStatus
 === RUN   TestBuildPromptByStatus/WIP_status
-[00:19:39.088] INFO: Using default prompt (external prompt not found: open .deespec/prompts/WIP.md: no such file or directory)
+[00:27:45.590] INFO: Using default prompt (external prompt not found: open .deespec/prompts/WIP.md: no such file or directory)
 === RUN   TestBuildPromptByStatus/REVIEW_status
-[00:19:39.088] INFO: Using default prompt (external prompt not found: open .deespec/prompts/REVIEW.md: no such file or directory)
+[00:27:45.590] INFO: Using default prompt (external prompt not found: open .deespec/prompts/REVIEW.md: no such file or directory)
 === RUN   TestBuildPromptByStatus/REVIEW&WIP_status
-[00:19:39.089] INFO: Using default prompt (external prompt not found: open .deespec/prompts/REVIEW_AND_WIP.md: no such file or directory)
+[00:27:45.590] INFO: Using default prompt (external prompt not found: open .deespec/prompts/REVIEW_AND_WIP.md: no such file or directory)
 --- PASS: TestBuildPromptByStatus (0.00s)
     --- PASS: TestBuildPromptByStatus/WIP_status (0.00s)
     --- PASS: TestBuildPromptByStatus/REVIEW_status (0.00s)
@@ -1866,27 +1849,27 @@ FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
 --- PASS: TestGetCurrentWorkingDirectory (0.00s)
 === RUN   TestParseDecision
 === RUN   TestParseDecision/Simple_SUCCEEDED
-[00:19:39.089] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:27:45.591] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Simple_FAILED
-[00:19:39.089] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:27:45.591] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Simple_NEEDS_CHANGES
-[00:19:39.089] INFO: Decision extracted: NEEDS_CHANGES (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:27:45.591] INFO: Decision extracted: NEEDS_CHANGES (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/FAILED_with_leading_asterisks
-[00:19:39.089] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:27:45.591] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/SUCCEEDED_with_trailing_asterisks
-[00:19:39.089] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:27:45.591] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Mixed_case_decision
-[00:19:39.089] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:27:45.591] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Decision_with_extra_whitespace
-[00:19:39.089] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:27:45.591] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/No_decision_found_-_default_to_NEEDS_CHANGES
-[00:19:39.089] INFO: No valid DECISION found in response, defaulting to NEEDS_CHANGES
+[00:27:45.591] INFO: No valid DECISION found in response, defaulting to NEEDS_CHANGES
 === RUN   TestParseDecision/Invalid_decision_value_-_default_to_NEEDS_CHANGES
-[00:19:39.089] INFO: No valid DECISION found in response, defaulting to NEEDS_CHANGES
+[00:27:45.591] INFO: No valid DECISION found in response, defaulting to NEEDS_CHANGES
 === RUN   TestParseDecision/Decision_in_middle_of_text
-[00:19:39.089] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:27:45.591] INFO: Decision extracted: SUCCEEDED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 === RUN   TestParseDecision/Multiple_decisions_-_takes_first
-[00:19:39.089] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
+[00:27:45.591] INFO: Decision extracted: FAILED (pattern: (?mi)DECISION:\s*(SUCCEEDED|NEEDS_CHANGES|FAILED))
 --- PASS: TestParseDecision (0.00s)
     --- PASS: TestParseDecision/Simple_SUCCEEDED (0.00s)
     --- PASS: TestParseDecision/Simple_FAILED (0.00s)
@@ -1900,7 +1883,7 @@ FAIL	github.com/YoshitsuguKoike/deespec/internal/interface/cli/register	2.440s
     --- PASS: TestParseDecision/Decision_in_middle_of_text (0.00s)
     --- PASS: TestParseDecision/Multiple_decisions_-_takes_first (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/run	0.282s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/run	0.461s
 === RUN   TestNewSBIRegisterCommand
 --- PASS: TestNewSBIRegisterCommand (0.00s)
 === RUN   TestSBIRegister_MissingTitle
@@ -1994,7 +1977,7 @@ Flags:
 --- PASS: TestNewSBIRunCommand_NotNil (0.00s)
     --- PASS: TestNewSBIRunCommand_NotNil/NewSBIRunCommand (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi	0.274s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi	0.261s
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/status	[no test files]
 ?   	github.com/YoshitsuguKoike/deespec/internal/interface/cli/version	[no test files]
 === RUN   TestLoadWorkflowConfig_DefaultConfig
@@ -2016,14 +1999,14 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi	0.274s
 === RUN   TestGenerateExampleConfig
 --- PASS: TestGenerateExampleConfig (0.00s)
 === RUN   TestCreateManagerFromConfig
-[00:19:40.885] INFO: Registered workflow: sbi (Spec Backlog Item processing workflow)
-[00:19:40.885] INFO: Stopping all workflows...
-[00:19:40.885] INFO: All workflows stopped
+[00:27:47.324] INFO: Registered workflow: sbi (Spec Backlog Item processing workflow)
+[00:27:47.324] INFO: Stopping all workflows...
+[00:27:47.324] INFO: All workflows stopped
 --- PASS: TestCreateManagerFromConfig (0.00s)
 === RUN   TestWorkflowConfigBuilder
 --- PASS: TestWorkflowConfigBuilder (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_config	0.265s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_config	0.240s
 === RUN   TestParallelSBIWorkflowRunner_ConcurrencyControl
 --- PASS: TestParallelSBIWorkflowRunner_ConcurrencyControl (0.06s)
 === RUN   TestParallelSBIWorkflowRunner_LockContention
@@ -2045,17 +2028,17 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_config	0
 === RUN   TestParallelSBIWorkflowRunner_BasicMethods
 --- PASS: TestParallelSBIWorkflowRunner_BasicMethods (0.01s)
 === RUN   TestParallelSBIWorkflowRunner_NoTasksAvailable
---- PASS: TestParallelSBIWorkflowRunner_NoTasksAvailable (0.01s)
+--- PASS: TestParallelSBIWorkflowRunner_NoTasksAvailable (0.00s)
 === RUN   TestParallelSBIWorkflowRunner_LoadTest
-    parallel_runner_test.go:484: Load test completed: 5 SBIs in 13.051541ms (avg: 2.610308ms per SBI)
+    parallel_runner_test.go:484: Load test completed: 5 SBIs in 13.328417ms (avg: 2.665683ms per SBI)
 --- PASS: TestParallelSBIWorkflowRunner_LoadTest (0.02s)
 === RUN   TestParallelSBIWorkflowRunner_FileConflictDetection
     parallel_runner_test.go:588: Execution order: [SBI-004 SBI-002 SBI-001]
 --- PASS: TestParallelSBIWorkflowRunner_FileConflictDetection (0.11s)
 === RUN   TestParallelSBIWorkflowRunner_AgentPoolControl
-    parallel_runner_test.go:745: Executed SBIs: [SBI-002 SBI-001 SBI-004]
+    parallel_runner_test.go:745: Executed SBIs: [SBI-002 SBI-004 SBI-001]
     parallel_runner_test.go:746: Agent counts: map[claude-code:2 gemini-cli:1]
---- PASS: TestParallelSBIWorkflowRunner_AgentPoolControl (0.06s)
+--- PASS: TestParallelSBIWorkflowRunner_AgentPoolControl (0.07s)
 === RUN   TestSBIWorkflowRunner_NewSBIWorkflowRunner
 --- PASS: TestSBIWorkflowRunner_NewSBIWorkflowRunner (0.00s)
 === RUN   TestSBIWorkflowRunner_Name
@@ -2079,7 +2062,7 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_config	0
 === RUN   TestSBIWorkflowRunner_Integration_WithManager
 --- PASS: TestSBIWorkflowRunner_Integration_WithManager (0.05s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_sbi	0.703s
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_sbi	0.729s
 === RUN   TestStreamEvent_JSON
 --- PASS: TestStreamEvent_JSON (0.00s)
 === RUN   TestStreamContext_HistoryPath
@@ -2193,9 +2176,9 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/pkg/specpath	(cached)
 PASS
 ok  	github.com/YoshitsuguKoike/deespec/internal/runner	(cached)
 === RUN   Test_NoAbsolutePathsInTests
---- PASS: Test_NoAbsolutePathsInTests (0.24s)
+--- PASS: Test_NoAbsolutePathsInTests (0.07s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/testutil	0.490s
+ok  	github.com/YoshitsuguKoike/deespec/internal/testutil	0.311s
 ?   	github.com/YoshitsuguKoike/deespec/internal/usecase	[no test files]
 === RUN   TestNormalizeCRLFToLF
 === RUN   TestNormalizeCRLFToLF/CRLF_to_LF
@@ -2407,14 +2390,14 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/validator/state	(cached)
 === RUN   TestConstraintsNormalization/boundary_value_1
 === RUN   TestConstraintsNormalization/boundary_value_512
 === RUN   TestConstraintsNormalization/boundary_value_513_falls_back
---- PASS: TestConstraintsNormalization (0.01s)
-    --- PASS: TestConstraintsNormalization/no_constraints_uses_default (0.00s)
+--- PASS: TestConstraintsNormalization (0.07s)
+    --- PASS: TestConstraintsNormalization/no_constraints_uses_default (0.02s)
     --- PASS: TestConstraintsNormalization/valid_constraint_value (0.00s)
-    --- PASS: TestConstraintsNormalization/zero_falls_back_to_default (0.00s)
-    --- PASS: TestConstraintsNormalization/negative_falls_back_to_default (0.00s)
-    --- PASS: TestConstraintsNormalization/over_limit_falls_back_to_default (0.00s)
-    --- PASS: TestConstraintsNormalization/boundary_value_1 (0.00s)
-    --- PASS: TestConstraintsNormalization/boundary_value_512 (0.00s)
+    --- PASS: TestConstraintsNormalization/zero_falls_back_to_default (0.01s)
+    --- PASS: TestConstraintsNormalization/negative_falls_back_to_default (0.02s)
+    --- PASS: TestConstraintsNormalization/over_limit_falls_back_to_default (0.01s)
+    --- PASS: TestConstraintsNormalization/boundary_value_1 (0.01s)
+    --- PASS: TestConstraintsNormalization/boundary_value_512 (0.01s)
     --- PASS: TestConstraintsNormalization/boundary_value_513_falls_back (0.00s)
 === RUN   TestLoadWorkflow
 === RUN   TestLoadWorkflow/minimal_valid_workflow
@@ -2541,5 +2524,4 @@ ok  	github.com/YoshitsuguKoike/deespec/internal/validator/state	(cached)
     --- PASS: TestBuildVarMap/workflow_vars_override_defaults (0.00s)
     --- PASS: TestBuildVarMap/nil_state_handled (0.00s)
 PASS
-ok  	github.com/YoshitsuguKoike/deespec/internal/workflow	0.284s
-FAIL
+ok  	github.com/YoshitsuguKoike/deespec/internal/workflow	0.453s

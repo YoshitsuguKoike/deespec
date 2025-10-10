@@ -129,7 +129,8 @@ func TestContainer_LockServiceCleanup(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for lock to expire and cleanup to run (multiple cleanup cycles)
-	time.Sleep(1000 * time.Millisecond)
+	// Need at least 2 cleanup cycles: 100ms (TTL) + 500ms (first cleanup) + 500ms (second cleanup) = 1100ms minimum
+	time.Sleep(1500 * time.Millisecond)
 
 	// Verify lock is cleaned up
 	_, err = lockService.FindRunLock(ctx, lockID)

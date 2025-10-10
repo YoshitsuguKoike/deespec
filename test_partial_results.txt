@@ -1,0 +1,94 @@
+# github.com/YoshitsuguKoike/deespec/internal/infrastructure/di.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-3608658715/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
+=== RUN   TestContainer_LockServiceIntegration
+--- PASS: TestContainer_LockServiceIntegration (0.28s)
+=== RUN   TestContainer_LockServiceCleanup
+--- PASS: TestContainer_LockServiceCleanup (1.52s)
+=== RUN   TestContainer_DefaultConfiguration
+--- PASS: TestContainer_DefaultConfiguration (0.01s)
+=== RUN   TestContainer_CloseStopsLockService
+--- PASS: TestContainer_CloseStopsLockService (0.01s)
+=== RUN   TestContainer_MultipleLocksSimultaneously
+--- PASS: TestContainer_MultipleLocksSimultaneously (0.01s)
+=== RUN   TestContainer_LockConflict
+--- PASS: TestContainer_LockConflict (0.01s)
+=== RUN   TestContainer_WALModeEnabled
+--- PASS: TestContainer_WALModeEnabled (0.01s)
+=== RUN   TestContainer_ConcurrentAccess
+--- PASS: TestContainer_ConcurrentAccess (0.01s)
+PASS
+ok  	github.com/YoshitsuguKoike/deespec/internal/infrastructure/di	3.252s
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/clear.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-548989990/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
+=== RUN   TestClear
+=== RUN   TestClear/successful_clear_without_WIP
+[00:15:29.002] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:15:29.003] INFO: Creating archive at: .deespec/archives/2025-10-11T00-15-29_01K77B1YKB5DTM5WXG187GDWK6
+[00:15:29.004] INFO: Archived journal.ndjson
+[00:15:29.005] INFO: Moved 1 items from specs to archive
+[00:15:29.005] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
+[00:15:29.006] INFO: Reset state files
+[00:15:29.006] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-15-29_01K77B1YKB5DTM5WXG187GDWK6
+[00:15:29.006] WARN: LoadState is deprecated - DB-based state management should be used instead
+--- PASS: TestClear (0.01s)
+    --- PASS: TestClear/successful_clear_without_WIP (0.00s)
+=== RUN   TestClear_WithWIP
+=== RUN   TestClear_WithWIP/WIP_without_lease_should_succeed
+[00:15:29.013] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:15:29.013] WARN: Clearing with WIP but no lease (WIP: TASK-001 may be stale)
+[00:15:29.014] INFO: Creating archive at: .deespec/archives/2025-10-11T00-15-29_01K77B1YKP1W7VGQWEA77S1ECG
+[00:15:29.014] INFO: No journal.ndjson to archive
+[00:15:29.014] INFO: No specs directory to archive
+[00:15:29.014] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
+[00:15:29.015] INFO: Reset state files
+[00:15:29.015] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-15-29_01K77B1YKP1W7VGQWEA77S1ECG
+=== RUN   TestClear_WithWIP/WIP_with_active_lease_should_fail
+[00:15:29.016] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:15:29.017] WARN: LeaseExpired is deprecated - use lock service instead
+--- PASS: TestClear_WithWIP (0.01s)
+    --- PASS: TestClear_WithWIP/WIP_without_lease_should_succeed (0.00s)
+    --- PASS: TestClear_WithWIP/WIP_with_active_lease_should_fail (0.00s)
+=== RUN   TestClear_WithActiveLease
+[00:15:29.024] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:15:29.025] WARN: LeaseExpired is deprecated - use lock service instead
+--- PASS: TestClear_WithActiveLease (0.00s)
+=== RUN   TestClear_NoState
+[00:15:29.029] WARN: LoadState is deprecated - DB-based state management should be used instead
+[00:15:29.030] INFO: Creating archive at: .deespec/archives/2025-10-11T00-15-29_01K77B1YM5XCXRM5CK5C521DHM
+[00:15:29.030] INFO: No journal.ndjson to archive
+[00:15:29.030] INFO: No specs directory to archive
+[00:15:29.030] WARN: SaveStateCAS is deprecated - DB-based state management should be used instead
+[00:15:29.031] INFO: Reset state files
+[00:15:29.031] INFO: Clear completed successfully. Archive created at: .deespec/archives/2025-10-11T00-15-29_01K77B1YM5XCXRM5CK5C521DHM
+--- PASS: TestClear_NoState (0.01s)
+=== RUN   TestArchiveJournal
+[00:15:29.036] INFO: Archived journal.ndjson
+--- PASS: TestArchiveJournal (0.00s)
+=== RUN   TestArchiveJournal_NoFile
+[00:15:29.040] INFO: No journal.ndjson to archive
+--- PASS: TestArchiveJournal_NoFile (0.00s)
+=== RUN   TestArchiveSpecs
+[00:15:29.043] INFO: Moved 1 items from specs to archive
+--- PASS: TestArchiveSpecs (0.01s)
+=== RUN   TestArchiveSpecs_NoSpecs
+[00:15:29.060] INFO: No specs directory to archive
+--- PASS: TestArchiveSpecs_NoSpecs (0.02s)
+PASS
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/clear	1.375s
+# github.com/YoshitsuguKoike/deespec/internal/interface/cli/common.test
+ld: warning: '/private/var/folders/m1/zhzcdc111bjd5y5qtrnw3yd00000gn/T/go-link-675411559/000023.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols to start at index 1626, found 95 undefined symbols starting at index 1626
+=== RUN   TestStateHelpers
+--- PASS: TestStateHelpers (0.00s)
+=== RUN   TestStateIO
+[00:15:31.102] WARN: LoadState is deprecated - DB-based state management should be used instead
+--- PASS: TestStateIO (0.00s)
+=== RUN   TestLoggerFunctions
+[00:15:31.102] INFO: Test info message arg
+[00:15:31.102] WARN: Test warning message 42
+[00:15:31.102] ERROR: Test error message
+[00:15:31.102] DEBUG: Debug level message
+[00:15:31.103] WARN: Warn level message
+[00:15:31.103] ERROR: Error level message
+--- PASS: TestLoggerFunctions (0.00s)
+PASS
+ok  	github.com/YoshitsuguKoike/deespec/internal/interface/cli/common	1.476s

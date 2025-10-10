@@ -449,19 +449,30 @@ func promptUserConfirmation(message string) bool {
 
 // killProcessAndCleanup kills a process and cleans up database locks
 func killProcessAndCleanup(pid int, container *di.Container) error {
-	// Try to kill the process
+	// Try graceful termination first (SIGTERM)
 	common.Info("Stopping process PID %d...\n", pid)
 	cmd := exec.Command("kill", strconv.Itoa(pid))
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to kill process: %w", err)
+		return fmt.Errorf("failed to send kill signal: %w", err)
 	}
 
-	// Wait a moment for process to terminate
+	// Wait for process to terminate
 	time.Sleep(500 * time.Millisecond)
 
-	// Verify process is stopped
+	// Check if process is still running
 	if isProcessRunning(pid) {
-		return fmt.Errorf("process %d is still running after kill signal", pid)
+		// Process didn't terminate, try force kill (SIGKILL)
+		common.Warn("Process %d did not terminate gracefully, forcing termination...\n", pid)
+		cmd = exec.Command("kill", "-9", strconv.Itoa(pid))
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to force kill process: %w", err)
+		}
+
+		// Wait a bit and verify again
+		time.Sleep(500 * time.Millisecond)
+		if isProcessRunning(pid) {
+			return fmt.Errorf("process %d is still running after force kill signal", pid)
+		}
 	}
 
 	common.Info("Process %d stopped successfully\n", pid)

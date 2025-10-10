@@ -232,6 +232,12 @@ title: No Labels Test`,
 			defer os.Chdir(oldDir)
 			os.Chdir(tmpDir)
 
+			// Create .deespec directory structure for testing
+			deespecDir := filepath.Join(tmpDir, ".deespec")
+			if err := os.MkdirAll(deespecDir, 0755); err != nil {
+				t.Fatal(err)
+			}
+
 			// Test with file input
 			tmpFile := filepath.Join(tmpDir, "input."+tt.inputType)
 			if err := os.WriteFile(tmpFile, []byte(tt.input), 0644); err != nil {
@@ -417,6 +423,16 @@ labels: [test]
 data: ` + strings.Repeat("a", MaxInputSize)
 
 	tmpDir := t.TempDir()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	os.Chdir(tmpDir)
+
+	// Create .deespec directory structure for testing
+	deespecDir := filepath.Join(tmpDir, ".deespec")
+	if err := os.MkdirAll(deespecDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
 	tmpFile := filepath.Join(tmpDir, "large.yaml")
 	if err := os.WriteFile(tmpFile, []byte(largeInput), 0644); err != nil {
 		t.Fatal(err)

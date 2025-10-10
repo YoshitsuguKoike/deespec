@@ -113,28 +113,44 @@ func runSBIHistory(ctx context.Context, sbiID string, flags *sbiHistoryFlags) er
 	defer file.Close()
 
 	// Parse journal entries
-	var entries []JournalEntry
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
+	// Support both JSON array format and NDJSON format
+	data, err := os.ReadFile(journalPath)
+	if err != nil {
+		return fmt.Errorf("failed to read journal file: %w", err)
+	}
+
+	var allEntries []JournalEntry
+
+	// Try to parse as JSON array first (new format)
+	if err := json.Unmarshal(data, &allEntries); err != nil {
+		// If that fails, try NDJSON format (old format)
+		allEntries = []JournalEntry{}
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if line == "" {
+				continue
+			}
+
+			var entry JournalEntry
+			if err := json.Unmarshal([]byte(line), &entry); err != nil {
+				// Skip malformed lines
+				continue
+			}
+			allEntries = append(allEntries, entry)
 		}
 
-		var entry JournalEntry
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			// Skip malformed lines
-			continue
-		}
-
-		// Filter by SBI ID (support both full and partial ID match)
-		if entry.SbiID == sbiID || strings.HasPrefix(entry.SbiID, sbiID) {
-			entries = append(entries, entry)
+		if err := scanner.Err(); err != nil {
+			return fmt.Errorf("failed to read journal: %w", err)
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("failed to read journal: %w", err)
+	// Filter by SBI ID (support both full and partial ID match)
+	var entries []JournalEntry
+	for _, entry := range allEntries {
+		if entry.SbiID == sbiID || strings.HasPrefix(entry.SbiID, sbiID) {
+			entries = append(entries, entry)
+		}
 	}
 
 	// Apply limit (show most recent entries)

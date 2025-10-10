@@ -183,8 +183,18 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 			stats.FailedRuns++
 			stats.LastError = err
 			consecutiveErrors++
-			// Check if it's just a lock contention (not a real error)
-			if strings.Contains(err.Error(), "another process is running") || strings.Contains(err.Error(), "state.lock: file exists") {
+			// Check if it's a lock contention error
+			isLockError := strings.Contains(err.Error(), "another instance") ||
+				strings.Contains(err.Error(), "another process is running") ||
+				strings.Contains(err.Error(), "state.lock: file exists")
+
+			if isLockError {
+				// If this is the first execution and lock is held, exit immediately
+				if executionNum == 1 {
+					stats.mutex.Unlock()
+					wm.warn("[%s] Cannot start: %v\n", runner.Name(), err)
+					return
+				}
 				wm.debug("[%s] Execution #%d skipped: lock contention (another instance running)\n", runner.Name(), executionNum)
 			} else {
 				wm.warn("[%s] Execution #%d failed: %v\n", runner.Name(), executionNum, err)

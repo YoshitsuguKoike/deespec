@@ -567,6 +567,23 @@ Examples:
 				return fmt.Errorf("failed to start workflows: %v", err)
 			}
 
+			// Wait briefly for workflows to start, then check if they all stopped immediately
+			time.Sleep(500 * time.Millisecond)
+
+			stats := manager.GetStats()
+			allStopped := true
+			for _, stat := range stats {
+				if stat.IsRunning {
+					allStopped = false
+					break
+				}
+			}
+
+			if allStopped {
+				// All workflows stopped immediately (e.g., due to lock errors)
+				return fmt.Errorf("all workflows stopped - another instance may be running")
+			}
+
 			// Wait for shutdown signal
 			<-signalCtx.Done()
 			common.Info("Shutdown signal received, stopping all workflows...\n")
@@ -827,15 +844,15 @@ func RunTurnWithContainer(container *di.Container, autoFB bool) error {
 	if output.NoOp {
 		switch output.NoOpReason {
 		case "lock_held":
-			// Check lock details and provide informative message
+			// Return error immediately when lock is held by another instance
+			// This prevents the workflow from waiting indefinitely
 			lockService := container.GetLockService()
 			lockID, _ := lock.NewLockID("system-runlock")
 			if existingLock, err := lockService.FindRunLock(ctx, lockID); err == nil && existingLock != nil {
-				common.Info("⏳ Another instance active - Lock held by PID %d on %s (expires: %s)",
+				return fmt.Errorf("another instance is already running (PID %d on %s, expires: %s)",
 					existingLock.PID(), existingLock.Hostname(), existingLock.ExpiresAt().Format("15:04:05"))
-			} else {
-				common.Info("⏳ Another instance active - waiting...")
 			}
+			return fmt.Errorf("another instance is already running")
 		case "no_tasks":
 			common.Info("💤 No tasks available to process")
 		default:

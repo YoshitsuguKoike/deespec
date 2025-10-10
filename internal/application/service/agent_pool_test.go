@@ -26,7 +26,7 @@ func TestNewAgentPool(t *testing.T) {
 func TestNewAgentPoolWithConfig(t *testing.T) {
 	config := AgentPoolConfig{
 		MaxPerAgent: map[string]int{
-			"claude-code": 5,
+			"claude-code":  5,
 			"custom-agent": 3,
 		},
 	}

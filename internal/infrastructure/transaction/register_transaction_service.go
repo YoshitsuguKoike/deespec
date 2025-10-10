@@ -215,27 +215,27 @@ func (s *RegisterTransactionService) saveSBIToSQLite(ctx context.Context, spec *
 	}
 
 	_, err = s.db.ExecContext(ctx, query,
-		sbiID,                // id
-		spec.Title,           // title
-		"",                   // description
-		"pending",            // status
-		"registered",         // current_step
-		nil,                  // parent_pbi_id
-		0.0,                  // estimated_hours
-		0,                    // priority (default)
-		sequence,             // sequence
-		now,                  // registered_at
-		labelsJSON,           // labels
-		"",                   // assigned_agent
-		"[]",                 // file_paths
-		1,                    // current_turn
-		1,                    // current_attempt
-		10,                   // max_turns
-		3,                    // max_attempts
-		"",                   // last_error
-		"[]",                 // artifact_paths
-		now,                  // created_at
-		now,                  // updated_at
+		sbiID,        // id
+		spec.Title,   // title
+		"",           // description
+		"pending",    // status
+		"registered", // current_step
+		nil,          // parent_pbi_id
+		0.0,          // estimated_hours
+		0,            // priority (default)
+		sequence,     // sequence
+		now,          // registered_at
+		labelsJSON,   // labels
+		"",           // assigned_agent
+		"[]",         // file_paths
+		1,            // current_turn
+		1,            // current_attempt
+		10,           // max_turns
+		3,            // max_attempts
+		"",           // last_error
+		"[]",         // artifact_paths
+		now,          // created_at
+		now,          // updated_at
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert SBI to SQLite: %w", err)

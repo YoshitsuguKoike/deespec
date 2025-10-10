@@ -17,7 +17,6 @@ type Paths struct {
 	Var      string // .deespec/var
 
 	// Key files
-	Workflow  string // .deespec/etc/workflow.yaml
 	State     string // .deespec/var/state.json
 	Journal   string // .deespec/var/journal.ndjson
 	Health    string // .deespec/var/health.json
@@ -66,7 +65,6 @@ func ResolvePathsWithHome(home string) Paths {
 	p.SpecsPBI = filepath.Join(homeAbs, "specs", "pbi")
 
 	// Key files
-	p.Workflow = filepath.Join(p.Etc, "workflow.yaml")
 	p.State = filepath.Join(p.Var, "state.json")
 	p.Journal = filepath.Join(p.Var, "journal.ndjson")
 	p.Health = filepath.Join(p.Var, "health.json")

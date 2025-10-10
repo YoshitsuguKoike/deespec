@@ -7,7 +7,7 @@ LDFLAGS=-ldflags "-X main.version=$(VERSION)"
 
 build:
 	@mkdir -p dist
-	CGO_ENABLED=0 go build $(LDFLAGS) -o $(OUT) ./cmd/deespec
+	CGO_ENABLED=1 go build $(LDFLAGS) -o $(OUT) ./cmd/deespec
 
 clean:
 	rm -rf dist coverage.txt coverage.html

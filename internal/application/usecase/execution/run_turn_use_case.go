@@ -1,10 +1,13 @@
 package execution
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/application/dto"
@@ -155,7 +158,11 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		}
 
 		if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
-			// Log warning but don't fail
+			// Log warning to stderr but don't fail the operation
+			fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to append journal entry (force termination)\n")
+			fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "   SBI ID: %s, Turn: %d, Step: force_terminated\n",
+				currentSBI.ID().String(), currentTurn)
 		}
 
 		// Note: State sync removed - DB is single source of truth
@@ -233,9 +240,16 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 	}
 
 	if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
-		// Log warning but don't fail the operation
+		// Log warning to stderr but don't fail the operation
 		// Journal is for auditing purposes and shouldn't block execution
-		// TODO: Add proper logging
+		fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to append journal entry\n")
+		fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "   SBI ID: %s, Turn: %d, Step: %s, Status: %s\n",
+			currentSBI.ID().String(), currentTurn,
+			uc.statusToStep(uc.mapDomainStatusToString(nextStatus)),
+			uc.mapDomainStatusToString(nextStatus))
+		fmt.Fprintf(os.Stderr, "   Journal Record: Timestamp=%s, Attempt=%d, Decision=%s\n",
+			journalRecord.Timestamp, currentAttempt, stepOutput.Decision)
 	}
 
 	// 10. Note: State sync removed - DB is single source of truth
@@ -289,7 +303,7 @@ func (uc *RunTurnUseCase) pickTask(ctx context.Context, autoFB bool, turn int, s
 	// Update state from DB (DB is single source of truth)
 	state.WIP = nextSBI.ID().String()
 	state.Status = "WIP"
-	state.Turn = 1 // Reset turn for new SBI
+	state.Turn = 1    // Reset turn for new SBI
 	state.Attempt = 1 // Reset attempt for new SBI
 	state.LeaseExpiresAt = time.Now().Add(uc.leaseTTL).UTC().Format(time.RFC3339Nano)
 
@@ -417,11 +431,105 @@ func (uc *RunTurnUseCase) buildPromptWithArtifact(sbiEntity *sbi.SBI, step strin
 	title := sbiEntity.Title()
 	description := sbiEntity.Description()
 
-	var prompt string
+	// Get current working directory
+	workDir, err := os.Getwd()
+	if err != nil {
+		workDir = "."
+	}
+
+	// Generate prior context instructions
+	priorContext := uc.buildPriorContextInstructions(sbiID, turn)
+
+	// Prepare template data
+	data := PromptTemplateData{
+		WorkDir:         workDir,
+		SBIID:           sbiID,
+		Title:           title,
+		Description:     description,
+		Turn:            turn,
+		Attempt:         attempt,
+		Step:            step,
+		SBIDir:          fmt.Sprintf(".deespec/specs/sbi/%s", sbiID),
+		ArtifactPath:    artifactPath,
+		PriorContext:    priorContext,
+		TaskDescription: description,
+	}
+
+	// Determine template path based on step
+	var templatePath string
+	switch step {
+	case "implement":
+		templatePath = ".deespec/prompts/WIP.md"
+	case "review":
+		templatePath = ".deespec/prompts/REVIEW.md"
+		data.ImplementPath = fmt.Sprintf(".deespec/specs/sbi/%s/implement_%d.md", sbiID, turn-1)
+	case "force_implement":
+		templatePath = ".deespec/prompts/REVIEW_AND_WIP.md"
+	default:
+		// Fallback to simple prompt if no template found
+		return fmt.Sprintf("Execute step %s for SBI %s (turn %d, attempt %d)", step, sbiID, turn, attempt)
+	}
+
+	// Try to expand template
+	prompt, err := uc.expandTemplate(templatePath, data)
+	if err != nil {
+		// Fallback to old-style hardcoded prompts if template fails
+		fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to load template %s: %v\n", templatePath, err)
+		fmt.Fprintf(os.Stderr, "   Falling back to built-in prompt\n")
+		return uc.buildFallbackPrompt(sbiEntity, step, turn, attempt, artifactPath, priorContext)
+	}
+
+	return prompt
+}
+
+// PromptTemplateData holds data for template expansion
+type PromptTemplateData struct {
+	WorkDir         string
+	SBIID           string
+	Title           string
+	Description     string
+	Turn            int
+	Attempt         int
+	Step            string
+	SBIDir          string
+	ArtifactPath    string
+	ImplementPath   string
+	PriorContext    string
+	TaskDescription string
+}
+
+// expandTemplate reads a template file and expands it with given data
+func (uc *RunTurnUseCase) expandTemplate(templatePath string, data PromptTemplateData) (string, error) {
+	// Read template file
+	templateContent, err := os.ReadFile(templatePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read template %s: %w", templatePath, err)
+	}
+
+	// Parse template
+	tmpl, err := template.New(filepath.Base(templatePath)).Parse(string(templateContent))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse template %s: %w", templatePath, err)
+	}
+
+	// Execute template
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("failed to execute template %s: %w", templatePath, err)
+	}
+
+	return buf.String(), nil
+}
+
+// buildFallbackPrompt generates prompts using hardcoded templates (fallback when template files are not available)
+func (uc *RunTurnUseCase) buildFallbackPrompt(sbiEntity *sbi.SBI, step string, turn int, attempt int, artifactPath string, priorContext string) string {
+	sbiID := sbiEntity.ID().String()
+	title := sbiEntity.Title()
+	description := sbiEntity.Description()
 
 	switch step {
 	case "implement":
-		prompt = fmt.Sprintf(`# Implementation Task
+		return fmt.Sprintf(`%s# Implementation Task
 
 **SBI ID**: %s
 **Title**: %s
@@ -443,11 +551,11 @@ The report should include:
 5. Testing notes (if applicable)
 
 Use the Write tool to create this file with your full implementation report.
-`, sbiID, title, description, turn, attempt, artifactPath)
+`, priorContext, sbiID, title, description, turn, attempt, artifactPath)
 
 	case "review":
 		implementPath := fmt.Sprintf(".deespec/specs/sbi/%s/implement_%d.md", sbiID, turn-1)
-		prompt = fmt.Sprintf(`# Code Review Task
+		return fmt.Sprintf(`%s# Code Review Task
 
 **SBI ID**: %s
 **Title**: %s
@@ -474,10 +582,10 @@ The review report should include:
 - DECISION: FAILED (if major issues found)
 
 Use the Write tool to create this file with your full review report.
-`, sbiID, title, turn, attempt, implementPath, artifactPath)
+`, priorContext, sbiID, title, turn, attempt, implementPath, artifactPath)
 
 	case "force_implement":
-		prompt = fmt.Sprintf(`# Force Implementation Task (Final Attempt)
+		return fmt.Sprintf(`%s# Force Implementation Task (Final Attempt)
 
 **SBI ID**: %s
 **Title**: %s
@@ -499,13 +607,41 @@ The report should include:
 4. Verification steps
 
 Use the Write tool to create this file with your full implementation report.
-`, sbiID, title, description, turn, attempt, artifactPath)
+`, priorContext, sbiID, title, description, turn, attempt, artifactPath)
 
 	default:
-		prompt = fmt.Sprintf("Execute step %s for SBI %s (turn %d, attempt %d)", step, sbiID, turn, attempt)
+		return fmt.Sprintf("Execute step %s for SBI %s (turn %d, attempt %d)", step, sbiID, turn, attempt)
+	}
+}
+
+// buildPriorContextInstructions generates instructions to read prior artifacts
+func (uc *RunTurnUseCase) buildPriorContextInstructions(sbiID string, currentTurn int) string {
+	var context strings.Builder
+
+	context.WriteString("## IMPORTANT: Review Prior Work First\n\n")
+	context.WriteString("Before starting your task, you MUST:\n\n")
+	context.WriteString("### 1. Read All Existing Artifacts\n\n")
+	context.WriteString(fmt.Sprintf("Check and read files in: `.deespec/specs/sbi/%s/`\n\n", sbiID))
+	context.WriteString("Expected files:\n")
+	context.WriteString("- `spec.md`: Original specification\n")
+
+	if currentTurn > 1 {
+		context.WriteString("- Previous implementation reports: `implement_*.md`\n")
+		context.WriteString("- Previous review reports: `review_*.md`\n")
+		context.WriteString("- Notes and rollup files if any\n\n")
+
+		context.WriteString("**Why this matters**:\n")
+		context.WriteString("- Understand what has been tried before\n")
+		context.WriteString("- Avoid repeating failed approaches\n")
+		context.WriteString("- Build upon previous progress\n")
+		context.WriteString("- Maintain consistency across turns\n\n")
+
+		context.WriteString(fmt.Sprintf("**Action**: Use the Read tool to read `.deespec/specs/sbi/%s/spec.md` and any `implement_*.md` or `review_*.md` files from previous turns.\n\n", sbiID))
+	} else {
+		context.WriteString(fmt.Sprintf("\n**Action**: Use the Read tool to read `.deespec/specs/sbi/%s/spec.md` to understand the full specification.\n\n", sbiID))
 	}
 
-	return prompt
+	return context.String()
 }
 
 // determineNextStatusForSBI determines next status for SBI entity

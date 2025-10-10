@@ -43,8 +43,8 @@ type SBIDTO struct {
 	TaskDTO
 	EstimatedHours float64   `json:"estimated_hours"`
 	Priority       int       `json:"priority"`
-	Sequence       int       `json:"sequence"`       // Registration sequence number (auto-incremented)
-	RegisteredAt   time.Time `json:"registered_at"`  // Explicit registration timestamp
+	Sequence       int       `json:"sequence"`      // Registration sequence number (auto-incremented)
+	RegisteredAt   time.Time `json:"registered_at"` // Explicit registration timestamp
 	Labels         []string  `json:"labels"`
 	AssignedAgent  string    `json:"assigned_agent"`
 	FilePaths      []string  `json:"file_paths"`

@@ -27,9 +27,9 @@ func SetupSignalHandler() (context.Context, context.CancelFunc) {
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan,
-		os.Interrupt,     // Ctrl+C (SIGINT)
-		syscall.SIGTERM,  // kill command
-		syscall.SIGTSTP,  // Ctrl+Z
+		os.Interrupt,    // Ctrl+C (SIGINT)
+		syscall.SIGTERM, // kill command
+		syscall.SIGTSTP, // Ctrl+Z
 	)
 
 	go func() {

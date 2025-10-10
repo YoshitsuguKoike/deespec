@@ -6,6 +6,7 @@ import (
 
 import (
 	"bufio"
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -49,12 +50,17 @@ func Clear(paths app.Paths, opts ClearOptions) error {
 		return fmt.Errorf("failed to archive specs: %w", err)
 	}
 
-	// 5. Reset state files
+	// 5. Clear database (physical deletion)
+	if err := clearDatabase(); err != nil {
+		return fmt.Errorf("failed to clear database: %w", err)
+	}
+
+	// 6. Reset state files
 	if err := resetStateFiles(paths); err != nil {
 		return fmt.Errorf("failed to reset state files: %w", err)
 	}
 
-	// 6. Handle --prune option if specified
+	// 7. Handle --prune option if specified
 	if opts.Prune {
 		if err := pruneArchives(); err != nil {
 			return fmt.Errorf("failed to prune archives: %w", err)
@@ -67,18 +73,27 @@ func Clear(paths app.Paths, opts ClearOptions) error {
 
 // checkNoWIP ensures there's no work in progress
 func checkNoWIP(statePath string) error {
-	// Read state.json
-	st, err := common.LoadState(statePath)
+	// Check if state.json exists
+	data, err := os.ReadFile(statePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No state file, safe to proceed
 			return nil
 		}
-		return fmt.Errorf("failed to load state: %w", err)
+		return fmt.Errorf("failed to read state: %w", err)
+	}
+
+	// Parse state.json
+	var st common.State
+	if err := json.Unmarshal(data, &st); err != nil {
+		// If we can't parse it, it's probably corrupted or old format
+		// Allow clear to proceed with warning
+		common.Warn("State file is corrupted or old format, allowing clear to proceed\n")
+		return nil
 	}
 
 	// Check if lease exists and is still active
-	leaseActive := st.LeaseExpiresAt != "" && !common.LeaseExpired(st)
+	leaseActive := st.LeaseExpiresAt != "" && !common.LeaseExpired(&st)
 
 	// If lease is active, block the clear
 	if leaseActive {
@@ -267,28 +282,65 @@ func copyFile(src, dst string) error {
 	return err
 }
 
-// resetStateFiles resets state.json and health.json
-func resetStateFiles(paths app.Paths) error {
-	// Reset state.json
-	initialState := &common.State{
-		Version:       "0.1.14",
-		Current:       "",
-		Status:        "",
-		Turn:          0,
-		WIP:           "",
-		Inputs:        make(map[string]interface{}),
-		LastArtifacts: []string{},
-		Meta: map[string]interface{}{
-			"updated_at": time.Now().UTC().Format(time.RFC3339),
-		},
+// clearDatabase clears all task data from the database (physical deletion)
+func clearDatabase() error {
+	// Initialize DI container
+	container, err := common.InitializeContainer()
+	if err != nil {
+		return fmt.Errorf("failed to initialize container: %w", err)
+	}
+	defer container.Close()
+
+	// Get database connection
+	db := container.GetDB()
+	ctx := context.Background()
+
+	// Start transaction
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete task-related data (in correct order due to foreign keys)
+	tables := []string{
+		"task_labels", // Task-label associations
+		"epic_pbis",   // Epic-PBI associations
+		"pbi_sbis",    // PBI-SBI associations
+		"sbis",        // SBI tasks
+		"pbis",        // PBI tasks
+		"epics",       // EPIC tasks
+		"run_locks",   // Run locks
+		"state_locks", // State locks
 	}
 
-	if err := common.SaveStateCAS(paths.State, initialState, 0); err != nil {
-		// Try to create new state file
-		stateData, _ := json.Marshal(initialState)
-		if err := os.WriteFile(paths.State, stateData, 0644); err != nil {
-			return fmt.Errorf("failed to reset state.json: %w", err)
+	for _, table := range tables {
+		query := fmt.Sprintf("DELETE FROM %s", table)
+		if _, err := tx.ExecContext(ctx, query); err != nil {
+			// If table doesn't exist, skip it
+			if strings.Contains(err.Error(), "no such table") {
+				common.Warn("Table %s does not exist, skipping\n", table)
+				continue
+			}
+			return fmt.Errorf("failed to clear table %s: %w", table, err)
 		}
+		common.Info("Cleared table: %s\n", table)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	common.Info("Database cleared successfully\n")
+	return nil
+}
+
+// resetStateFiles resets state.json and health.json
+func resetStateFiles(paths app.Paths) error {
+	// Delete state.json if it exists (DB-based state management is now preferred)
+	if err := os.Remove(paths.State); err != nil && !os.IsNotExist(err) {
+		common.Warn("Failed to remove state.json: %v\n", err)
 	}
 
 	// Reset health.json

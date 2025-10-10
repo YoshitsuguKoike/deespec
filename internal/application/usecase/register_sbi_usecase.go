@@ -95,12 +95,12 @@ type ResolvedConfig struct {
 	InputMaxBytes int
 
 	// Validation limits
-	IDMaxLen      int
-	IDPattern     *regexp.Regexp
-	TitleMaxLen   int
-	TitleDenyEmpty bool
-	LabelMaxCount int
-	LabelsPattern *regexp.Regexp
+	IDMaxLen               int
+	IDPattern              *regexp.Regexp
+	TitleMaxLen            int
+	TitleDenyEmpty         bool
+	LabelMaxCount          int
+	LabelsPattern          *regexp.Regexp
 	LabelsWarnOnDuplicates bool
 
 	// Path configuration

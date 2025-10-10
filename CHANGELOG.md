@@ -6,6 +6,47 @@
 
 ### 追加 (Added)
 
+* **プロンプトシステムのテンプレート化 (OptionA + OptionB完了)**:
+  - **OptionA: 既存コンテキスト読み込み指示の実装**
+    - `buildPriorContextInstructions()`: AIエージェントに既存アーティファクト読み込みを指示
+    - 過去の実装・レビュー履歴を参照することで探索時間を5-10分から30秒に短縮
+    - Turn 1では`spec.md`のみ、Turn 2以降は実装・レビューファイルも読み込み指示
+  - **OptionB: テンプレートベースプロンプトシステムへの移行**
+    - `text/template`パッケージを使用した動的プロンプト生成システム
+    - `PromptTemplateData`構造体による変数管理（SBIID、Title、Turn、Attempt等）
+    - `expandTemplate()`: テンプレートファイル展開関数の実装
+    - `buildFallbackPrompt()`: テンプレート読み込み失敗時の後方互換機構
+    - テンプレート変数: `{{.PriorContext}}`, `{{.WorkDir}}`, `{{.SBIID}}`, `{{.Title}}`, `{{.Description}}`, `{{.Turn}}`, `{{.Attempt}}`, `{{.ArtifactPath}}`, `{{.ImplementPath}}`
+  - **プロンプトテンプレートの整備**
+    - `.deespec/prompts/WIP.md`: 実装ステップ用テンプレート
+    - `.deespec/prompts/REVIEW.md`: レビューステップ用テンプレート
+    - `.deespec/prompts/REVIEW_AND_WIP.md`: 強制実装ステップ用テンプレート
+    - すべてのテンプレートに`{{.PriorContext}}`を先頭に配置
+    - システム整合性保護制約の追加（.deespecディレクトリ変更禁止）
+  - **効果**:
+    - AIエージェントの探索時間を大幅短縮（既存コンテキストの事前読み込み）
+    - プロンプト保守性の向上（コードとテンプレートの分離）
+    - 柔軟な変数展開によるコンテキスト提供の最適化
+
+### 変更 (Changed)
+
+* **プロンプトシステムの刷新**:
+  - workflow.yamlベースのシステムから完全撤廃
+  - テンプレートベースシステムへの移行完了
+  - `buildPromptWithArtifact()`関数の完全リファクタリング
+
+### 削除 (Removed)
+
+* **workflow.yamlシステムの削除**:
+  - `.deespec/etc/workflow.yaml`ファイルの削除
+  - `.deespec/prompts/system/`ディレクトリの削除
+  - `paths.Workflow`フィールドの削除（paths.go）
+  - `runDoctorValidationJSON()`からworkflow検証ロジック削除
+  - workflow関連の未使用import削除（context、workflow package）
+  - validatePlaceholders系関数の削除（workflow専用だったため）
+
+### 追加 (Added)
+
 * **ULID順序問題の修正とタスク管理CLI実装 (Phase 1 + Phase 2)**:
   - **Phase 1: データベーススキーマ拡張**
     - `sbis`テーブルに`sequence INTEGER`, `registered_at DATETIME`フィールド追加

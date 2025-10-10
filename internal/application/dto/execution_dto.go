@@ -11,10 +11,10 @@ type RunTurnInput struct {
 type RunTurnOutput struct {
 	// Basic info
 	Turn        int       `json:"turn"`
-	SBIID       string    `json:"sbi_id,omitempty"` // Current SBI being processed (empty if no WIP)
-	NoOp        bool      `json:"no_op"`            // True if no work was done
+	SBIID       string    `json:"sbi_id,omitempty"`       // Current SBI being processed (empty if no WIP)
+	NoOp        bool      `json:"no_op"`                  // True if no work was done
 	NoOpReason  string    `json:"no_op_reason,omitempty"` // Reason for NoOp: "lock_held", "no_tasks", or empty
-	ElapsedMs   int64     `json:"elapsed_ms"`       // Execution time
+	ElapsedMs   int64     `json:"elapsed_ms"`             // Execution time
 	CompletedAt time.Time `json:"completed_at"`
 
 	// State transition

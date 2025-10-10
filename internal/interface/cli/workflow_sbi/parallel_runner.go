@@ -22,12 +22,12 @@ type ExecuteTurnFunc func(ctx context.Context, container *di.Container, sbiID st
 // ParallelSBIWorkflowRunner executes multiple SBIs concurrently
 // It implements the WorkflowRunner interface for parallel SBI processing
 type ParallelSBIWorkflowRunner struct {
-	enabled      bool
-	maxParallel  int             // Maximum number of concurrent SBI executions
-	container    *di.Container   // Shared DI container
-	executeTurn  ExecuteTurnFunc // Function to execute a single SBI turn
-	agentPool    *service.AgentPool // Optional agent pool for per-agent concurrency control
-	mu           sync.RWMutex    // Protects enabled flag
+	enabled     bool
+	maxParallel int                // Maximum number of concurrent SBI executions
+	container   *di.Container      // Shared DI container
+	executeTurn ExecuteTurnFunc    // Function to execute a single SBI turn
+	agentPool   *service.AgentPool // Optional agent pool for per-agent concurrency control
+	mu          sync.RWMutex       // Protects enabled flag
 }
 
 // NewParallelSBIWorkflowRunner creates a new parallel SBI workflow runner
@@ -155,7 +155,7 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 
 		go func(s *sbi.SBI, agentName string) {
 			defer wg.Done()
-			defer func() { <-sem }() // Release semaphore
+			defer func() { <-sem }()             // Release semaphore
 			defer conflictDetector.Unregister(s) // Unregister on goroutine exit
 
 			// Release agent pool slot on exit

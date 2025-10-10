@@ -6,7 +6,6 @@ import (
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -21,7 +20,6 @@ import (
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs/txn"
-	"github.com/YoshitsuguKoike/deespec/internal/workflow"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -125,148 +123,8 @@ func newDoctorCmd() *cobra.Command {
 			}
 			fmt.Println("OK: write permission in var dir")
 
-			// Check workflow.yaml exists and validate
-			if _, err := os.Stat(paths.Workflow); err != nil {
-				fmt.Printf("WARN: workflow.yaml not found at %s\n", paths.Workflow)
-			} else {
-				// Try to load and validate workflow
-				ctx := context.Background()
-				wfPath := paths.Workflow
-				// Check for config override
-				if common.GetGlobalConfig() != nil && common.GetGlobalConfig().Workflow() != "" {
-					wfPath = common.GetGlobalConfig().Workflow()
-				}
-				wf, err := workflow.LoadWorkflow(ctx, wfPath)
-				if err != nil {
-					fmt.Printf("ERROR: workflow validation failed: %v\n", err)
-				} else {
-					// Display with supported agents and placeholders
-					// Format agents list
-					agentsList := fmt.Sprintf("%q", workflow.AllowedAgents[0])
-					for i := 1; i < len(workflow.AllowedAgents); i++ {
-						agentsList += fmt.Sprintf(",%q", workflow.AllowedAgents[i])
-					}
-					// Format placeholders list
-					placeholdersList := fmt.Sprintf("%q", workflow.Allowed[0])
-					for i := 1; i < len(workflow.Allowed); i++ {
-						placeholdersList += fmt.Sprintf(",%q", workflow.Allowed[i])
-					}
-					// Get prompt size limit
-					sizeLimit := wf.Constraints.MaxPromptKB
-					if sizeLimit <= 0 {
-						sizeLimit = workflow.DefaultMaxPromptKB
-					}
-					fmt.Printf("OK: workflow.yaml found and valid (prompt_path only; agents=[%s]; placeholders=[%s]; prompt_size_limit=%dKB)\n", agentsList, placeholdersList, sizeLimit)
-
-					// Check for decision.regex on review step
-					for _, step := range wf.Steps {
-						if step.ID == "review" && step.CompiledDecision != nil {
-							pattern := ""
-							if step.Decision != nil {
-								pattern = step.Decision.Regex
-							}
-							if pattern == "" {
-								pattern = workflow.DefaultDecisionRegex
-							}
-							fmt.Printf("OK: decision.regex compiled for review (pattern='%s')\n", pattern)
-							break
-						}
-					}
-
-					// Check if prompt files exist, are readable, and pass validation (SBI-DR-001, SBI-DR-002)
-					promptErrors := 0
-					promptWarnings := 0
-					promptOK := 0
-
-					// Get max prompt size limit
-					maxPromptKB := wf.Constraints.MaxPromptKB
-					if maxPromptKB <= 0 {
-						maxPromptKB = workflow.DefaultMaxPromptKB
-					}
-
-					for _, step := range wf.Steps {
-						// Check existence
-						fileInfo, err := os.Stat(step.ResolvedPromptPath)
-						if err != nil {
-							if os.IsNotExist(err) {
-								common.Error("prompt_path not found: %s\n", step.ResolvedPromptPath)
-							} else {
-								common.Error("prompt_path not accessible: %s (%v)\n", step.ResolvedPromptPath, err)
-							}
-							promptErrors++
-							continue
-						}
-
-						// Check it's a regular file
-						if !fileInfo.Mode().IsRegular() {
-							common.Error("prompt_path not a regular file: %s\n", step.ResolvedPromptPath)
-							promptErrors++
-							continue
-						}
-
-						// Check size (SBI-DR-002)
-						fileSizeKB := (fileInfo.Size() + 1023) / 1024
-						if fileSizeKB > int64(maxPromptKB) {
-							common.Error("prompt_path (%s) exceeds max_prompt_kb=%d (found %d)\n", step.ID, maxPromptKB, fileSizeKB)
-							promptErrors++
-							continue
-						}
-
-						// Read file content for UTF-8 and format checks
-						content, err := os.ReadFile(step.ResolvedPromptPath)
-						if err != nil {
-							common.Error("prompt_path not readable: %s (%v)\n", step.ResolvedPromptPath, err)
-							promptErrors++
-							continue
-						}
-
-						// Check UTF-8 validity (SBI-DR-002)
-						if !utf8.Valid(content) {
-							common.Error("prompt_path (%s) invalid UTF-8 encoding\n", step.ID)
-							promptErrors++
-							continue
-						}
-
-						// Check for BOM (SBI-DR-002)
-						if len(content) >= 3 && bytes.HasPrefix(content, []byte{0xEF, 0xBB, 0xBF}) {
-							fmt.Printf("WARN: prompt_path (%s) contains UTF-8 BOM\n", step.ID)
-							promptWarnings++
-						}
-
-						// Check for CRLF (SBI-DR-002)
-						if bytes.Contains(content, []byte("\r")) {
-							fmt.Printf("WARN: prompt_path (%s) contains CRLF; prefer LF\n", step.ID)
-							promptWarnings++
-						}
-
-						// Check for undefined/unknown placeholders (SBI-DR-003)
-						placeholderErrors, placeholderWarnings := validatePlaceholders(string(content), step.ID)
-						for _, err := range placeholderErrors {
-							fmt.Fprintln(os.Stderr, err)
-							promptErrors++
-						}
-						for _, warn := range placeholderWarnings {
-							fmt.Println(warn)
-							promptWarnings++
-						}
-
-						// Report OK for this step's prompt with details
-						if len(placeholderErrors) == 0 {
-							fmt.Printf("OK: prompt_path (%s) size=%dKB utf8=valid lf=ok placeholders=valid\n", step.ID, fileSizeKB)
-							promptOK++
-						}
-					}
-
-					// Print summary (SBI-DR-002)
-					totalSteps := len(wf.Steps)
-					fmt.Printf("SUMMARY: steps=%d ok=%d warn=%d error=%d\n", totalSteps, promptOK, promptWarnings, promptErrors)
-
-					// Set exit code based on errors
-					if promptErrors > 0 {
-						exitCode = 1
-					}
-				}
-			}
+			// Note: workflow.yaml validation removed - now using template-based prompts
+			// Prompt templates are in .deespec/prompts/WIP.md, REVIEW.md, REVIEW_AND_WIP.md
 
 			// Check state.json exists and validate schema
 			stateInfo := ""
@@ -746,80 +604,46 @@ func runDoctorJSON() error {
 func runDoctorValidationJSON() error {
 	paths := app.GetPathsWithConfig(common.GetGlobalConfig())
 
-	// Check workflow.yaml exists and validate
-	if _, err := os.Stat(paths.Workflow); err != nil {
-		// If workflow not found, return error
-		result := DoctorValidationJSON{
-			Steps:   []DoctorStepJSON{},
-			Summary: DoctorSummaryJSON{Steps: 0, OK: 0, Warn: 0, Error: 1},
-		}
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(result); err != nil {
-			fmt.Fprintln(os.Stderr, "ERROR: failed to encode JSON response:", err)
-			os.Exit(1)
-		}
-		os.Exit(1)
-		return nil
+	// Template files to validate
+	templateFiles := []struct {
+		ID   string
+		Path string
+	}{
+		{ID: "implement", Path: filepath.Join(paths.Prompts, "WIP.md")},
+		{ID: "review", Path: filepath.Join(paths.Prompts, "REVIEW.md")},
+		{ID: "force_implement", Path: filepath.Join(paths.Prompts, "REVIEW_AND_WIP.md")},
 	}
 
-	// Load and validate workflow
-	ctx := context.Background()
-	wfPath := paths.Workflow
-	if common.GetGlobalConfig() != nil && common.GetGlobalConfig().Workflow() != "" {
-		wfPath = common.GetGlobalConfig().Workflow()
-	}
-
-	wf, err := workflow.LoadWorkflow(ctx, wfPath)
-	if err != nil {
-		// Workflow loading failed
-		result := DoctorValidationJSON{
-			Steps:   []DoctorStepJSON{},
-			Summary: DoctorSummaryJSON{Steps: 0, OK: 0, Warn: 0, Error: 1},
-		}
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(result); err != nil {
-			fmt.Fprintln(os.Stderr, "ERROR: failed to encode JSON response:", err)
-			os.Exit(1)
-		}
-		os.Exit(1)
-		return nil
-	}
-
-	// Process each step's prompt validation
+	// Process each template file
 	var steps []DoctorStepJSON
 	totalWarnings := 0
 	totalErrors := 0
 	totalOK := 0
 
-	// Get max prompt size limit
-	maxPromptKB := wf.Constraints.MaxPromptKB
-	if maxPromptKB <= 0 {
-		maxPromptKB = workflow.DefaultMaxPromptKB
-	}
+	// Default max prompt size limit (100KB)
+	const maxPromptKB = 100
 
-	for _, step := range wf.Steps {
+	for _, tmpl := range templateFiles {
 		stepResult := DoctorStepJSON{
-			ID:     step.ID,
-			Path:   step.ResolvedPromptPath,
+			ID:     tmpl.ID,
+			Path:   tmpl.Path,
 			Issues: []DoctorIssueJSON{},
 		}
 
 		stepHasError := false
 
 		// Check existence
-		fileInfo, err := os.Stat(step.ResolvedPromptPath)
+		fileInfo, err := os.Stat(tmpl.Path)
 		if err != nil {
 			if os.IsNotExist(err) {
 				stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
 					Type:    "error",
-					Message: "prompt_path not found",
+					Message: "template not found",
 				})
 			} else {
 				stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
 					Type:    "error",
-					Message: fmt.Sprintf("prompt_path not accessible (%v)", err),
+					Message: fmt.Sprintf("template not accessible (%v)", err),
 				})
 			}
 			stepHasError = true
@@ -827,7 +651,7 @@ func runDoctorValidationJSON() error {
 		} else if !fileInfo.Mode().IsRegular() {
 			stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
 				Type:    "error",
-				Message: "prompt_path not a regular file",
+				Message: "template not a regular file",
 			})
 			stepHasError = true
 			totalErrors++
@@ -846,7 +670,7 @@ func runDoctorValidationJSON() error {
 			}
 
 			// Read file content for UTF-8 and format checks
-			content, err := os.ReadFile(step.ResolvedPromptPath)
+			content, err := os.ReadFile(tmpl.Path)
 			if err != nil {
 				stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
 					Type:    "error",
@@ -883,27 +707,26 @@ func runDoctorValidationJSON() error {
 					totalWarnings++
 				}
 
-				// Check placeholders
-				placeholderErrors, placeholderWarnings := validatePlaceholdersJSON(string(content), step.ID)
-				for _, issue := range placeholderErrors {
-					stepResult.Issues = append(stepResult.Issues, issue)
-					stepHasError = true
-					totalErrors++
-				}
-				for _, issue := range placeholderWarnings {
-					stepResult.Issues = append(stepResult.Issues, issue)
+				// Check for template variables ({{.Variable}})
+				// These are expected in the new template system
+				templateVarCount := strings.Count(string(content), "{{.")
+				if templateVarCount == 0 {
+					stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+						Type:    "warn",
+						Message: "no template variables found (expected {{.Variable}} syntax)",
+					})
 					totalWarnings++
 				}
 			}
-		}
 
-		// Add OK status if no errors for this step
-		if !stepHasError {
-			stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
-				Type:    "ok",
-				Message: fmt.Sprintf("size=%dKB utf8=valid lf=ok placeholders=valid", (fileInfo.Size()+1023)/1024),
-			})
-			totalOK++
+			// Add OK status if no errors for this step
+			if !stepHasError {
+				stepResult.Issues = append(stepResult.Issues, DoctorIssueJSON{
+					Type:    "ok",
+					Message: fmt.Sprintf("size=%dKB utf8=valid lf=ok template=valid", fileSizeKB),
+				})
+				totalOK++
+			}
 		}
 
 		steps = append(steps, stepResult)
@@ -913,7 +736,7 @@ func runDoctorValidationJSON() error {
 	result := DoctorValidationJSON{
 		Steps: steps,
 		Summary: DoctorSummaryJSON{
-			Steps: len(wf.Steps),
+			Steps: len(templateFiles),
 			OK:    totalOK,
 			Warn:  totalWarnings,
 			Error: totalErrors,

@@ -79,8 +79,8 @@ func (wm *WorkflowManager) SetSBIRepository(sbiRepo repository.SBIRepository) {
 type TaskInfo struct {
 	TaskID string
 	Title  string // Task title for display
-	Status string
-	Turn   int // Current turn number (1-based)
+	Step   string // Current workflow step (PICK, IMPLEMENT, REVIEW, DONE)
+	Turn   int    // Current turn number (1-based)
 }
 
 // truncateString truncates a string to maxChars characters (counting runes for multibyte support)
@@ -126,7 +126,7 @@ func (wm *WorkflowManager) getCurrentTaskInfo(workflowName string) *TaskInfo {
 			if wm.sbiRepo != nil && workflowName == "sbi" {
 				if sbi, err := wm.sbiRepo.Find(wm.ctx, repository.SBIID(taskID)); err == nil && sbi != nil {
 					info.Title = truncateString(sbi.Title(), 50)
-					info.Status = string(sbi.Status())
+					info.Step = string(sbi.CurrentStep())
 					info.Turn = sbi.ExecutionState().CurrentTurn.Value()
 				}
 			}
@@ -281,12 +281,12 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 						taskDisplay = taskInfo.Title
 					}
 
-					if taskInfo.Status != "" && taskInfo.Turn > 0 {
+					if taskInfo.Step != "" && taskInfo.Turn > 0 {
 						wm.info("💓 [%s] Processing task %s [%s] (turn #%d)...",
-							runner.Name(), taskDisplay, taskInfo.Status, taskInfo.Turn)
-					} else if taskInfo.Status != "" {
+							runner.Name(), taskDisplay, taskInfo.Step, taskInfo.Turn)
+					} else if taskInfo.Step != "" {
 						wm.info("💓 [%s] Processing task %s [%s] (execution #%d)...",
-							runner.Name(), taskDisplay, taskInfo.Status, executionNum)
+							runner.Name(), taskDisplay, taskInfo.Step, executionNum)
 					} else if taskInfo.Turn > 0 {
 						wm.info("💓 [%s] Processing task %s (turn #%d)...",
 							runner.Name(), taskDisplay, taskInfo.Turn)

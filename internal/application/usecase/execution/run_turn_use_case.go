@@ -140,6 +140,24 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 			return nil, fmt.Errorf("failed to save SBI after force termination: %w", err)
 		}
 
+		// Write journal entry for force termination
+		journalRecord := &repository.JournalRecord{
+			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			SBIID:     currentSBI.ID().String(),
+			Turn:      currentTurn,
+			Step:      "force_terminated",
+			Status:    "DONE",
+			Attempt:   currentAttempt,
+			Decision:  "FORCE_TERMINATED",
+			ElapsedMs: time.Since(startTime).Milliseconds(),
+			Error:     fmt.Sprintf("Exceeded max turns (%d)", uc.maxTurns),
+			Artifacts: []interface{}{},
+		}
+
+		if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
+			// Log warning but don't fail
+		}
+
 		// Note: State sync removed - DB is single source of truth
 
 		return &dto.RunTurnOutput{
@@ -200,9 +218,29 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		return nil, fmt.Errorf("failed to save SBI to DB: %w", err)
 	}
 
-	// 9. Note: State sync removed - DB is single source of truth
+	// 9. Write journal entry
+	journalRecord := &repository.JournalRecord{
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		SBIID:     currentSBI.ID().String(),
+		Turn:      currentTurn,
+		Step:      uc.statusToStep(uc.mapDomainStatusToString(nextStatus)),
+		Status:    uc.mapDomainStatusToString(nextStatus),
+		Attempt:   currentAttempt,
+		Decision:  stepOutput.Decision,
+		ElapsedMs: time.Since(startTime).Milliseconds(),
+		Error:     stepOutput.ErrorMsg,
+		Artifacts: []interface{}{stepOutput.ArtifactPath},
+	}
 
-	// 10. Build output
+	if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
+		// Log warning but don't fail the operation
+		// Journal is for auditing purposes and shouldn't block execution
+		// TODO: Add proper logging
+	}
+
+	// 10. Note: State sync removed - DB is single source of truth
+
+	// 11. Build output
 	taskCompleted := (nextStatus == currentSBI.Status()) // Check if status is DONE
 
 	return &dto.RunTurnOutput{

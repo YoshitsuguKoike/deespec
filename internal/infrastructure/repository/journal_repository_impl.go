@@ -26,7 +26,8 @@ func NewJournalRepositoryImpl(journalPath string) *JournalRepositoryImpl {
 // Append adds a new record to the journal
 func (r *JournalRepositoryImpl) Append(ctx context.Context, record *repository.JournalRecord) error {
 	entry := map[string]interface{}{
-		"ts":         record.Timestamp,
+		"timestamp":  record.Timestamp,
+		"sbi_id":     record.SBIID,
 		"turn":       record.Turn,
 		"step":       record.Step,
 		"status":     record.Status,
@@ -38,8 +39,8 @@ func (r *JournalRepositoryImpl) Append(ctx context.Context, record *repository.J
 	}
 
 	// Normalize timestamps
-	if entry["ts"] == "" {
-		entry["ts"] = time.Now().UTC().Format(time.RFC3339Nano)
+	if entry["timestamp"] == "" {
+		entry["timestamp"] = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 
 	// Normalize artifacts to ensure it's always an array
@@ -114,17 +115,34 @@ func (r *JournalRepositoryImpl) FindByTurn(ctx context.Context, turn int) ([]*re
 
 // FindBySBI retrieves records for a specific SBI
 func (r *JournalRepositoryImpl) FindBySBI(ctx context.Context, sbiID string) ([]*repository.JournalRecord, error) {
-	// TODO: Journal records don't currently store SBI ID
-	// This would require extending the journal schema
-	return nil, fmt.Errorf("FindBySBI not implemented: journal records don't include SBI ID")
+	all, err := r.Load(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*repository.JournalRecord
+	for _, rec := range all {
+		if rec.SBIID == sbiID {
+			result = append(result, rec)
+		}
+	}
+
+	return result, nil
 }
 
 // mapToRecord converts a map entry to a JournalRecord
 func (r *JournalRepositoryImpl) mapToRecord(entry map[string]interface{}) *repository.JournalRecord {
 	record := &repository.JournalRecord{}
 
-	if ts, ok := entry["ts"].(string); ok {
+	// Support both "timestamp" and "ts" (for backward compatibility)
+	if ts, ok := entry["timestamp"].(string); ok {
 		record.Timestamp = ts
+	} else if ts, ok := entry["ts"].(string); ok {
+		record.Timestamp = ts
+	}
+
+	if sbiID, ok := entry["sbi_id"].(string); ok {
+		record.SBIID = sbiID
 	}
 
 	if turn, ok := entry["turn"].(float64); ok {

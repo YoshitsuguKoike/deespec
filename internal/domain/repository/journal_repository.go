@@ -5,6 +5,7 @@ import "context"
 // JournalRecord represents a single journal entry
 type JournalRecord struct {
 	Timestamp string        // UTC RFC3339Nano
+	SBIID     string        // SBI ID for filtering
 	Turn      int           // Turn number
 	Step      string        // Workflow step
 	Status    string        // Execution status

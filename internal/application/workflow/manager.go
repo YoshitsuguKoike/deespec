@@ -310,7 +310,7 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 		} else {
 			stats.SuccessfulRuns++
 			consecutiveErrors = 0
-			wm.debug("[%s] Execution #%d completed successfully (took %v)",
+			wm.info("[%s] Execution #%d completed successfully (took %v)\n",
 				runner.Name(), executionNum, duration)
 		}
 

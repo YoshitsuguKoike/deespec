@@ -10,6 +10,9 @@ import (
 //go:embed schema.sql
 var schemaSQL string
 
+//go:embed migrations/004_add_ordering_fields.sql
+var migration004SQL string
+
 // Migrator manages database schema migrations
 type Migrator struct {
 	db *sql.DB
@@ -37,6 +40,11 @@ func (m *Migrator) Migrate() error {
 		// Apply initial schema
 		if err := m.applyInitialSchema(); err != nil {
 			return fmt.Errorf("apply initial schema failed: %w", err)
+		}
+	} else {
+		// Apply incremental migrations for existing databases
+		if err := m.applyIncrementalMigrations(); err != nil {
+			return fmt.Errorf("apply incremental migrations failed: %w", err)
 		}
 	}
 
@@ -85,8 +93,8 @@ func (m *Migrator) applyInitialSchema() error {
 			continue
 		}
 
-		// Skip schema_migrations table creation and INSERT statements (already handled)
-		if strings.Contains(stmt, "schema_migrations") {
+		// Skip schema_migrations table creation (already handled by ensureMigrationsTable)
+		if strings.Contains(stmt, "CREATE TABLE") && strings.Contains(stmt, "schema_migrations") {
 			continue
 		}
 
@@ -134,6 +142,91 @@ func splitSQLStatements(sql string) []string {
 	}
 
 	return result
+}
+
+// applyIncrementalMigrations applies incremental migrations for existing databases
+func (m *Migrator) applyIncrementalMigrations() error {
+	// Check current version
+	currentVersion, err := m.getCurrentVersion()
+	if err != nil {
+		return fmt.Errorf("get current version failed: %w", err)
+	}
+
+	// Define migrations to apply
+	migrations := []struct {
+		version int
+		sql     string
+		desc    string
+	}{
+		{4, migration004SQL, "Add sequence and registered_at fields to sbis table"},
+	}
+
+	// Apply each migration if not already applied
+	for _, migration := range migrations {
+		if currentVersion >= migration.version {
+			// Migration already applied
+			continue
+		}
+
+		if err := m.applyMigration(migration.version, migration.sql, migration.desc); err != nil {
+			return fmt.Errorf("apply migration %d failed: %w", migration.version, err)
+		}
+	}
+
+	return nil
+}
+
+// getCurrentVersion returns the current schema version
+func (m *Migrator) getCurrentVersion() (int, error) {
+	var version int
+	err := m.db.QueryRow("SELECT COALESCE(MAX(version), 0) FROM schema_migrations").Scan(&version)
+	if err != nil {
+		return 0, err
+	}
+	return version, nil
+}
+
+// applyMigration applies a single migration
+func (m *Migrator) applyMigration(version int, migrationSQL, description string) error {
+	// Start transaction
+	tx, err := m.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin transaction failed: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Split migration into individual statements
+	statements := splitSQLStatements(migrationSQL)
+
+	// Execute each statement
+	for i, stmt := range statements {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+
+		// Skip schema_migrations INSERT (we'll add it separately)
+		if strings.Contains(stmt, "INSERT") && strings.Contains(stmt, "schema_migrations") {
+			continue
+		}
+
+		if _, err := tx.Exec(stmt); err != nil {
+			return fmt.Errorf("execute statement %d failed: %w\nStatement: %s", i, err, stmt)
+		}
+	}
+
+	// Record migration version (if not already recorded)
+	_, err = tx.Exec("INSERT OR IGNORE INTO schema_migrations (version, description) VALUES (?, ?)", version, description)
+	if err != nil {
+		return fmt.Errorf("record migration failed: %w", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction failed: %w", err)
+	}
+
+	return nil
 }
 
 // Version returns the current schema version

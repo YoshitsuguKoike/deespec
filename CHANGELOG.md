@@ -6,6 +6,56 @@
 
 ### 追加 (Added)
 
+* **ULID順序問題の修正とタスク管理CLI実装 (Phase 1 + Phase 2)**:
+  - **Phase 1: データベーススキーマ拡張**
+    - `sbis`テーブルに`sequence INTEGER`, `registered_at DATETIME`フィールド追加
+    - `idx_sbis_ordering`インデックス作成: `(priority DESC, registered_at ASC, sequence ASC)`
+    - マイグレーションVersion 4実装（既存データの自動バックフィル対応）
+  - **Phase 1: Domain/Repository/Application層更新**
+    - `SBIMetadata`に`Sequence`, `RegisteredAt`追加（sbi.go）
+    - `GetNextSequence()`, `ResetSBIState()`メソッド実装（sbi_repository.go）
+    - `CreateSBI()`内でトランザクション内sequence自動設定（task_use_case_impl.go）
+    - Picker順序ロジック修正: priority DESC → registered_at ASC → sequence ASC
+  - **Phase 1: 統合テスト成功**
+    - 3つのSBI登録でsequence自動採番確認（1, 2, 3）
+    - 優先度別ソート動作確認（Task B[pri=1] → Task A[pri=0,seq=1] → Task C[pri=0,seq=3]）
+  - **Phase 2: タスク管理CLI実装**
+    - `sbi list`: SBI一覧表示（優先度順ソート、テーブル/JSON形式）
+    - `sbi show <id>`: SBI詳細表示（Sequence/RegisteredAt/実行状態含む）
+    - `sbi reset <id>`: ステータスリセット（誤完了時の再実行対応、確認プロンプト付き）
+    - `sbi history <id>`: journal.ndjsonから実行履歴表示
+  - **効果**:
+    - ULID順序問題の完全解決（登録順序を確実に保証）
+    - Claude Code認証問題などでの誤進行に対処可能
+    - ユーザーが直感的にタスク管理できるCLI提供
+  - **実装ファイル**:
+    - Schema: `schema.sql`, `migrations/004_add_ordering_fields.sql`
+    - Domain: `internal/domain/model/sbi/sbi.go`
+    - Repository: `internal/infrastructure/persistence/sqlite/sbi_repository_impl.go`
+    - UseCase: `internal/application/usecase/task/task_use_case_impl.go`
+    - CLI: `internal/interface/cli/sbi/{sbi_list,sbi_show,sbi_reset,sbi_history}.go`
+
+### 追加 (Added)
+
+* **SQLite WALモード有効化 (Phase 0-2)**: 並行アクセス対応のための基盤整備
+  - **WALモード有効化**: `_journal_mode=WAL`パラメータ追加（container.go:156）
+  - **検証ロジック**: `PRAGMA journal_mode`クエリによる有効化確認（container.go:162-169）
+  - **並行アクセステスト**: 複数コンテナの同時DB接続を確認（container_test.go:374-447）
+    - `run`実行中に`register`が成功することを保証
+    - 2つのコンテナが同時にロックを取得可能
+  - **WALファイル生成テスト**: `-wal`と`-shm`ファイルの物理的生成を確認（container_test.go:328-372）
+  - **パフォーマンステスト**: ベンチマークによる性能評価
+    - 単一スレッド: ~100μs/op
+    - 並行実行: ~123μs/op（23%のオーバーヘッド）
+  - **技術ドキュメント**: WALモード実装ガイド作成（docs/architecture/wal-mode-implementation.md）
+    - WALモードの仕組みと利点の詳細説明
+    - トラブルシューティングガイド
+    - パフォーマンス測定結果の記録
+  - **効果**:
+    - `deespec run`と`deespec register`の同時実行が可能
+    - データベースロック競合の大幅削減
+    - 複数SBI並行処理（Phase 2）への準備完了
+
 * **Clean Architecture + DDD リファクタリング Phase 9.1完了**: Label System SQLite化
   - **Phase 9.1a - Schema Extension**: SQLiteスキーマ拡張
     - `labels` テーブル: ラベル本体（content_hashes, line_count, last_synced_at追加）

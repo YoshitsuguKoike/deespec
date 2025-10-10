@@ -56,7 +56,9 @@ func (s *TaskPickerService) PickNextTask(ctx context.Context, input dto.TaskPick
 		input.SpecsDir = ".deespec/specs/sbi"
 	}
 	if input.OrderBy == nil {
-		input.OrderBy = []string{"por", "priority", "id"}
+		// Default order: priority DESC → registered_at ASC → sequence ASC
+		// This matches the SQLite ORDER BY clause for consistent task execution order
+		input.OrderBy = []string{"priority", "registered_at", "sequence", "id"}
 	}
 
 	// Load all tasks
@@ -232,6 +234,10 @@ func (s *TaskPickerService) detectCycles(tasks []*dto.SBITaskDTO) map[string]boo
 }
 
 // sortTasksByPriority sorts tasks according to the specified order
+// IMPORTANT: For SQLite-based tasks, the correct order is:
+// 1. priority (DESC - higher priority first)
+// 2. registered_at (ASC - earlier registration first)
+// 3. sequence (ASC - registration order)
 func (s *TaskPickerService) sortTasksByPriority(tasks []*dto.SBITaskDTO, orderBy []string) {
 	sort.SliceStable(tasks, func(i, j int) bool {
 		for _, criterion := range orderBy {
@@ -241,8 +247,19 @@ func (s *TaskPickerService) sortTasksByPriority(tasks []*dto.SBITaskDTO, orderBy
 					return tasks[i].POR < tasks[j].POR
 				}
 			case "priority":
+				// Higher priority values should come first (DESC)
 				if tasks[i].Priority != tasks[j].Priority {
-					return tasks[i].Priority < tasks[j].Priority
+					return tasks[i].Priority > tasks[j].Priority
+				}
+			case "registered_at":
+				// Earlier registration should come first (ASC)
+				if tasks[i].RegisteredAt != tasks[j].RegisteredAt {
+					return tasks[i].RegisteredAt.Before(tasks[j].RegisteredAt)
+				}
+			case "sequence":
+				// Lower sequence numbers should come first (ASC)
+				if tasks[i].Sequence != tasks[j].Sequence {
+					return tasks[i].Sequence < tasks[j].Sequence
 				}
 			case "id":
 				if tasks[i].ID != tasks[j].ID {

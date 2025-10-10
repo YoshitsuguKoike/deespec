@@ -35,7 +35,7 @@ func NewSBIRepository(db *sql.DB) repository.SBIRepository {
 func (r *SBIRepositoryImpl) Find(ctx context.Context, id repository.SBIID) (*sbi.SBI, error) {
 	query := `
 		SELECT id, title, description, status, current_step, parent_pbi_id,
-		       estimated_hours, priority, labels, assigned_agent, file_paths,
+		       estimated_hours, priority, sequence, registered_at, labels, assigned_agent, file_paths,
 		       current_turn, current_attempt, max_turns, max_attempts, last_error, artifact_paths,
 		       created_at, updated_at
 		FROM sbis
@@ -73,12 +73,24 @@ func (r *SBIRepositoryImpl) Save(ctx context.Context, s *sbi.SBI) error {
 		parentPBIID = s.ParentTaskID().String()
 	}
 
+	// Handle registered_at (NULL if zero value)
+	var registeredAt interface{}
+	if !metadata.RegisteredAt.IsZero() {
+		registeredAt = metadata.RegisteredAt
+	}
+
+	// Handle sequence (NULL if zero)
+	var sequence interface{}
+	if metadata.Sequence > 0 {
+		sequence = metadata.Sequence
+	}
+
 	query := `
 		INSERT INTO sbis (id, title, description, status, current_step, parent_pbi_id,
-		                  estimated_hours, priority, labels, assigned_agent, file_paths,
+		                  estimated_hours, priority, sequence, registered_at, labels, assigned_agent, file_paths,
 		                  current_turn, current_attempt, max_turns, max_attempts, last_error, artifact_paths,
 		                  created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			description = excluded.description,
@@ -87,6 +99,8 @@ func (r *SBIRepositoryImpl) Save(ctx context.Context, s *sbi.SBI) error {
 			parent_pbi_id = excluded.parent_pbi_id,
 			estimated_hours = excluded.estimated_hours,
 			priority = excluded.priority,
+			sequence = excluded.sequence,
+			registered_at = excluded.registered_at,
 			labels = excluded.labels,
 			assigned_agent = excluded.assigned_agent,
 			file_paths = excluded.file_paths,
@@ -103,7 +117,7 @@ func (r *SBIRepositoryImpl) Save(ctx context.Context, s *sbi.SBI) error {
 	_, err = db.ExecContext(ctx, query,
 		s.ID().String(), s.Title(), s.Description(),
 		string(s.Status()), string(s.CurrentStep()), parentPBIID,
-		metadata.EstimatedHours, metadata.Priority, string(labelsJSON), metadata.AssignedAgent, string(filePathsJSON),
+		metadata.EstimatedHours, metadata.Priority, sequence, registeredAt, string(labelsJSON), metadata.AssignedAgent, string(filePathsJSON),
 		execution.CurrentTurn.Value(), execution.CurrentAttempt.Value(), execution.MaxTurns, execution.MaxAttempts,
 		execution.LastError, string(artifactPathsJSON),
 		s.CreatedAt().Value(), s.UpdatedAt().Value(),
@@ -139,7 +153,7 @@ func (r *SBIRepositoryImpl) Delete(ctx context.Context, id repository.SBIID) err
 func (r *SBIRepositoryImpl) List(ctx context.Context, filter repository.SBIFilter) ([]*sbi.SBI, error) {
 	query := `
 		SELECT id, title, description, status, current_step, parent_pbi_id,
-		       estimated_hours, priority, labels, assigned_agent, file_paths,
+		       estimated_hours, priority, sequence, registered_at, labels, assigned_agent, file_paths,
 		       current_turn, current_attempt, max_turns, max_attempts, last_error, artifact_paths,
 		       created_at, updated_at
 		FROM sbis
@@ -167,7 +181,8 @@ func (r *SBIRepositoryImpl) List(ctx context.Context, filter repository.SBIFilte
 	}
 
 	// Add ordering and pagination
-	query += " ORDER BY created_at DESC"
+	// IMPORTANT: Order by priority DESC, registered_at ASC, sequence ASC for correct task execution order
+	query += " ORDER BY priority DESC, registered_at ASC, sequence ASC"
 	if filter.Limit > 0 {
 		query += " LIMIT ?"
 		args = append(args, filter.Limit)
@@ -204,12 +219,12 @@ func (r *SBIRepositoryImpl) List(ctx context.Context, filter repository.SBIFilte
 func (r *SBIRepositoryImpl) FindByPBIID(ctx context.Context, pbiID repository.PBIID) ([]*sbi.SBI, error) {
 	query := `
 		SELECT id, title, description, status, current_step, parent_pbi_id,
-		       estimated_hours, priority, labels, assigned_agent, file_paths,
+		       estimated_hours, priority, sequence, registered_at, labels, assigned_agent, file_paths,
 		       current_turn, current_attempt, max_turns, max_attempts, last_error, artifact_paths,
 		       created_at, updated_at
 		FROM sbis
 		WHERE parent_pbi_id = ?
-		ORDER BY created_at ASC
+		ORDER BY priority DESC, registered_at ASC, sequence ASC
 	`
 
 	db := r.getDB(ctx)
@@ -246,6 +261,8 @@ func (r *SBIRepositoryImpl) scanSBI(row *sql.Row) (*sbi.SBI, error) {
 		parentPBIID       sql.NullString
 		estimatedHours    float64
 		priority          int
+		sequence          sql.NullInt64
+		registeredAt      sql.NullString
 		labelsJSON        sql.NullString
 		assignedAgent     sql.NullString
 		filePathsJSON     sql.NullString
@@ -261,7 +278,7 @@ func (r *SBIRepositoryImpl) scanSBI(row *sql.Row) (*sbi.SBI, error) {
 
 	err := row.Scan(
 		&sbiID, &title, &description, &status, &currentStep, &parentPBIID,
-		&estimatedHours, &priority, &labelsJSON, &assignedAgent, &filePathsJSON,
+		&estimatedHours, &priority, &sequence, &registeredAt, &labelsJSON, &assignedAgent, &filePathsJSON,
 		&currentTurn, &currentAttempt, &maxTurns, &maxAttempts, &lastError, &artifactPathsJSON,
 		&createdAt, &updatedAt,
 	)
@@ -283,7 +300,7 @@ func (r *SBIRepositoryImpl) scanSBI(row *sql.Row) (*sbi.SBI, error) {
 	}
 
 	return r.reconstructSBI(sbiID, title, description, status, currentStep, parentPBIID,
-		estimatedHours, priority, labelsJSON, assignedAgent, filePathsJSON,
+		estimatedHours, priority, sequence, registeredAt, labelsJSON, assignedAgent, filePathsJSON,
 		currentTurn, currentAttempt, maxTurns, maxAttempts, lastError, artifactPathsJSON,
 		createdAtTime, updatedAtTime)
 }
@@ -299,6 +316,8 @@ func (r *SBIRepositoryImpl) scanSBIFromRows(rows *sql.Rows, ctx context.Context)
 		parentPBIID       sql.NullString
 		estimatedHours    float64
 		priority          int
+		sequence          sql.NullInt64
+		registeredAt      sql.NullString
 		labelsJSON        sql.NullString
 		assignedAgent     sql.NullString
 		filePathsJSON     sql.NullString
@@ -314,7 +333,7 @@ func (r *SBIRepositoryImpl) scanSBIFromRows(rows *sql.Rows, ctx context.Context)
 
 	err := rows.Scan(
 		&sbiID, &title, &description, &status, &currentStep, &parentPBIID,
-		&estimatedHours, &priority, &labelsJSON, &assignedAgent, &filePathsJSON,
+		&estimatedHours, &priority, &sequence, &registeredAt, &labelsJSON, &assignedAgent, &filePathsJSON,
 		&currentTurn, &currentAttempt, &maxTurns, &maxAttempts, &lastError, &artifactPathsJSON,
 		&createdAt, &updatedAt,
 	)
@@ -333,7 +352,7 @@ func (r *SBIRepositoryImpl) scanSBIFromRows(rows *sql.Rows, ctx context.Context)
 	}
 
 	return r.reconstructSBI(sbiID, title, description, status, currentStep, parentPBIID,
-		estimatedHours, priority, labelsJSON, assignedAgent, filePathsJSON,
+		estimatedHours, priority, sequence, registeredAt, labelsJSON, assignedAgent, filePathsJSON,
 		currentTurn, currentAttempt, maxTurns, maxAttempts, lastError, artifactPathsJSON,
 		createdAtTime, updatedAtTime)
 }
@@ -346,6 +365,8 @@ func (r *SBIRepositoryImpl) reconstructSBI(
 	parentPBIID sql.NullString,
 	estimatedHours float64,
 	priority int,
+	sequence sql.NullInt64,
+	registeredAt sql.NullString,
 	labelsJSON, assignedAgent, filePathsJSON sql.NullString,
 	currentTurn, currentAttempt, maxTurns, maxAttempts int,
 	lastError, artifactPathsJSON sql.NullString,
@@ -389,10 +410,22 @@ func (r *SBIRepositoryImpl) reconstructSBI(
 		parentPBITaskID = &pbiID
 	}
 
+	// Parse registered_at timestamp
+	var registeredAtTime time.Time
+	if registeredAt.Valid && registeredAt.String != "" {
+		t, err := parseTime(registeredAt.String)
+		if err != nil {
+			return nil, fmt.Errorf("parse registered_at failed: %w", err)
+		}
+		registeredAtTime = t
+	}
+
 	// Reconstruct SBI metadata
 	metadata := sbi.SBIMetadata{
 		EstimatedHours: estimatedHours,
 		Priority:       priority,
+		Sequence:       int(sequence.Int64),
+		RegisteredAt:   registeredAtTime,
 		Labels:         labels,
 		AssignedAgent:  assignedAgent.String,
 		FilePaths:      filePaths,
@@ -430,4 +463,41 @@ func (r *SBIRepositoryImpl) reconstructSBI(
 		createdAt,
 		updatedAt,
 	), nil
+}
+
+// GetNextSequence returns the next sequence number for SBI registration
+// This method is used to guarantee registration order
+func (r *SBIRepositoryImpl) GetNextSequence(ctx context.Context) (int, error) {
+	query := `SELECT COALESCE(MAX(sequence), 0) + 1 FROM sbis`
+
+	db := r.getDB(ctx)
+	var nextSeq int
+	err := db.QueryRowContext(ctx, query).Scan(&nextSeq)
+	if err != nil {
+		return 0, fmt.Errorf("get next sequence failed: %w", err)
+	}
+
+	return nextSeq, nil
+}
+
+// ResetSBIState resets an SBI to allow re-execution
+func (r *SBIRepositoryImpl) ResetSBIState(ctx context.Context, id repository.SBIID, toStatus string) error {
+	query := `UPDATE sbis SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+
+	db := r.getDB(ctx)
+	result, err := db.ExecContext(ctx, query, toStatus, string(id))
+	if err != nil {
+		return fmt.Errorf("reset SBI state failed: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected failed: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("SBI not found: %s", id)
+	}
+
+	return nil
 }

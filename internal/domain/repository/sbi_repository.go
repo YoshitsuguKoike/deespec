@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/YoshitsuguKoike/deespec/internal/domain/model"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/sbi"
 )
 
@@ -22,13 +23,19 @@ type SBIRepository interface {
 
 	// FindByPBIID retrieves all SBIs belonging to a PBI
 	FindByPBIID(ctx context.Context, pbiID PBIID) ([]*sbi.SBI, error)
+
+	// GetNextSequence retrieves the next available sequence number
+	GetNextSequence(ctx context.Context) (int, error)
+
+	// ResetSBIState resets an SBI to a specific status (for testing/maintenance)
+	ResetSBIState(ctx context.Context, id SBIID, toStatus string) error
 }
 
 // SBIFilter defines criteria for filtering SBIs
 type SBIFilter struct {
-	PBIID    *PBIID   // Filter by parent PBI
-	Labels   []string // Filter by labels
-	Statuses []Status
+	PBIID    *PBIID         // Filter by parent PBI
+	Labels   []string       // Filter by labels
+	Statuses []model.Status // Filter by status (uses domain model Status)
 	Limit    int
 	Offset   int
 }

@@ -3,6 +3,8 @@ package task
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/application/dto"
 	"github.com/YoshitsuguKoike/deespec/internal/application/port/output"
@@ -198,6 +200,14 @@ func (uc *TaskUseCaseImpl) CreateSBI(ctx context.Context, req dto.CreateSBIReque
 
 	// Save SBI and update parent PBI in transaction
 	err = uc.txManager.InTransaction(ctx, func(txCtx context.Context) error {
+		// Get next sequence number and set ordering fields within transaction
+		sequence, err := uc.sbiRepo.GetNextSequence(txCtx)
+		if err != nil {
+			return fmt.Errorf("failed to get next sequence: %w", err)
+		}
+		sbiTask.SetSequence(sequence)
+		sbiTask.SetRegisteredAt(time.Now())
+
 		if err := uc.sbiRepo.Save(txCtx, sbiTask); err != nil {
 			return err
 		}

@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS sbis (
     current_step TEXT NOT NULL,
     estimated_hours REAL,
     priority INTEGER NOT NULL DEFAULT 3,
+    sequence INTEGER,                    -- 登録順序番号 (自動採番で設定)
+    registered_at DATETIME,              -- 明示的な登録タイムスタンプ
     labels TEXT, -- JSON array
     assigned_agent TEXT,
     file_paths TEXT, -- JSON array
@@ -90,6 +92,9 @@ CREATE INDEX IF NOT EXISTS idx_sbis_status ON sbis(status);
 CREATE INDEX IF NOT EXISTS idx_epics_created_at ON epics(created_at);
 CREATE INDEX IF NOT EXISTS idx_pbis_created_at ON pbis(created_at);
 CREATE INDEX IF NOT EXISTS idx_sbis_created_at ON sbis(created_at);
+
+-- SBI順序管理用インデックス (優先度→登録順で最適化)
+CREATE INDEX IF NOT EXISTS idx_sbis_ordering ON sbis(priority DESC, registered_at ASC, sequence ASC);
 
 -- スキーマバージョン管理テーブル
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -180,3 +185,7 @@ CREATE INDEX IF NOT EXISTS idx_task_labels_label_id ON task_labels(label_id);
 -- Label systemバージョン記録
 INSERT OR IGNORE INTO schema_migrations (version, description)
 VALUES (3, 'Add label management system with integrity check');
+
+-- SBI順序管理フィールド追加
+INSERT OR IGNORE INTO schema_migrations (version, description)
+VALUES (4, 'Add sequence and registered_at fields to sbis table for correct ordering');

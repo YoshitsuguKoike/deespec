@@ -1,17 +1,21 @@
 package dto
 
+import "time"
+
 // SBITaskDTO represents a Spec Backlog Item task loaded from file system
 // This is a DTO for the legacy file-based task system
 type SBITaskDTO struct {
-	ID         string                 `json:"id"`
-	SpecPath   string                 `json:"spec_path"`
-	Title      string                 `json:"title"`
-	Priority   int                    `json:"priority"`
-	POR        int                    `json:"por"`         // Priority of Requirements
-	DependsOn  []string               `json:"depends_on"`  // Task dependencies
-	Meta       map[string]interface{} `json:"meta"`        // Metadata from meta.yaml
-	Status     string                 `json:"status"`      // Current status from journal
-	PromptPath string                 `json:"prompt_path"` // Path to prompt file
+	ID           string                 `json:"id"`
+	SpecPath     string                 `json:"spec_path"`
+	Title        string                 `json:"title"`
+	Priority     int                    `json:"priority"`
+	POR          int                    `json:"por"`           // Priority of Requirements
+	Sequence     int                    `json:"sequence"`      // Registration sequence number (auto-incremented)
+	RegisteredAt time.Time              `json:"registered_at"` // Explicit registration timestamp
+	DependsOn    []string               `json:"depends_on"`    // Task dependencies
+	Meta         map[string]interface{} `json:"meta"`          // Metadata from meta.yaml
+	Status       string                 `json:"status"`        // Current status from journal
+	PromptPath   string                 `json:"prompt_path"`   // Path to prompt file
 }
 
 // TaskMetaYAML represents the structure of meta.yaml in task directories

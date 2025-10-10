@@ -19,7 +19,9 @@ type SBI struct {
 // SBIMetadata contains SBI-specific metadata
 type SBIMetadata struct {
 	EstimatedHours float64
-	Priority       int
+	Priority       int       // 0=通常, 1=高, 2=緊急
+	Sequence       int       // 登録順序番号 (自動採番)
+	RegisteredAt   time.Time // 明示的な登録タイムスタンプ
 	Labels         []string
 	AssignedAgent  string   // e.g., "claude-code", "gemini-cli", "codex"
 	FilePaths      []string // Files to be modified/created
@@ -233,4 +235,34 @@ func (s *SBI) SetMaxTurns(maxTurns int) {
 // SetMaxAttempts sets the maximum number of attempts
 func (s *SBI) SetMaxAttempts(maxAttempts int) {
 	s.execution.MaxAttempts = maxAttempts
+}
+
+// SetSequence sets the sequence number (registration order)
+func (s *SBI) SetSequence(sequence int) {
+	s.metadata.Sequence = sequence
+}
+
+// Sequence returns the sequence number
+func (s *SBI) Sequence() int {
+	return s.metadata.Sequence
+}
+
+// SetRegisteredAt sets the registration timestamp
+func (s *SBI) SetRegisteredAt(registeredAt time.Time) {
+	s.metadata.RegisteredAt = registeredAt
+}
+
+// RegisteredAt returns the registration timestamp
+func (s *SBI) RegisteredAt() time.Time {
+	return s.metadata.RegisteredAt
+}
+
+// Priority returns the priority level
+func (s *SBI) Priority() int {
+	return s.metadata.Priority
+}
+
+// SetPriority sets the priority level
+func (s *SBI) SetPriority(priority int) {
+	s.metadata.Priority = priority
 }

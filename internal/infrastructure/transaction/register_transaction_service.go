@@ -2,11 +2,13 @@ package transaction
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/application/dto"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/fs"
@@ -18,6 +20,7 @@ import (
 type RegisterTransactionService struct {
 	txnBaseDir  string
 	journalPath string
+	db          *sql.DB
 	warnLog     func(format string, args ...interface{})
 }
 
@@ -25,6 +28,7 @@ type RegisterTransactionService struct {
 func NewRegisterTransactionService(
 	txnBaseDir string,
 	journalPath string,
+	db *sql.DB,
 	warnLog func(format string, args ...interface{}),
 ) *RegisterTransactionService {
 	if txnBaseDir == "" {
@@ -40,6 +44,7 @@ func NewRegisterTransactionService(
 	return &RegisterTransactionService{
 		txnBaseDir:  txnBaseDir,
 		journalPath: journalPath,
+		db:          db,
 		warnLog:     warnLog,
 	}
 }
@@ -107,6 +112,13 @@ func (s *RegisterTransactionService) ExecuteRegisterTransaction(
 		return fmt.Errorf("failed to mark intent: %w", err)
 	}
 
+	// Save to SQLite before committing files
+	if s.db != nil {
+		if err := s.saveSBIToSQLite(ctx, spec, specPath); err != nil {
+			return fmt.Errorf("failed to save SBI to SQLite: %w", err)
+		}
+	}
+
 	// Commit phase with journal integration
 	err = manager.Commit(tx, ".deespec", func() error {
 		// Append to journal as part of the transaction commit
@@ -165,6 +177,68 @@ func (s *RegisterTransactionService) appendJournalEntryTX(journalEntry map[strin
 	}
 	if err := fs.FsyncDir(journalDir); err != nil {
 		s.warnLog("journal dir fsync failed: %v", err)
+	}
+
+	return nil
+}
+
+// saveSBIToSQLite saves SBI metadata to SQLite database
+func (s *RegisterTransactionService) saveSBIToSQLite(ctx context.Context, spec *dto.RegisterSpec, specPath string) error {
+	// Get next sequence number
+	var sequence int
+	err := s.db.QueryRowContext(ctx, "SELECT COALESCE(MAX(sequence), 0) + 1 FROM sbis").Scan(&sequence)
+	if err != nil {
+		return fmt.Errorf("failed to get next sequence: %w", err)
+	}
+
+	// Generate ULID for SBI ID
+	// Note: spec.ID from user input is different from database ID (ULID)
+	sbiID := spec.ID // Use user-provided ID for now
+
+	// Prepare INSERT query with sequence and registered_at
+	query := `
+		INSERT INTO sbis (id, title, description, status, current_step, parent_pbi_id,
+		                  estimated_hours, priority, sequence, registered_at, labels, assigned_agent, file_paths,
+		                  current_turn, current_attempt, max_turns, max_attempts, last_error, artifact_paths,
+		                  created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	now := time.Now()
+	labelsJSON := "[]"
+	if len(spec.Labels) > 0 {
+		data, err := json.Marshal(spec.Labels)
+		if err != nil {
+			return fmt.Errorf("failed to marshal labels: %w", err)
+		}
+		labelsJSON = string(data)
+	}
+
+	_, err = s.db.ExecContext(ctx, query,
+		sbiID,                // id
+		spec.Title,           // title
+		"",                   // description
+		"pending",            // status
+		"registered",         // current_step
+		nil,                  // parent_pbi_id
+		0.0,                  // estimated_hours
+		0,                    // priority (default)
+		sequence,             // sequence
+		now,                  // registered_at
+		labelsJSON,           // labels
+		"",                   // assigned_agent
+		"[]",                 // file_paths
+		1,                    // current_turn
+		1,                    // current_attempt
+		10,                   // max_turns
+		3,                    // max_attempts
+		"",                   // last_error
+		"[]",                 // artifact_paths
+		now,                  // created_at
+		now,                  // updated_at
+	)
+	if err != nil {
+		return fmt.Errorf("failed to insert SBI to SQLite: %w", err)
 	}
 
 	return nil

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/common"
 	"github.com/spf13/cobra"
 )
@@ -76,6 +77,37 @@ func runSBIHistory(ctx context.Context, sbiID string, flags *sbiHistoryFlags) er
 	// Read journal file
 	file, err := os.Open(journalPath)
 	if err != nil {
+		// Check if file doesn't exist
+		if os.IsNotExist(err) {
+			// Try to get SBI info to provide better error message
+			container, containerErr := common.InitializeContainer()
+			if containerErr == nil {
+				defer container.Close()
+				sbiRepo := container.GetSBIRepository()
+
+				// Try to find SBI by ID (convert string to repository.SBIID)
+				sbi, findErr := sbiRepo.Find(ctx, repository.SBIID(sbiID))
+				if findErr == nil && sbi != nil {
+					status := string(sbi.Status())
+					step := string(sbi.CurrentStep())
+
+					// If task hasn't been executed yet
+					if status == "PENDING" || step == "PICK" {
+						fmt.Printf("No execution history found for SBI: %s\n", sbiID)
+						fmt.Printf("\nℹ️  This task has not been executed yet (Status: %s, Step: %s)\n", status, step)
+						fmt.Printf("   History will be available after the task starts executing.\n")
+						fmt.Printf("\nTo execute this task, run:\n")
+						fmt.Printf("   deespec run\n")
+						return nil
+					}
+				}
+			}
+
+			// Generic message if we can't get SBI info
+			return fmt.Errorf("journal file not found: %s\n\nℹ️  Journal entries are created when SBI tasks are executed.\n   If the task hasn't run yet, there will be no history.\n   Run 'deespec sbi list' to check task status", journalPath)
+		}
+
+		// Other errors
 		return fmt.Errorf("failed to open journal: %w (path: %s)", err, journalPath)
 	}
 	defer file.Close()

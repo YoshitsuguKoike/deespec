@@ -79,6 +79,7 @@ func (wm *WorkflowManager) SetSBIRepository(sbiRepo repository.SBIRepository) {
 type TaskInfo struct {
 	TaskID string
 	Status string
+	Turn   int // Current turn number (1-based)
 }
 
 // getCurrentTaskInfo retrieves the currently processing task ID and status for a workflow
@@ -106,10 +107,11 @@ func (wm *WorkflowManager) getCurrentTaskInfo(workflowName string) *TaskInfo {
 				TaskID: taskID,
 			}
 
-			// Try to get task status from SBI repository if available
+			// Try to get task status and turn from SBI repository if available
 			if wm.sbiRepo != nil && workflowName == "sbi" {
 				if sbi, err := wm.sbiRepo.Find(wm.ctx, repository.SBIID(taskID)); err == nil && sbi != nil {
 					info.Status = string(sbi.Status())
+					info.Turn = sbi.ExecutionState().CurrentTurn.Value()
 				}
 			}
 
@@ -257,9 +259,15 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 				// Try to get current task info from state locks and repository
 				taskInfo := wm.getCurrentTaskInfo(runner.Name())
 				if taskInfo != nil {
-					if taskInfo.Status != "" {
+					if taskInfo.Status != "" && taskInfo.Turn > 0 {
+						wm.info("💓 [%s] Processing task %s [%s] (turn #%d)...",
+							runner.Name(), taskInfo.TaskID, taskInfo.Status, taskInfo.Turn)
+					} else if taskInfo.Status != "" {
 						wm.info("💓 [%s] Processing task %s [%s] (execution #%d)...",
 							runner.Name(), taskInfo.TaskID, taskInfo.Status, executionNum)
+					} else if taskInfo.Turn > 0 {
+						wm.info("💓 [%s] Processing task %s (turn #%d)...",
+							runner.Name(), taskInfo.TaskID, taskInfo.Turn)
 					} else {
 						wm.info("💓 [%s] Processing task %s (execution #%d)...",
 							runner.Name(), taskInfo.TaskID, executionNum)

@@ -21,19 +21,28 @@ type RunConfig struct {
 	Interval time.Duration
 }
 
-// SetupSignalHandler sets up graceful shutdown on SIGINT/SIGTERM
+// SetupSignalHandler sets up graceful shutdown on SIGINT/SIGTERM/SIGTSTP
 func SetupSignalHandler() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan,
-		os.Interrupt,    // Ctrl+C (SIGINT)
-		syscall.SIGTERM, // kill command
+		os.Interrupt,     // Ctrl+C (SIGINT)
+		syscall.SIGTERM,  // kill command
+		syscall.SIGTSTP,  // Ctrl+Z
 	)
 
 	go func() {
 		sig := <-sigChan
-		common.Info("Received signal: %v, initiating graceful shutdown...\n", sig)
+
+		// Show specific message for Ctrl+Z
+		if sig == syscall.SIGTSTP {
+			common.Warn("\n⚠️  Ctrl+Z detected. Initiating graceful shutdown...\n")
+			common.Info("💡 Tip: Use Ctrl+C to stop the process in the future.\n")
+		} else {
+			common.Info("Received signal: %v, initiating graceful shutdown...\n", sig)
+		}
+
 		cancel()
 	}()
 

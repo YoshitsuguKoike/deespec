@@ -512,6 +512,9 @@ Examples:
 			// Set lock service for querying current task info during heartbeat
 			manager.SetLockService(container.GetLockService())
 
+			// Set SBI repository for querying task status during heartbeat
+			manager.SetSBIRepository(container.GetSBIRepository())
+
 			// Register SBI workflow (parallel or sequential based on maxParallel)
 			var sbiRunner workflow.WorkflowRunner
 

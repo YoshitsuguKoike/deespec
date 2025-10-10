@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/application/service"
+	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
 )
 
 // LogFunc is a function type for logging
@@ -32,6 +33,9 @@ type WorkflowManager struct {
 
 	// Lock service for querying current task info (optional)
 	lockService service.LockService
+
+	// SBI repository for querying task status (optional)
+	sbiRepo repository.SBIRepository
 }
 
 // NewWorkflowManager creates a new workflow manager
@@ -66,17 +70,28 @@ func (wm *WorkflowManager) SetLockService(lockService service.LockService) {
 	wm.lockService = lockService
 }
 
-// getCurrentTaskID retrieves the currently processing task ID for a workflow
-// by querying state locks (e.g., "sbi/SBI-TEST-002" -> "SBI-TEST-002")
-func (wm *WorkflowManager) getCurrentTaskID(workflowName string) string {
+// SetSBIRepository sets the SBI repository for querying task status (optional)
+func (wm *WorkflowManager) SetSBIRepository(sbiRepo repository.SBIRepository) {
+	wm.sbiRepo = sbiRepo
+}
+
+// TaskInfo holds information about the currently processing task
+type TaskInfo struct {
+	TaskID string
+	Status string
+}
+
+// getCurrentTaskInfo retrieves the currently processing task ID and status for a workflow
+// by querying state locks and SBI repository
+func (wm *WorkflowManager) getCurrentTaskInfo(workflowName string) *TaskInfo {
 	if wm.lockService == nil {
-		return ""
+		return nil
 	}
 
 	// Query all state locks
 	locks, err := wm.lockService.ListStateLocks(wm.ctx)
 	if err != nil {
-		return ""
+		return nil
 	}
 
 	// Look for locks matching the workflow pattern (e.g., "sbi/SBI-XXX")
@@ -85,11 +100,24 @@ func (wm *WorkflowManager) getCurrentTaskID(workflowName string) string {
 		lockID := stateLock.LockID().String()
 		if strings.HasPrefix(lockID, prefix) {
 			// Extract task ID from lock ID (e.g., "sbi/SBI-TEST-002" -> "SBI-TEST-002")
-			return strings.TrimPrefix(lockID, prefix)
+			taskID := strings.TrimPrefix(lockID, prefix)
+
+			info := &TaskInfo{
+				TaskID: taskID,
+			}
+
+			// Try to get task status from SBI repository if available
+			if wm.sbiRepo != nil && workflowName == "sbi" {
+				if sbi, err := wm.sbiRepo.Find(wm.ctx, repository.SBIID(taskID)); err == nil && sbi != nil {
+					info.Status = string(sbi.Status())
+				}
+			}
+
+			return info
 		}
 	}
 
-	return ""
+	return nil
 }
 
 // RegisterWorkflow registers a new workflow runner
@@ -226,10 +254,16 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 			case err = <-done:
 				executionComplete = true
 			case <-executionHeartbeat.C:
-				// Try to get current task ID from state locks
-				taskID := wm.getCurrentTaskID(runner.Name())
-				if taskID != "" {
-					wm.info("💓 [%s] Processing task %s (execution #%d)...", runner.Name(), taskID, executionNum)
+				// Try to get current task info from state locks and repository
+				taskInfo := wm.getCurrentTaskInfo(runner.Name())
+				if taskInfo != nil {
+					if taskInfo.Status != "" {
+						wm.info("💓 [%s] Processing task %s [%s] (execution #%d)...",
+							runner.Name(), taskInfo.TaskID, taskInfo.Status, executionNum)
+					} else {
+						wm.info("💓 [%s] Processing task %s (execution #%d)...",
+							runner.Name(), taskInfo.TaskID, executionNum)
+					}
 				} else {
 					wm.info("💓 [%s] Processing task (execution #%d)...", runner.Name(), executionNum)
 				}

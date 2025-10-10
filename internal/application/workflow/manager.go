@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/YoshitsuguKoike/deespec/internal/application/service"
 )
 
 // LogFunc is a function type for logging
@@ -27,6 +29,9 @@ type WorkflowManager struct {
 	info  LogFunc
 	warn  LogFunc
 	debug LogFunc
+
+	// Lock service for querying current task info (optional)
+	lockService service.LockService
 }
 
 // NewWorkflowManager creates a new workflow manager
@@ -54,6 +59,37 @@ func NewWorkflowManager(info, warn, debug LogFunc) *WorkflowManager {
 		warn:      warn,
 		debug:     debug,
 	}
+}
+
+// SetLockService sets the lock service for querying task information (optional)
+func (wm *WorkflowManager) SetLockService(lockService service.LockService) {
+	wm.lockService = lockService
+}
+
+// getCurrentTaskID retrieves the currently processing task ID for a workflow
+// by querying state locks (e.g., "sbi/SBI-TEST-002" -> "SBI-TEST-002")
+func (wm *WorkflowManager) getCurrentTaskID(workflowName string) string {
+	if wm.lockService == nil {
+		return ""
+	}
+
+	// Query all state locks
+	locks, err := wm.lockService.ListStateLocks(wm.ctx)
+	if err != nil {
+		return ""
+	}
+
+	// Look for locks matching the workflow pattern (e.g., "sbi/SBI-XXX")
+	prefix := workflowName + "/"
+	for _, stateLock := range locks {
+		lockID := stateLock.LockID().String()
+		if strings.HasPrefix(lockID, prefix) {
+			// Extract task ID from lock ID (e.g., "sbi/SBI-TEST-002" -> "SBI-TEST-002")
+			return strings.TrimPrefix(lockID, prefix)
+		}
+	}
+
+	return ""
 }
 
 // RegisterWorkflow registers a new workflow runner
@@ -190,7 +226,13 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 			case err = <-done:
 				executionComplete = true
 			case <-executionHeartbeat.C:
-				wm.info("💓 [%s] Processing task (execution #%d)...", runner.Name(), executionNum)
+				// Try to get current task ID from state locks
+				taskID := wm.getCurrentTaskID(runner.Name())
+				if taskID != "" {
+					wm.info("💓 [%s] Processing task %s (execution #%d)...", runner.Name(), taskID, executionNum)
+				} else {
+					wm.info("💓 [%s] Processing task (execution #%d)...", runner.Name(), executionNum)
+				}
 			case <-wm.ctx.Done():
 				executionHeartbeat.Stop()
 				wm.info("Workflow %s stopping due to shutdown signal\n", runner.Name())

@@ -15,5 +15,6 @@ type WorkflowStats struct {
 	LastError       error
 	AverageInterval time.Duration
 	IsRunning       bool
+	CurrentTaskID   string // Currently processing task ID (e.g., "SBI-TEST-002")
 	mutex           sync.RWMutex
 }

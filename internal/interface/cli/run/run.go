@@ -509,6 +509,9 @@ Examples:
 			// Create workflow manager with logging functions
 			manager := workflow.NewWorkflowManager(common.Info, common.Warn, common.Debug)
 
+			// Set lock service for querying current task info during heartbeat
+			manager.SetLockService(container.GetLockService())
+
 			// Register SBI workflow (parallel or sequential based on maxParallel)
 			var sbiRunner workflow.WorkflowRunner
 

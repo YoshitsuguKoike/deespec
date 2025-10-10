@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/YoshitsuguKoike/deespec/internal/application/usecase"
 )
 
 func TestRegisterCommand(t *testing.T) {
@@ -485,8 +487,8 @@ func TestBuildSpecPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
-			config := GetDefaultPolicy()
-			resolvedConfig, _ := ResolveRegisterConfig("", config)
+			config := usecase.GetDefaultRegisterPolicy()
+			resolvedConfig, _ := usecase.ResolveConfig("", "", config)
 			result, err := buildSafeSpecPathWithConfig(tt.id, tt.title, resolvedConfig)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

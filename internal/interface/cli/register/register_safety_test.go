@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/YoshitsuguKoike/deespec/internal/application/usecase"
 )
 
 func TestSlugifyTitle(t *testing.T) {
@@ -48,8 +50,8 @@ func TestSlugifyTitle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := GetDefaultPolicy()
-			resolvedConfig, _ := ResolveRegisterConfig("", config)
+			config := usecase.GetDefaultRegisterPolicy()
+			resolvedConfig, _ := usecase.ResolveConfig("", "", config)
 			result := slugifyTitleWithConfig(tt.title, resolvedConfig)
 			if result != tt.expected {
 				t.Errorf("slugifyTitle(%q) = %q; want %q", tt.title, result, tt.expected)
@@ -147,8 +149,8 @@ func TestBuildSafeSpecPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := GetDefaultPolicy()
-			resolvedConfig, _ := ResolveRegisterConfig("", config)
+			config := usecase.GetDefaultRegisterPolicy()
+			resolvedConfig, _ := usecase.ResolveConfig("", "", config)
 			path, err := buildSafeSpecPathWithConfig(tt.id, tt.title, resolvedConfig)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildSafeSpecPath() error = %v, wantErr %v", err, tt.wantErr)
@@ -341,10 +343,10 @@ func TestResolveCollision(t *testing.T) {
 				}
 			}
 
-			config := GetDefaultPolicy()
+			config := usecase.GetDefaultRegisterPolicy()
 			config.Collision.DefaultMode = tt.mode
 			config.Path.DenySymlinkComponents = false // Disable symlink check for test
-			resolvedConfig, _ := ResolveRegisterConfig("", config)
+			resolvedConfig, _ := usecase.ResolveConfig("", "", config)
 			resultPath, warning, err := resolveCollisionWithConfig(tt.path, resolvedConfig)
 			if (err != nil) != tt.expectErr {
 				t.Errorf("resolveCollision() error = %v, expectErr %v", err, tt.expectErr)
@@ -379,10 +381,10 @@ func TestCollisionSuffixExhaustion(t *testing.T) {
 	}
 
 	// Should find _11
-	config := GetDefaultPolicy()
+	config := usecase.GetDefaultRegisterPolicy()
 	config.Collision.DefaultMode = CollisionSuffix
 	config.Path.DenySymlinkComponents = false // Disable symlink check for test
-	resolvedConfig, _ := ResolveRegisterConfig("", config)
+	resolvedConfig, _ := usecase.ResolveConfig("", "", config)
 	resultPath, warning, err := resolveCollisionWithConfig(basePath, resolvedConfig)
 	if err != nil {
 		t.Fatalf("resolveCollision() unexpected error: %v", err)

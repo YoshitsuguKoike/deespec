@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/YoshitsuguKoike/deespec/internal/application/dto"
 	"github.com/YoshitsuguKoike/deespec/internal/application/service"
@@ -95,8 +96,12 @@ type ResolvedConfig struct {
 
 	// Validation limits
 	IDMaxLen      int
+	IDPattern     *regexp.Regexp
 	TitleMaxLen   int
+	TitleDenyEmpty bool
 	LabelMaxCount int
+	LabelsPattern *regexp.Regexp
+	LabelsWarnOnDuplicates bool
 
 	// Path configuration
 	PathMaxBytes       int

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/YoshitsuguKoike/deespec/internal/application/usecase"
 	"github.com/YoshitsuguKoike/deespec/internal/pkg/specpath"
 	"github.com/YoshitsuguKoike/deespec/internal/testutil"
 )
@@ -98,10 +99,10 @@ collision:
 	}
 
 	// Load policy
-	policy, _ := LoadRegisterPolicy(policyPath)
+	policy, _ := usecase.LoadPolicyFromFile(policyPath)
 
 	// Test CLI override
-	config, _ := ResolveRegisterConfig("suffix", policy)
+	config, _ := usecase.ResolveConfig("suffix", "", policy)
 
 	// CLI should override policy
 	if config.CollisionMode != "suffix" {
@@ -109,8 +110,8 @@ collision:
 	}
 
 	// Policy value should be used for suffix limit
-	if config.SuffixLimit != 5 {
-		t.Errorf("Expected policy suffix_limit 5, got: %d", config.SuffixLimit)
+	if config.CollisionSuffixLimit != 5 {
+		t.Errorf("Expected policy suffix_limit 5, got: %d", config.CollisionSuffixLimit)
 	}
 }
 
@@ -459,19 +460,11 @@ func TestDryRun_StderrLevel(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	// Create policy with stderr_level_default: error
-	policyPath := "test_policy.yaml"
 	policyContent := `
 logging:
   stderr_level_default: "error"
 `
-	if err := os.WriteFile(policyPath, []byte(policyContent), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Mock GetPolicyPath
-	oldGetPolicyPath := GetPolicyPath
-	GetPolicyPath = func() string { return policyPath }
-	defer func() { GetPolicyPath = oldGetPolicyPath }()
+	testutil.WriteTestPolicy(t, policyContent)
 
 	// Create input
 	input := `

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/YoshitsuguKoike/deespec/internal/application/dto"
+	"github.com/YoshitsuguKoike/deespec/internal/application/usecase"
 	"golang.org/x/text/unicode/norm"
 	"gopkg.in/yaml.v3"
 )
@@ -59,7 +60,7 @@ type ValidationResult struct {
 }
 
 // readInputWithConfig for backward compatibility with dry_run.go
-func readInputWithConfig(stdinFlag bool, fileFlag string, config *ResolvedConfig) ([]byte, error) {
+func readInputWithConfig(stdinFlag bool, fileFlag string, config *usecase.ResolvedConfig) ([]byte, error) {
 	var input []byte
 	var err error
 
@@ -139,7 +140,7 @@ func decodeStrict(input []byte, spec *RegisterSpec, filePath string) error {
 }
 
 // validateSpecWithConfig for backward compatibility
-func validateSpecWithConfig(spec *RegisterSpec, config *ResolvedConfig) ValidationResult {
+func validateSpecWithConfig(spec *RegisterSpec, config *usecase.ResolvedConfig) ValidationResult {
 	result := ValidationResult{
 		Warnings: []string{},
 	}
@@ -214,8 +215,8 @@ func validateSpecWithConfig(spec *RegisterSpec, config *ResolvedConfig) Validati
 	}
 
 	// Check label count if configured
-	if config.LabelsMaxCount > 0 && len(spec.Labels) > config.LabelsMaxCount {
-		result.Err = fmt.Errorf("number of labels (%d) exceeds maximum %d", len(spec.Labels), config.LabelsMaxCount)
+	if config.LabelMaxCount > 0 && len(spec.Labels) > config.LabelMaxCount {
+		result.Err = fmt.Errorf("number of labels (%d) exceeds maximum %d", len(spec.Labels), config.LabelMaxCount)
 		return result
 	}
 
@@ -223,7 +224,7 @@ func validateSpecWithConfig(spec *RegisterSpec, config *ResolvedConfig) Validati
 }
 
 // buildSafeSpecPathWithConfig for backward compatibility
-func buildSafeSpecPathWithConfig(id, title string, config *ResolvedConfig) (string, error) {
+func buildSafeSpecPathWithConfig(id, title string, config *usecase.ResolvedConfig) (string, error) {
 	// Use the full slugification logic
 	slug := slugifyTitleWithConfig(title, config)
 
@@ -264,7 +265,7 @@ func toDTO(spec *RegisterSpec) *dto.RegisterSpec {
 }
 
 // slugifyTitleWithConfig for backward compatibility
-func slugifyTitleWithConfig(title string, config *ResolvedConfig) string {
+func slugifyTitleWithConfig(title string, config *usecase.ResolvedConfig) string {
 	// Apply NFKC normalization if configured
 	slug := title
 	if config.SlugNFKC {
@@ -370,7 +371,7 @@ func checkForSymlinks(path string) error {
 }
 
 // resolveCollisionWithConfig for backward compatibility
-func resolveCollisionWithConfig(path string, config *ResolvedConfig) (string, string, error) {
+func resolveCollisionWithConfig(path string, config *usecase.ResolvedConfig) (string, string, error) {
 	// Validate collision mode first (before checking path existence)
 	validModes := map[string]bool{CollisionError: true, CollisionSuffix: true, CollisionReplace: true}
 	if config.CollisionMode != "" && !validModes[config.CollisionMode] {
@@ -392,7 +393,7 @@ func resolveCollisionWithConfig(path string, config *ResolvedConfig) (string, st
 		warning := fmt.Sprintf("replaced existing spec at %s", path)
 		return path, warning, nil
 	case CollisionSuffix:
-		limit := config.SuffixLimit
+		limit := config.CollisionSuffixLimit
 		if limit == 0 {
 			limit = 100
 		}

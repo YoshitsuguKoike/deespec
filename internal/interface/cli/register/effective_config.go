@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/YoshitsuguKoike/deespec/internal/application/usecase"
 	"github.com/YoshitsuguKoike/deespec/internal/buildinfo"
 	"gopkg.in/yaml.v3"
 )
@@ -121,8 +122,8 @@ func runPrintEffectiveConfig(cliCollisionMode, format string, compact, redactSec
 	defer common.GetLogger().SetLevel(originalLevel)
 
 	// Load policy
-	policyPath := GetPolicyPath()
-	policy, err := LoadRegisterPolicy(policyPath)
+	policyPath := filepath.Join(".deespec", "etc", "policies", "register_policy.yaml")
+	policy, err := usecase.LoadPolicyFromFile(policyPath)
 
 	// Track if policy file was found
 	policyFileFound := err == nil && policy != nil
@@ -140,7 +141,7 @@ func runPrintEffectiveConfig(cliCollisionMode, format string, compact, redactSec
 	}
 
 	// Resolve configuration with precedence
-	config, err := ResolveRegisterConfig(cliCollisionMode, policy)
+	config, err := usecase.ResolveConfig(cliCollisionMode, "", policy)
 	if err != nil {
 		common.Error("failed to resolve config: %v\n", err)
 		return err
@@ -188,7 +189,7 @@ func runPrintEffectiveConfig(cliCollisionMode, format string, compact, redactSec
 }
 
 // buildEffectiveConfig converts ResolvedConfig to EffectiveConfig for output
-func buildEffectiveConfig(config *ResolvedConfig, policyFileFound bool, policyPath string) *EffectiveConfig {
+func buildEffectiveConfig(config *usecase.ResolvedConfig, policyFileFound bool, policyPath string) *EffectiveConfig {
 	// Build metadata
 	meta := EffectiveConfigMeta{
 		PolicyFileFound: policyFileFound,
@@ -249,7 +250,7 @@ func buildEffectiveConfig(config *ResolvedConfig, policyFileFound bool, policyPa
 		},
 		Labels: EffectiveConfigLabels{
 			Pattern:          labelsPattern,
-			MaxCount:         config.LabelsMaxCount,
+			MaxCount:         config.LabelMaxCount,
 			WarnOnDuplicates: config.LabelsWarnOnDuplicates,
 		},
 		Input: EffectiveConfigInput{
@@ -267,12 +268,12 @@ func buildEffectiveConfig(config *ResolvedConfig, policyFileFound bool, policyPa
 		Path: EffectiveConfigPath{
 			BaseDir:               config.PathBaseDir,
 			MaxBytes:              config.PathMaxBytes,
-			DenySymlinkComponents: config.PathDenySymlinkComponents,
-			EnforceContainment:    config.PathEnforceContainment,
+			DenySymlinkComponents: config.DenySymlinks,
+			EnforceContainment:    config.EnforceContainment,
 		},
 		Collision: EffectiveConfigCollision{
 			DefaultMode: config.CollisionMode,
-			SuffixLimit: config.SuffixLimit,
+			SuffixLimit: config.CollisionSuffixLimit,
 		},
 		Journal: EffectiveConfigJournal{
 			RecordSource:     config.JournalRecordSource,

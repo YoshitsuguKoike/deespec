@@ -9,14 +9,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/YoshitsuguKoike/deespec/internal/application/usecase"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/common"
+	"github.com/YoshitsuguKoike/deespec/internal/testutil"
 	"gopkg.in/yaml.v3"
 )
 
 func TestPrintEffectiveConfig_NoPolicy_Defaults(t *testing.T) {
 	// Ensure no policy file exists
 	tmpDir := t.TempDir()
-	oldPolicyPath := GetPolicyPath()
+	oldPolicyPath := filepath.Join(".deespec", "register_policy.yml")
 	defer func() {
 		// Reset to original path
 		os.Setenv("DEESPEC_POLICY_PATH", oldPolicyPath)
@@ -98,13 +100,13 @@ logging:
 	}
 
 	// Load policy
-	policy, err := LoadRegisterPolicy(policyPath)
+	policy, err := usecase.LoadPolicyFromFile(policyPath)
 	if err != nil {
 		t.Fatalf("Failed to load policy: %v", err)
 	}
 
 	// Test CLI override
-	config, err := ResolveRegisterConfig("suffix", policy)
+	config, err := usecase.ResolveConfig("suffix", "", policy)
 	if err != nil {
 		t.Fatalf("Failed to resolve config: %v", err)
 	}
@@ -115,8 +117,8 @@ logging:
 	}
 
 	// Policy value should be used when CLI doesn't override
-	if config.SuffixLimit != 10 {
-		t.Errorf("Expected policy suffix_limit 10, got: %d", config.SuffixLimit)
+	if config.CollisionSuffixLimit != 10 {
+		t.Errorf("Expected policy suffix_limit 10, got: %d", config.CollisionSuffixLimit)
 	}
 	if config.StderrLevel != "warn" {
 		t.Errorf("Expected policy stderr_level 'warn', got: %s", config.StderrLevel)
@@ -125,8 +127,8 @@ logging:
 
 func TestPrintEffectiveConfig_FormatCompact(t *testing.T) {
 	// Test compact JSON
-	config := GetDefaultPolicy()
-	resolvedConfig, _ := ResolveRegisterConfig("", config)
+	config := usecase.GetDefaultRegisterPolicy()
+	resolvedConfig, _ := usecase.ResolveConfig("", "", config)
 	effective := buildEffectiveConfig(resolvedConfig, false, "")
 
 	// Test compact JSON
@@ -174,7 +176,7 @@ collision:
 	}
 
 	// Load policy should fail
-	_, err := LoadRegisterPolicy(policyPath)
+	_, err := usecase.LoadPolicyFromFile(policyPath)
 	if err == nil {
 		t.Error("Expected error for unknown field, got nil")
 	}
@@ -184,8 +186,8 @@ collision:
 }
 
 func TestEffectiveConfig_ContainsPathInputs(t *testing.T) {
-	config := GetDefaultPolicy()
-	resolvedConfig, _ := ResolveRegisterConfig("", config)
+	config := usecase.GetDefaultRegisterPolicy()
+	resolvedConfig, _ := usecase.ResolveConfig("", "", config)
 	effective := buildEffectiveConfig(resolvedConfig, false, "")
 
 	// Check that path_inputs section exists
@@ -209,8 +211,8 @@ func TestEffectiveConfig_ContainsPathInputs(t *testing.T) {
 }
 
 func TestEffectiveConfig_StableKeyOrder(t *testing.T) {
-	config := GetDefaultPolicy()
-	resolvedConfig, _ := ResolveRegisterConfig("", config)
+	config := usecase.GetDefaultRegisterPolicy()
+	resolvedConfig, _ := usecase.ResolveConfig("", "", config)
 	effective := buildEffectiveConfig(resolvedConfig, true, ".deespec/etc/policies/register_policy.yaml")
 
 	// Marshal to JSON multiple times and verify order
@@ -238,8 +240,8 @@ func TestEffectiveConfig_StableKeyOrder(t *testing.T) {
 }
 
 func TestEffectiveConfig_MetadataFields(t *testing.T) {
-	config := GetDefaultPolicy()
-	resolvedConfig, _ := ResolveRegisterConfig("", config)
+	config := usecase.GetDefaultRegisterPolicy()
+	resolvedConfig, _ := usecase.ResolveConfig("", "", config)
 
 	// Test with policy file found
 	effective := buildEffectiveConfig(resolvedConfig, true, ".deespec/etc/policies/test.yaml")
@@ -266,9 +268,11 @@ func TestEffectiveConfig_MetadataFields(t *testing.T) {
 }
 
 func TestRunPrintEffectiveConfig_Integration(t *testing.T) {
+	// Create test workspace
+	cleanup := testutil.NewTestWorkspace(t)
+	t.Cleanup(cleanup)
+
 	// Create a test policy
-	tmpDir := t.TempDir()
-	policyPath := filepath.Join(tmpDir, "register_policy.yaml")
 	policyContent := `
 id:
   pattern: "^TEST-[0-9]{3}$"
@@ -283,14 +287,7 @@ journal:
   record_source: true
   record_input_bytes: true
 `
-	if err := os.WriteFile(policyPath, []byte(policyContent), 0644); err != nil {
-		t.Fatalf("Failed to write test policy: %v", err)
-	}
-
-	// Mock GetPolicyPath to return our test policy
-	oldGetPolicyPath := GetPolicyPath
-	GetPolicyPath = func() string { return policyPath }
-	defer func() { GetPolicyPath = oldGetPolicyPath }()
+	testutil.WriteTestPolicy(t, policyContent)
 
 	// Capture output
 	oldStdout := os.Stdout

@@ -526,3 +526,261 @@ func (u *RegisterSBIUseCase) buildJournalEntry(
 
 	return entry
 }
+
+// --- Public Helper Functions for CLI Layer ---
+
+// LoadPolicyFromFile loads the registration policy from a file
+func LoadPolicyFromFile(path string) (*RegisterPolicy, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil // Policy file is optional
+		}
+		return nil, fmt.Errorf("failed to open policy file: %w", err)
+	}
+	defer file.Close()
+
+	decoder := yaml.NewDecoder(file)
+	decoder.KnownFields(true)
+
+	var policy RegisterPolicy
+	if err := decoder.Decode(&policy); err != nil {
+		return nil, fmt.Errorf("failed to parse policy file: %w", err)
+	}
+
+	if err := ValidatePolicy(&policy); err != nil {
+		return nil, fmt.Errorf("invalid policy: %w", err)
+	}
+
+	return &policy, nil
+}
+
+// ValidatePolicy validates policy configuration
+func ValidatePolicy(p *RegisterPolicy) error {
+	if p.ID.Pattern != "" {
+		if _, err := regexp.Compile(p.ID.Pattern); err != nil {
+			return fmt.Errorf("invalid ID pattern: %w", err)
+		}
+	}
+	if p.ID.MaxLen > 0 && p.ID.MaxLen > 256 {
+		return fmt.Errorf("ID max_len exceeds safe limit (256)")
+	}
+	if p.Title.MaxLen > 0 && p.Title.MaxLen > 1024 {
+		return fmt.Errorf("title max_len exceeds safe limit (1024)")
+	}
+	if p.Labels.MaxCount > 0 && p.Labels.MaxCount > 128 {
+		return fmt.Errorf("labels max_count exceeds safe limit (128)")
+	}
+	if p.Input.MaxKB > 0 && p.Input.MaxKB > 1024 {
+		return fmt.Errorf("input max_kb exceeds safe limit (1024)")
+	}
+	if p.Path.MaxBytes > 0 && p.Path.MaxBytes > 512 {
+		return fmt.Errorf("path max_bytes exceeds safe limit (512)")
+	}
+	if p.Collision.SuffixLimit > 0 && p.Collision.SuffixLimit > 1000 {
+		return fmt.Errorf("collision suffix_limit exceeds safe limit (1000)")
+	}
+	return nil
+}
+
+// GetDefaultRegisterPolicy returns the default policy configuration
+func GetDefaultRegisterPolicy() *RegisterPolicy {
+	return &RegisterPolicy{
+		ID: struct {
+			Pattern string `yaml:"pattern"`
+			MaxLen  int    `yaml:"max_len"`
+		}{
+			Pattern: "^[A-Z0-9-]{1,64}$",
+			MaxLen:  64,
+		},
+		Title: struct {
+			MaxLen    int  `yaml:"max_len"`
+			DenyEmpty bool `yaml:"deny_empty"`
+		}{
+			MaxLen:    200,
+			DenyEmpty: true,
+		},
+		Labels: struct {
+			Pattern          string `yaml:"pattern"`
+			MaxCount         int    `yaml:"max_count"`
+			WarnOnDuplicates bool   `yaml:"warn_on_duplicates"`
+		}{
+			Pattern:          "^[a-z0-9-]+$",
+			MaxCount:         32,
+			WarnOnDuplicates: true,
+		},
+		Input: struct {
+			MaxKB int `yaml:"max_kb"`
+		}{
+			MaxKB: 64,
+		},
+		Slug: struct {
+			NFKC                  bool   `yaml:"nfkc"`
+			Lowercase             bool   `yaml:"lowercase"`
+			Allow                 string `yaml:"allow"`
+			MaxRunes              int    `yaml:"max_runes"`
+			Fallback              string `yaml:"fallback"`
+			WindowsReservedSuffix string `yaml:"windows_reserved_suffix"`
+			TrimTrailingDotSpace  bool   `yaml:"trim_trailing_dot_space"`
+		}{
+			NFKC:                  true,
+			Lowercase:             true,
+			Allow:                 "a-z0-9-",
+			MaxRunes:              60,
+			Fallback:              "spec",
+			WindowsReservedSuffix: "-x",
+			TrimTrailingDotSpace:  true,
+		},
+		Path: struct {
+			BaseDir               string `yaml:"base_dir"`
+			MaxBytes              int    `yaml:"max_bytes"`
+			DenySymlinkComponents bool   `yaml:"deny_symlink_components"`
+			EnforceContainment    bool   `yaml:"enforce_containment"`
+		}{
+			BaseDir:               ".deespec/specs/sbi",
+			MaxBytes:              240,
+			DenySymlinkComponents: true,
+			EnforceContainment:    true,
+		},
+		Collision: struct {
+			DefaultMode string `yaml:"default_mode"`
+			SuffixLimit int    `yaml:"suffix_limit"`
+		}{
+			DefaultMode: "error",
+			SuffixLimit: 99,
+		},
+		Journal: struct {
+			RecordSource     bool `yaml:"record_source"`
+			RecordInputBytes bool `yaml:"record_input_bytes"`
+		}{
+			RecordSource:     false,
+			RecordInputBytes: false,
+		},
+		Logging: struct {
+			StderrLevelDefault string `yaml:"stderr_level_default"`
+		}{
+			StderrLevelDefault: "warn",
+		},
+	}
+}
+
+// ResolveConfig resolves the final configuration from CLI flags and policy
+func ResolveConfig(onCollision, stderrLevel string, policy *RegisterPolicy) (*ResolvedConfig, error) {
+	config := &ResolvedConfig{
+		// Defaults
+		CollisionMode:             "error",
+		IDMaxLen:                  MaxIDLength,
+		TitleMaxLen:               MaxTitleLength,
+		TitleDenyEmpty:            true,
+		LabelMaxCount:             MaxLabelCount,
+		LabelsWarnOnDuplicates:    true,
+		InputMaxBytes:             MaxInputSize,
+		PathMaxBytes:              MaxPathBytes,
+		PathBaseDir:               ".deespec/specs/sbi",
+		DenySymlinks:              true,
+		EnforceContainment:        true,
+		SlugNFKC:                  true,
+		SlugLowercase:             true,
+		SlugAllow:                 "a-z0-9-",
+		SlugMaxRunes:              MaxSlugLength,
+		SlugFallback:              "untitled",
+		SlugWindowsReservedSuffix: "_spec",
+		SlugTrimTrailingDotSpace:  true,
+		CollisionSuffixLimit:      100,
+		StderrLevel:               "info",
+		JournalRecordSource:       true,
+		JournalRecordInputBytes:   true,
+	}
+
+	// Apply policy
+	if policy != nil {
+		// ID configuration
+		if policy.ID.MaxLen > 0 {
+			config.IDMaxLen = policy.ID.MaxLen
+		}
+		if policy.ID.Pattern != "" {
+			if pattern, err := regexp.Compile(policy.ID.Pattern); err == nil {
+				config.IDPattern = pattern
+			}
+		}
+
+		// Title configuration
+		if policy.Title.MaxLen > 0 {
+			config.TitleMaxLen = policy.Title.MaxLen
+		}
+		config.TitleDenyEmpty = policy.Title.DenyEmpty
+
+		// Labels configuration
+		if policy.Labels.MaxCount > 0 {
+			config.LabelMaxCount = policy.Labels.MaxCount
+		}
+		if policy.Labels.Pattern != "" {
+			if pattern, err := regexp.Compile(policy.Labels.Pattern); err == nil {
+				config.LabelsPattern = pattern
+			}
+		}
+		config.LabelsWarnOnDuplicates = policy.Labels.WarnOnDuplicates
+		if policy.Input.MaxKB > 0 {
+			config.InputMaxBytes = policy.Input.MaxKB * 1024
+		}
+		if policy.Path.BaseDir != "" {
+			config.PathBaseDir = policy.Path.BaseDir
+		}
+		if policy.Path.MaxBytes > 0 {
+			config.PathMaxBytes = policy.Path.MaxBytes
+		}
+		config.DenySymlinks = policy.Path.DenySymlinkComponents
+		config.EnforceContainment = policy.Path.EnforceContainment
+
+		// Slug configuration
+		if policy.Slug.Allow != "" {
+			config.SlugAllow = policy.Slug.Allow
+		}
+		if policy.Slug.MaxRunes > 0 {
+			config.SlugMaxRunes = policy.Slug.MaxRunes
+		}
+		if policy.Slug.Fallback != "" {
+			config.SlugFallback = policy.Slug.Fallback
+		}
+		if policy.Slug.WindowsReservedSuffix != "" {
+			config.SlugWindowsReservedSuffix = policy.Slug.WindowsReservedSuffix
+		}
+		config.SlugNFKC = policy.Slug.NFKC
+		config.SlugLowercase = policy.Slug.Lowercase
+		config.SlugTrimTrailingDotSpace = policy.Slug.TrimTrailingDotSpace
+
+		// Collision configuration
+		if policy.Collision.DefaultMode != "" {
+			config.CollisionMode = policy.Collision.DefaultMode
+		}
+		if policy.Collision.SuffixLimit > 0 {
+			config.CollisionSuffixLimit = policy.Collision.SuffixLimit
+		}
+
+		// Logging configuration
+		if policy.Logging.StderrLevelDefault != "" {
+			config.StderrLevel = policy.Logging.StderrLevelDefault
+		}
+
+		// Journal configuration
+		config.JournalRecordSource = policy.Journal.RecordSource
+		config.JournalRecordInputBytes = policy.Journal.RecordInputBytes
+	}
+
+	// CLI flags override policy
+	if onCollision != "" {
+		if onCollision != "error" && onCollision != "suffix" && onCollision != "replace" {
+			return nil, fmt.Errorf("invalid collision mode: %s", onCollision)
+		}
+		config.CollisionMode = onCollision
+	}
+	if stderrLevel != "" {
+		validLevels := map[string]bool{"off": true, "error": true, "warn": true, "info": true, "debug": true}
+		if !validLevels[stderrLevel] {
+			return nil, fmt.Errorf("invalid stderr level: %s", stderrLevel)
+		}
+		config.StderrLevel = stderrLevel
+	}
+
+	return config, nil
+}

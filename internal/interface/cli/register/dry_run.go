@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/YoshitsuguKoike/deespec/internal/application/usecase"
 	"github.com/YoshitsuguKoike/deespec/internal/buildinfo"
 	"gopkg.in/yaml.v3"
 )
@@ -88,8 +89,8 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 	common.SetDefaultStderr(os.Stderr)
 
 	// Load policy
-	policyPath := GetPolicyPath()
-	policy, policyErr := LoadRegisterPolicy(policyPath)
+	policyPath := filepath.Join(".deespec", "etc", "policies", "register_policy.yaml")
+	policy, policyErr := usecase.LoadPolicyFromFile(policyPath)
 
 	var policySHA256 string
 	policyFileFound := policyErr == nil && policy != nil
@@ -110,7 +111,7 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 	}
 
 	// Resolve configuration with precedence
-	config, err := ResolveRegisterConfig(cliCollisionMode, policy)
+	config, err := usecase.ResolveConfig(cliCollisionMode, "", policy)
 	if err != nil {
 		logBuf.Error("failed to resolve config: %v", err)
 		return err
@@ -170,7 +171,7 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 				finalPath = specPath
 			case CollisionSuffix:
 				// Find available suffix
-				for i := 2; i <= config.SuffixLimit; i++ {
+				for i := 2; i <= config.CollisionSuffixLimit; i++ {
 					testPath := fmt.Sprintf("%s_%d", specPath, i)
 					if _, err := os.Stat(testPath); os.IsNotExist(err) {
 						finalPath = testPath
@@ -255,7 +256,7 @@ func runDryRun(stdinFlag bool, fileFlag string, cliCollisionMode string, format 
 // buildDryRunReport creates the complete dry-run report
 func buildDryRunReport(
 	spec RegisterSpec,
-	config *ResolvedConfig,
+	config *usecase.ResolvedConfig,
 	validation ValidationResult,
 	specPath string,
 	finalPath string,
@@ -362,7 +363,7 @@ func buildDryRunReport(
 }
 
 // buildErrorReport creates a report for early errors
-func buildErrorReport(err error, message string, config *ResolvedConfig, policyFileFound bool, policyPath string, policySHA256 string, startTime time.Time) *DryRunReport {
+func buildErrorReport(err error, message string, config *usecase.ResolvedConfig, policyFileFound bool, policyPath string, policySHA256 string, startTime time.Time) *DryRunReport {
 	now := time.Now().UTC()
 
 	meta := DryRunMeta{

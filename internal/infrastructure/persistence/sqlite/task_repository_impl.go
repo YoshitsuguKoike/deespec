@@ -110,7 +110,7 @@ func (r *TaskRepositoryImpl) List(ctx context.Context, filter repository.TaskFil
 		switch taskType {
 		case repository.TaskTypeEPIC:
 			epicFilter := repository.EPICFilter{
-				Statuses: convertStatuses(filter.Statuses),
+				Statuses: filter.Statuses,
 				Limit:    filter.Limit,
 				Offset:   filter.Offset,
 			}
@@ -123,7 +123,7 @@ func (r *TaskRepositoryImpl) List(ctx context.Context, filter repository.TaskFil
 			}
 		case repository.TaskTypePBI:
 			pbiFilter := repository.PBIFilter{
-				Statuses: convertStatuses(filter.Statuses),
+				Statuses: filter.Statuses,
 				Limit:    filter.Limit,
 				Offset:   filter.Offset,
 			}
@@ -136,7 +136,7 @@ func (r *TaskRepositoryImpl) List(ctx context.Context, filter repository.TaskFil
 			}
 		case repository.TaskTypeSBI:
 			sbiFilter := repository.SBIFilter{
-				Statuses: convertStatuses(filter.Statuses),
+				Statuses: convertStatusesToModel(filter.Statuses),
 				Limit:    filter.Limit,
 				Offset:   filter.Offset,
 			}
@@ -188,7 +188,11 @@ func (r *TaskRepositoryImpl) getTaskTypesToQuery(filter repository.TaskFilter) [
 	}
 }
 
-// convertStatuses converts repository.Status to []repository.Status
-func convertStatuses(statuses []repository.Status) []repository.Status {
-	return statuses
+// convertStatusesToModel converts repository.Status to model.Status for SBI filter
+func convertStatusesToModel(statuses []repository.Status) []model.Status {
+	result := make([]model.Status, len(statuses))
+	for i, s := range statuses {
+		result[i] = model.Status(s)
+	}
+	return result
 }

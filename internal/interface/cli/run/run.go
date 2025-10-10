@@ -22,6 +22,7 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/application/workflow"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/lock"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
+	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/di"
 	infraRepo "github.com/YoshitsuguKoike/deespec/internal/infrastructure/repository"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/claude_prompt"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_sbi"
@@ -152,24 +153,35 @@ func getTaskDescription(st *common.State) string {
 	switch st.Status {
 	case "READY", "", "WIP":
 		if st.Attempt == 1 {
-			todo := st.Inputs["todo"]
+			todo := ""
+			if todoVal, ok := st.Inputs["todo"].(string); ok {
+				todo = todoVal
+			}
 			if todo == "" {
 				todo = fmt.Sprintf("Implement SBI task %s", st.WIP)
 			}
 			return todo
 		} else if st.Attempt == 2 {
 			taskDesc := fmt.Sprintf("Second attempt for %s. Review feedback and implement improvements.", st.WIP)
-			if reviewFile := st.LastArtifacts["review"]; reviewFile != "" {
-				if content, err := os.ReadFile(reviewFile); err == nil {
-					taskDesc = fmt.Sprintf("Second attempt based on review feedback:\n\n%s", string(content))
+			// LastArtifacts is now []string, not map - look for review file in array
+			for _, artifact := range st.LastArtifacts {
+				if strings.Contains(artifact, "review") {
+					if content, err := os.ReadFile(artifact); err == nil {
+						taskDesc = fmt.Sprintf("Second attempt based on review feedback:\n\n%s", string(content))
+					}
+					break
 				}
 			}
 			return taskDesc
 		} else {
 			taskDesc := fmt.Sprintf("Third attempt for %s. Final chance to implement correctly.", st.WIP)
-			if reviewFile := st.LastArtifacts["review"]; reviewFile != "" {
-				if content, err := os.ReadFile(reviewFile); err == nil {
-					taskDesc = fmt.Sprintf("Third attempt based on review feedback:\n\n%s", string(content))
+			// LastArtifacts is now []string, not map - look for review file in array
+			for _, artifact := range st.LastArtifacts {
+				if strings.Contains(artifact, "review") {
+					if content, err := os.ReadFile(artifact); err == nil {
+						taskDesc = fmt.Sprintf("Third attempt based on review feedback:\n\n%s", string(content))
+					}
+					break
 				}
 			}
 			return taskDesc
@@ -220,7 +232,10 @@ func buildPromptByStatus(st *common.State, labelRepo repository.LabelRepository)
 	switch st.Status {
 	case "READY", "":
 		// Initial implementation (Turn 1, Step 2: implement_try)
-		todo := st.Inputs["todo"]
+		todo := ""
+		if todoVal, ok := st.Inputs["todo"].(string); ok {
+			todo = todoVal
+		}
 		if todo == "" {
 			todo = fmt.Sprintf("Implement SBI task %s", st.WIP)
 		}
@@ -230,7 +245,10 @@ func buildPromptByStatus(st *common.State, labelRepo repository.LabelRepository)
 		// Implementation or re-implementation
 		if st.Attempt == 1 {
 			// First attempt (Step 2: implement_try)
-			todo := st.Inputs["todo"]
+			todo := ""
+			if todoVal, ok := st.Inputs["todo"].(string); ok {
+				todo = todoVal
+			}
 			if todo == "" {
 				todo = fmt.Sprintf("Implement SBI task %s", st.WIP)
 			}
@@ -238,18 +256,26 @@ func buildPromptByStatus(st *common.State, labelRepo repository.LabelRepository)
 		} else if st.Attempt == 2 {
 			// Second attempt (Step 4: implement_2nd_try)
 			taskDesc := fmt.Sprintf("Second attempt for %s. Review feedback and implement improvements.", st.WIP)
-			if reviewFile := st.LastArtifacts["review"]; reviewFile != "" {
-				if content, err := os.ReadFile(reviewFile); err == nil {
-					taskDesc = fmt.Sprintf("Second attempt based on review feedback:\n\n%s", string(content))
+			// LastArtifacts is now []string, not map - look for review file in array
+			for _, artifact := range st.LastArtifacts {
+				if strings.Contains(artifact, "review") {
+					if content, err := os.ReadFile(artifact); err == nil {
+						taskDesc = fmt.Sprintf("Second attempt based on review feedback:\n\n%s", string(content))
+					}
+					break
 				}
 			}
 			return builder.BuildImplementPrompt(taskDesc)
 		} else {
 			// Third attempt (Step 6: implement_3rd_try)
 			taskDesc := fmt.Sprintf("Third attempt for %s. Final chance to implement correctly.", st.WIP)
-			if reviewFile := st.LastArtifacts["review"]; reviewFile != "" {
-				if content, err := os.ReadFile(reviewFile); err == nil {
-					taskDesc = fmt.Sprintf("Third attempt based on review feedback:\n\n%s", string(content))
+			// LastArtifacts is now []string, not map - look for review file in array
+			for _, artifact := range st.LastArtifacts {
+				if strings.Contains(artifact, "review") {
+					if content, err := os.ReadFile(artifact); err == nil {
+						taskDesc = fmt.Sprintf("Third attempt based on review feedback:\n\n%s", string(content))
+					}
+					break
 				}
 			}
 			return builder.BuildImplementPrompt(taskDesc)
@@ -402,14 +428,20 @@ func NewCommand() *cobra.Command {
 	var autoFB bool
 	var intervalStr string
 	var enabledWorkflows []string
+	var maxParallel int // Maximum number of concurrent SBI executions
 
 	cmd := &cobra.Command{
 		Use:   "run",
-		Short: "Run all enabled workflows in parallel",
-		Long: `Run all enabled workflows in parallel.
+		Short: "Run all enabled workflows with optional parallel execution",
+		Long: `Run all enabled workflows with optional parallel execution.
 
 This command runs multiple workflow types (SBI, PBI, etc.) simultaneously,
 each in their own execution loop. Use Ctrl+C to stop all workflows gracefully.
+
+Parallel Execution:
+  Use --parallel flag to enable concurrent SBI processing (1-10 tasks).
+  Default is 1 (sequential execution). Higher values increase throughput
+  but require more system resources.
 
 Configuration:
   Workflows can be configured via .deespec/workflow.yaml file.
@@ -420,10 +452,12 @@ Individual workflows:
   - deespec pbi run   (for PBI workflow only, when available)
 
 Examples:
-  deespec run                           # Run all enabled workflows
+  deespec run                           # Run all enabled workflows (sequential)
+  deespec run --parallel 3              # Run up to 3 SBIs concurrently
   deespec run --workflows sbi           # Run only SBI workflow
   deespec run --interval 10s            # Run with 10-second intervals
-  deespec run --auto-fb                 # Enable automatic FB-SBI registration`,
+  deespec run --auto-fb                 # Enable automatic FB-SBI registration
+  deespec run --parallel 5 --interval 30s  # 5 concurrent tasks, 30s intervals`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Parse interval
 			interval, err := ParseInterval(intervalStr)
@@ -431,19 +465,71 @@ Examples:
 				return fmt.Errorf("invalid interval: %v", err)
 			}
 
+			// Validate and set default for maxParallel
+			if maxParallel < 1 {
+				maxParallel = 1 // Default to sequential execution
+			}
+			if maxParallel > 10 {
+				return fmt.Errorf("--parallel must be between 1 and 10, got: %d", maxParallel)
+			}
+
 			// Check config for auto-fb (config takes precedence over flag)
 			if common.GetGlobalConfig() != nil && common.GetGlobalConfig().AutoFB() {
 				autoFB = true
 			}
 
+			// Log parallel execution mode
+			if maxParallel > 1 {
+				common.Info("[Parallel Mode] Enabled with max %d concurrent SBI executions\n", maxParallel)
+			} else {
+				common.Info("[Sequential Mode] Running one SBI at a time\n")
+			}
+
 			// Cleanup stale locks before starting
 			cleanupStaleLocks()
+
+			// Initialize DI container once for the entire command execution
+			// This avoids repeated container creation and database connection overhead
+			common.Info("[Container] Initializing DI container...\n")
+			container, err := common.InitializeContainer()
+			if err != nil {
+				return fmt.Errorf("failed to initialize container: %w", err)
+			}
+			defer func() {
+				common.Info("[Container] Closing DI container...\n")
+				container.Close()
+			}()
+
+			// Start container services (Lock Service, etc.)
+			ctx := context.Background()
+			if err := container.Start(ctx); err != nil {
+				return fmt.Errorf("failed to start container services: %w", err)
+			}
 
 			// Create workflow manager with logging functions
 			manager := workflow.NewWorkflowManager(common.Info, common.Warn, common.Debug)
 
-			// Register available workflows
-			sbiRunner := workflow_sbi.NewSBIWorkflowRunner()
+			// Register SBI workflow (parallel or sequential based on maxParallel)
+			var sbiRunner workflow.WorkflowRunner
+
+			if maxParallel > 1 {
+				// Use ParallelSBIWorkflowRunner for concurrent execution
+				// Create ExecuteTurnFunc that wraps RunTurnWithContainer
+				executeTurnFunc := func(ctx context.Context, container *di.Container, sbiID string, autoFB bool) error {
+					// TODO: Implement per-SBI execution logic
+					// For now, fallback to RunTurnWithContainer
+					return RunTurnWithContainer(container, autoFB)
+				}
+
+				sbiRunner = workflow_sbi.NewParallelSBIWorkflowRunner(container, maxParallel, executeTurnFunc)
+			} else {
+				// Use sequential SBIWorkflowRunner
+				runTurnFunc := func(autoFB bool) error {
+					return RunTurnWithContainer(container, autoFB)
+				}
+				sbiRunner = workflow_sbi.NewSBIWorkflowRunnerWithFunc(runTurnFunc)
+			}
+
 			sbiConfig := workflow.WorkflowConfig{
 				Name:     "sbi",
 				Enabled:  true,
@@ -454,8 +540,8 @@ Examples:
 			// Override enabled workflows if specified
 			if len(enabledWorkflows) > 0 {
 				sbiConfig.Enabled = false
-				for _, workflow := range enabledWorkflows {
-					if workflow == "sbi" {
+				for _, wf := range enabledWorkflows {
+					if wf == "sbi" {
 						sbiConfig.Enabled = true
 						break
 					}
@@ -467,7 +553,7 @@ Examples:
 			}
 
 			// Setup signal handling for graceful shutdown
-			ctx, cancel := SetupSignalHandler()
+			signalCtx, cancel := SetupSignalHandler()
 			defer cancel()
 
 			// Setup cleanup
@@ -482,7 +568,7 @@ Examples:
 			}
 
 			// Wait for shutdown signal
-			<-ctx.Done()
+			<-signalCtx.Done()
 			common.Info("Shutdown signal received, stopping all workflows...\n")
 
 			return nil
@@ -492,6 +578,7 @@ Examples:
 	cmd.Flags().BoolVar(&autoFB, "auto-fb", false, "Automatically register FB-SBI drafts")
 	cmd.Flags().StringVar(&intervalStr, "interval", "", "Execution interval for all workflows (default: 5s, min: 1s, max: 10m)")
 	cmd.Flags().StringSliceVar(&enabledWorkflows, "workflows", nil, "Comma-separated list of workflows to enable (default: all available)")
+	cmd.Flags().IntVar(&maxParallel, "parallel", 1, "Maximum concurrent SBI executions (1-10, default: 1)")
 
 	return cmd
 }
@@ -687,28 +774,18 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 // runOnce has been removed and replaced by runTurn()
 // See runTurn() below for the new UseCase-based implementation
 
-// RunTurn executes a single workflow turn using the new UseCase architecture
-func RunTurn(autoFB bool) error {
+// RunTurnWithContainer executes a single workflow turn using a shared DI container
+// This function accepts a pre-initialized container to avoid repeated initialization
+func RunTurnWithContainer(container *di.Container, autoFB bool) error {
 	startTime := time.Now()
 
 	// Get paths using config
 	paths := app.GetPathsWithConfig(common.GetGlobalConfig())
 
-	// Initialize DI container
-	container, err := common.InitializeContainer()
-	if err != nil {
-		return fmt.Errorf("failed to initialize container: %w", err)
-	}
-	defer container.Close()
-
 	// Get services from container
 	lockService := container.GetLockService()
+	sbiRepo := container.GetSBIRepository() // Added for DB-based task picking
 	ctx := context.Background()
-
-	// Start lock service for heartbeat monitoring
-	if err := container.Start(ctx); err != nil {
-		return fmt.Errorf("failed to start lock service: %w", err)
-	}
 
 	// Create repository implementations
 	stateRepo := infraRepo.NewStateRepositoryImpl(paths.State)
@@ -724,10 +801,11 @@ func RunTurn(autoFB bool) error {
 		maxTurns = common.GetGlobalConfig().MaxTurns()
 	}
 
-	// Create RunTurnUseCase
+	// Create RunTurnUseCase with SBIRepository for DB-based task management
 	useCase := execution.NewRunTurnUseCase(
 		stateRepo,
 		journalRepo,
+		sbiRepo, // Added for DB-based task picking
 		lockService,
 		agentGateway,
 		maxTurns,
@@ -747,10 +825,25 @@ func RunTurn(autoFB bool) error {
 
 	// Log execution results
 	if output.NoOp {
-		if output.Turn == 0 {
-			common.Info("⏳ Another instance active - waiting...")
-		} else {
-			common.Info("No task to process (Turn: %d)", output.Turn)
+		switch output.NoOpReason {
+		case "lock_held":
+			// Check lock details and provide informative message
+			lockService := container.GetLockService()
+			lockID, _ := lock.NewLockID("system-runlock")
+			if existingLock, err := lockService.FindRunLock(ctx, lockID); err == nil && existingLock != nil {
+				common.Info("⏳ Another instance active - Lock held by PID %d on %s (expires: %s)",
+					existingLock.PID(), existingLock.Hostname(), existingLock.ExpiresAt().Format("15:04:05"))
+			} else {
+				common.Info("⏳ Another instance active - waiting...")
+			}
+		case "no_tasks":
+			common.Info("💤 No tasks available to process")
+		default:
+			if output.Turn == 0 {
+				common.Info("⏳ Waiting...")
+			} else {
+				common.Info("No work done (Turn: %d)", output.Turn)
+			}
 		}
 	} else {
 		common.Info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -792,4 +885,24 @@ func RunTurn(autoFB bool) error {
 
 	common.Debug("Turn execution took %v", time.Since(startTime))
 	return nil
+}
+
+// RunTurn executes a single workflow turn (Legacy compatibility wrapper)
+// This function creates a new container for each execution
+// Deprecated: Use RunTurnWithContainer for better performance
+func RunTurn(autoFB bool) error {
+	// Initialize DI container
+	container, err := common.InitializeContainer()
+	if err != nil {
+		return fmt.Errorf("failed to initialize container: %w", err)
+	}
+	defer container.Close()
+
+	// Start lock service for heartbeat monitoring
+	ctx := context.Background()
+	if err := container.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start lock service: %w", err)
+	}
+
+	return RunTurnWithContainer(container, autoFB)
 }

@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -324,6 +325,127 @@ func TestContainer_LockConflict(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestContainer_WALModeEnabled(t *testing.T) {
+	// Create temporary directory for test database
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	// Create container with test configuration
+	config := Config{
+		DBPath:      dbPath,
+		StorageType: "mock",
+	}
+
+	container, err := NewContainer(config)
+	require.NoError(t, err)
+	defer container.Close()
+
+	// Start Lock Service to perform database operations
+	ctx := context.Background()
+	err = container.Start(ctx)
+	require.NoError(t, err)
+
+	// Perform a database operation to trigger WAL file creation
+	lockService := container.GetLockService()
+	lockID, err := lock.NewLockID("test-wal-mode")
+	require.NoError(t, err)
+
+	runLock, err := lockService.AcquireRunLock(ctx, lockID, 5*time.Minute)
+	require.NoError(t, err)
+	require.NotNil(t, runLock)
+
+	// Verify WAL files exist
+	walPath := dbPath + "-wal"
+	shmPath := dbPath + "-shm"
+
+	// Check if WAL file exists
+	_, err = os.Stat(walPath)
+	assert.NoError(t, err, "WAL file (-wal) should exist when WAL mode is enabled")
+
+	// Check if SHM file exists
+	_, err = os.Stat(shmPath)
+	assert.NoError(t, err, "Shared memory file (-shm) should exist when WAL mode is enabled")
+
+	// Clean up
+	err = lockService.ReleaseRunLock(ctx, lockID)
+	require.NoError(t, err)
+}
+
+func TestContainer_ConcurrentAccess(t *testing.T) {
+	// This test verifies that WAL mode allows concurrent read/write operations
+	// simulating the scenario where `deespec run` and `deespec register` run simultaneously
+
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	// Create first container (simulates `deespec run`)
+	config1 := Config{
+		DBPath:                dbPath,
+		StorageType:           "mock",
+		LockHeartbeatInterval: 100 * time.Millisecond,
+		LockCleanupInterval:   200 * time.Millisecond,
+	}
+
+	container1, err := NewContainer(config1)
+	require.NoError(t, err)
+	defer container1.Close()
+
+	ctx := context.Background()
+	err = container1.Start(ctx)
+	require.NoError(t, err)
+
+	// Acquire a lock with container1 (simulates ongoing `run` command)
+	lockService1 := container1.GetLockService()
+	lockID1, err := lock.NewLockID("concurrent-test-run")
+	require.NoError(t, err)
+
+	runLock1, err := lockService1.AcquireRunLock(ctx, lockID1, 5*time.Minute)
+	require.NoError(t, err)
+	require.NotNil(t, runLock1)
+
+	// Create second container (simulates `deespec register`)
+	// This should succeed because WAL mode allows concurrent access
+	config2 := Config{
+		DBPath:                dbPath,
+		StorageType:           "mock",
+		LockHeartbeatInterval: 100 * time.Millisecond,
+		LockCleanupInterval:   200 * time.Millisecond,
+	}
+
+	container2, err := NewContainer(config2)
+	require.NoError(t, err, "Second container should initialize successfully with WAL mode")
+	defer container2.Close()
+
+	err = container2.Start(ctx)
+	require.NoError(t, err, "Second container should start successfully")
+
+	// Perform operations with container2 while container1 holds a lock
+	lockService2 := container2.GetLockService()
+	lockID2, err := lock.NewLockID("concurrent-test-register")
+	require.NoError(t, err)
+
+	// This should succeed because WAL mode allows multiple readers and one writer
+	runLock2, err := lockService2.AcquireRunLock(ctx, lockID2, 5*time.Minute)
+	require.NoError(t, err, "Second container should acquire lock successfully")
+	require.NotNil(t, runLock2)
+
+	// List locks from both containers to verify concurrent access works
+	locks1, err := lockService1.ListRunLocks(ctx)
+	require.NoError(t, err)
+	assert.Len(t, locks1, 2, "Should see both locks from container1")
+
+	locks2, err := lockService2.ListRunLocks(ctx)
+	require.NoError(t, err)
+	assert.Len(t, locks2, 2, "Should see both locks from container2")
+
+	// Clean up locks
+	err = lockService1.ReleaseRunLock(ctx, lockID1)
+	require.NoError(t, err)
+
+	err = lockService2.ReleaseRunLock(ctx, lockID2)
+	require.NoError(t, err)
+}
+
 // Benchmark tests
 func BenchmarkLockAcquireRelease(b *testing.B) {
 	tmpDir := b.TempDir()
@@ -351,4 +473,39 @@ func BenchmarkLockAcquireRelease(b *testing.B) {
 			_ = lockService.ReleaseRunLock(ctx, lockID)
 		}
 	}
+}
+
+func BenchmarkConcurrentLockOperations(b *testing.B) {
+	// Benchmark to measure concurrent lock operations performance with WAL mode
+	tmpDir := b.TempDir()
+	dbPath := filepath.Join(tmpDir, "bench.db")
+
+	config := Config{
+		DBPath:                dbPath,
+		StorageType:           "mock",
+		LockHeartbeatInterval: 1 * time.Second,
+		LockCleanupInterval:   2 * time.Second,
+	}
+
+	container, err := NewContainer(config)
+	require.NoError(b, err)
+	defer container.Close()
+
+	lockService := container.GetLockService()
+	ctx := context.Background()
+	err = container.Start(ctx)
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		i := 0
+		for pb.Next() {
+			lockID, _ := lock.NewLockID(filepath.Join("bench-concurrent", string(rune(i))))
+			runLock, _ := lockService.AcquireRunLock(ctx, lockID, 5*time.Minute)
+			if runLock != nil {
+				_ = lockService.ReleaseRunLock(ctx, lockID)
+			}
+			i++
+		}
+	})
 }

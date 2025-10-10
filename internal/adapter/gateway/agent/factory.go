@@ -8,15 +8,21 @@ import (
 )
 
 // NewAgentGateway creates an agent gateway based on agent type
-// Supported types: claude-code, gemini-cli, codex
+// Supported types: claude-code, claude-code-cli, gemini-cli, codex
+// Note: User is responsible for ensuring the agent is available (e.g., claude CLI installed)
 func NewAgentGateway(agentType string) (output.AgentGateway, error) {
 	switch agentType {
 	case "claude-code":
+		// API version (requires ANTHROPIC_API_KEY)
 		apiKey := os.Getenv("ANTHROPIC_API_KEY")
 		if apiKey == "" {
-			return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable not set")
+			return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable not set for claude-code")
 		}
 		return NewClaudeCodeGateway(apiKey), nil
+
+	case "claude-code-cli":
+		// CLI version (assumes `claude` command is available)
+		return NewClaudeCodeCLIGateway(), nil
 
 	case "gemini-cli":
 		return NewGeminiMockGateway(), nil
@@ -25,7 +31,7 @@ func NewAgentGateway(agentType string) (output.AgentGateway, error) {
 		return NewCodexMockGateway(), nil
 
 	default:
-		return nil, fmt.Errorf("unknown agent type: %s (supported: claude-code, gemini-cli, codex)", agentType)
+		return nil, fmt.Errorf("unknown agent type: %s (supported: claude-code, claude-code-cli, gemini-cli, codex)", agentType)
 	}
 }
 
@@ -46,11 +52,6 @@ func GetAvailableAgents() []string {
 
 // GetDefaultAgent returns the default agent type to use
 func GetDefaultAgent() string {
-	// Prefer Claude Code if API key is available
-	if os.Getenv("ANTHROPIC_API_KEY") != "" {
-		return "claude-code"
-	}
-
-	// Fallback to mock agents
-	return "gemini-cli"
+	// Default to Claude Code CLI (assumes user has it installed)
+	return "claude-code-cli"
 }

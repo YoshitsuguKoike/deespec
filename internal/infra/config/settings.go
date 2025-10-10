@@ -52,6 +52,9 @@ type RawSettings struct {
 
 	// Label system configuration
 	LabelConfig *RawLabelConfig `json:"label_config"`
+
+	// Agent pool configuration
+	AgentPoolConfig *RawAgentPoolConfig `json:"agent_pool_config"`
 }
 
 // RawLabelImportConfig represents import settings for labels
@@ -72,6 +75,11 @@ type RawLabelConfig struct {
 	TemplateDirs *[]string                 `json:"template_dirs"`
 	Import       *RawLabelImportConfig     `json:"import"`
 	Validation   *RawLabelValidationConfig `json:"validation"`
+}
+
+// RawAgentPoolConfig represents agent pool configuration in setting.json
+type RawAgentPoolConfig struct {
+	MaxConcurrent *map[string]int `json:"max_concurrent"`
 }
 
 // LoadSettings loads configuration from setting.json only.
@@ -243,6 +251,19 @@ func applyDefaults(settings *RawSettings) {
 		v := true
 		settings.LabelConfig.Validation.WarnOnLargeFiles = &v
 	}
+
+	// Agent pool configuration
+	if settings.AgentPoolConfig == nil {
+		settings.AgentPoolConfig = &RawAgentPoolConfig{}
+	}
+	if settings.AgentPoolConfig.MaxConcurrent == nil {
+		v := map[string]int{
+			"claude-code": 2,
+			"gemini-cli":  1,
+			"codex":       1,
+		}
+		settings.AgentPoolConfig.MaxConcurrent = &v
+	}
 }
 
 // checkDeprecated warns about deprecated settings
@@ -264,6 +285,11 @@ func buildAppConfig(settings *RawSettings, configSource, settingPath string) *co
 			AutoSyncOnMismatch: *settings.LabelConfig.Validation.AutoSyncOnMismatch,
 			WarnOnLargeFiles:   *settings.LabelConfig.Validation.WarnOnLargeFiles,
 		},
+	}
+
+	// Convert RawAgentPoolConfig to config.AgentPoolConfig
+	agentPoolConfig := config.AgentPoolConfig{
+		MaxConcurrent: *settings.AgentPoolConfig.MaxConcurrent,
 	}
 
 	return config.NewAppConfig(
@@ -289,6 +315,7 @@ func buildAppConfig(settings *RawSettings, configSource, settingPath string) *co
 		*settings.PolicyPath,
 		*settings.StderrLevel,
 		labelConfig,
+		agentPoolConfig,
 		configSource,
 		settingPath,
 	)

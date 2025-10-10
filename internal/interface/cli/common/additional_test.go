@@ -51,6 +51,8 @@ func TestStateHelpers(t *testing.T) {
 }
 
 // Test ClearLease function
+// Commented out: ClearLease function has been removed
+/*
 func TestClearLeaseFunction(t *testing.T) {
 	st := &State{
 		WIP:            "TEST-001",
@@ -72,6 +74,7 @@ func TestClearLeaseFunction(t *testing.T) {
 		t.Error("Expected ClearLease to return false when no lease exists")
 	}
 }
+*/
 
 // Test additional coverage for ParseDecision edge cases
 // Commented out: parseDecision is in the run package and not exported

@@ -33,11 +33,10 @@ func NewCommand() *cobra.Command {
 
 			// Configure validation paths
 			config := &integrated.DoctorConfig{
-				BasePath:     paths.Home,
-				WorkflowPath: paths.Workflow,
-				StatePath:    paths.State,
-				HealthPath:   paths.Health,
-				JournalPath:  paths.Journal,
+				BasePath:    paths.Home,
+				StatePath:   paths.State,
+				HealthPath:  paths.Health,
+				JournalPath: paths.Journal,
 			}
 
 			// Run integrated validation
@@ -125,13 +124,11 @@ func outputTextReport(report *integrated.IntegratedReport, paths *app.Paths) {
 
 	// Output integrated summary
 	status := integrated.GetComponentStatus(report)
-	fmt.Printf("\n=== INTEGRATED SUMMARY ===")
-	fmt.Printf("SUMMARY: workflow=%s state=%s health=%s journal=%s prompts=%s total_error=%d\n",
-		status.Workflow,
+	fmt.Printf("\n=== INTEGRATED SUMMARY ===\n")
+	fmt.Printf("SUMMARY: state=%s health=%s journal=%s total_error=%d\n",
 		status.State,
 		status.Health,
 		status.Journal,
-		status.Prompts,
 		report.Summary.Error)
 
 	// Additional details

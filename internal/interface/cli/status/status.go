@@ -122,7 +122,10 @@ func NewCommand() *cobra.Command {
 				// Normal text output
 				fmt.Printf("Current : %s\n", st.Current)
 				fmt.Printf("Turn    : %d\n", st.Turn)
-				fmt.Printf("Updated : %s\n", st.Meta.UpdatedAt)
+				// Meta is now map[string]interface{}, need type assertion
+				if updatedAt, ok := st.Meta["updated_at"].(string); ok {
+					fmt.Printf("Updated : %s\n", updatedAt)
+				}
 			}
 
 			return nil

@@ -108,9 +108,27 @@ func runRegisterWithFlags(cmd *cobra.Command, args []string, stdinFlag bool, fil
 		return nil
 	}
 
+	// Initialize DI container to get DB connection
+	container, err := common.InitializeContainer()
+	if err != nil {
+		result := RegisterResult{
+			OK:       false,
+			Warnings: []string{},
+			Error:    fmt.Sprintf("failed to initialize container: %v", err),
+		}
+		stderrLog.Printf("ERROR: %v\n", err)
+		printJSONLine(result)
+		exitFunc(1)
+		return nil
+	}
+	defer container.Close()
+
+	// Get DB connection from container
+	db := container.GetDB()
+
 	// Create use case
 	validationService := service.NewRegisterValidationService()
-	transactionService := transaction.NewRegisterTransactionService("", "", common.Warn)
+	transactionService := transaction.NewRegisterTransactionService("", "", db, common.Warn)
 	journalPath := filepath.Join(".deespec", "journal.jsonl")
 	registerUseCase := usecase.NewRegisterSBIUseCase(
 		validationService,

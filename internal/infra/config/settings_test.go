@@ -247,6 +247,109 @@ func TestLoadSettings_LabelConfig(t *testing.T) {
 	}
 }
 
+func TestLoadSettings_AgentPoolConfig(t *testing.T) {
+	tests := []struct {
+		name              string
+		setupFunc         func(t *testing.T, tmpDir string)
+		wantMaxConcurrent map[string]int
+	}{
+		{
+			name:      "Default agent pool config",
+			setupFunc: nil,
+			wantMaxConcurrent: map[string]int{
+				"claude-code": 2,
+				"gemini-cli":  1,
+				"codex":       1,
+			},
+		},
+		{
+			name: "Custom agent pool config from JSON",
+			setupFunc: func(t *testing.T, tmpDir string) {
+				settings := map[string]interface{}{
+					"agent_pool_config": map[string]interface{}{
+						"max_concurrent": map[string]interface{}{
+							"claude-code": 5,
+							"gemini-cli":  3,
+							"custom-ai":   2,
+						},
+					},
+				}
+				data, err := json.MarshalIndent(settings, "", "  ")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(tmpDir, "setting.json"), data, 0644); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantMaxConcurrent: map[string]int{
+				"claude-code": 5,
+				"gemini-cli":  3,
+				"custom-ai":   2,
+			},
+		},
+		{
+			name: "Partial agent pool config",
+			setupFunc: func(t *testing.T, tmpDir string) {
+				settings := map[string]interface{}{
+					"agent_pool_config": map[string]interface{}{
+						"max_concurrent": map[string]interface{}{
+							"claude-code": 10,
+						},
+					},
+				}
+				data, err := json.MarshalIndent(settings, "", "  ")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(tmpDir, "setting.json"), data, 0644); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantMaxConcurrent: map[string]int{
+				"claude-code": 10,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create temp directory
+			tmpDir, err := os.MkdirTemp("", "config-agentpool-test-*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(tmpDir)
+
+			// Setup test data
+			if tt.setupFunc != nil {
+				tt.setupFunc(t, tmpDir)
+			}
+
+			// Load settings
+			cfg, err := LoadSettings(tmpDir)
+			if err != nil {
+				t.Fatalf("LoadSettings() error = %v", err)
+			}
+
+			// Check agent pool config
+			agentPoolCfg := cfg.AgentPoolConfig()
+
+			if len(agentPoolCfg.MaxConcurrent) != len(tt.wantMaxConcurrent) {
+				t.Errorf("MaxConcurrent length = %d, want %d", len(agentPoolCfg.MaxConcurrent), len(tt.wantMaxConcurrent))
+			}
+
+			for agent, expectedMax := range tt.wantMaxConcurrent {
+				if actualMax, exists := agentPoolCfg.MaxConcurrent[agent]; !exists {
+					t.Errorf("MaxConcurrent[%q] does not exist", agent)
+				} else if actualMax != expectedMax {
+					t.Errorf("MaxConcurrent[%q] = %d, want %d", agent, actualMax, expectedMax)
+				}
+			}
+		})
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && hasSubstring(s, substr)
 }

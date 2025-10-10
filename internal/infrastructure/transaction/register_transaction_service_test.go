@@ -55,7 +55,7 @@ func TestExecuteRegisterTransaction(t *testing.T) {
 
 	// Create service
 	noopWarn := func(format string, args ...interface{}) {}
-	service := NewRegisterTransactionService("", "", noopWarn)
+	service := NewRegisterTransactionService("", "", nil, noopWarn)
 
 	// Execute transaction
 	ctx := context.Background()
@@ -186,7 +186,7 @@ func TestExecuteRegisterTransactionFailure(t *testing.T) {
 
 	// Create service
 	noopWarn := func(format string, args ...interface{}) {}
-	service := NewRegisterTransactionService("", "", noopWarn)
+	service := NewRegisterTransactionService("", "", nil, noopWarn)
 
 	// This should fail due to empty ID
 	ctx := context.Background()
@@ -221,7 +221,7 @@ func TestExecuteRegisterTransactionEmptySpecPath(t *testing.T) {
 	journalEntry := map[string]interface{}{}
 
 	noopWarn := func(format string, args ...interface{}) {}
-	service := NewRegisterTransactionService("", "", noopWarn)
+	service := NewRegisterTransactionService("", "", nil, noopWarn)
 
 	ctx := context.Background()
 	err := service.ExecuteRegisterTransaction(ctx, spec, specPath, journalEntry)

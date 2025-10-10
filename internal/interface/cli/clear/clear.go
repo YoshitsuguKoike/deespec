@@ -271,17 +271,15 @@ func copyFile(src, dst string) error {
 func resetStateFiles(paths app.Paths) error {
 	// Reset state.json
 	initialState := &common.State{
-		Version:       1,
+		Version:       "0.1.14",
 		Current:       "",
 		Status:        "",
 		Turn:          0,
 		WIP:           "",
-		Inputs:        make(map[string]string),
-		LastArtifacts: make(map[string]string),
-		Meta: struct {
-			UpdatedAt string `json:"updated_at"`
-		}{
-			UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+		Inputs:        make(map[string]interface{}),
+		LastArtifacts: []string{},
+		Meta: map[string]interface{}{
+			"updated_at": time.Now().UTC().Format(time.RFC3339),
 		},
 	}
 

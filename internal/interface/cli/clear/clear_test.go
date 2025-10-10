@@ -35,12 +35,12 @@ func TestClear(t *testing.T) {
 
 	// Create initial state without WIP
 	initialState := &common.State{
-		Version: 1,
+		Version: "0.1.14",
 		Current: "",
 		Status:  "",
 		Turn:    5,
 		WIP:     "",
-		Inputs:  map[string]string{"test": "value"},
+		Inputs:  map[string]interface{}{"test": "value"},
 	}
 	stateData, _ := json.Marshal(initialState)
 	os.WriteFile(paths.State, stateData, 0644)
@@ -111,7 +111,7 @@ func TestClear_WithWIP(t *testing.T) {
 	t.Run("WIP without lease should succeed", func(t *testing.T) {
 		// Create state with WIP but no lease
 		stateWithWIP := &common.State{
-			Version: 1,
+			Version: "0.1.14",
 			WIP:     "TASK-001",
 			Turn:    3,
 		}
@@ -130,7 +130,7 @@ func TestClear_WithWIP(t *testing.T) {
 	t.Run("WIP with active lease should fail", func(t *testing.T) {
 		// Create state with WIP and active lease
 		stateWithWIPAndLease := &common.State{
-			Version:        1,
+			Version:        "0.1.14",
 			WIP:            "TASK-002",
 			Turn:           3,
 			LeaseExpiresAt: time.Now().Add(1 * time.Hour).Format(time.RFC3339),
@@ -170,7 +170,7 @@ func TestClear_WithActiveLease(t *testing.T) {
 	// Create state with active lease
 	futureTime := time.Now().Add(1 * time.Hour).Format(time.RFC3339)
 	stateWithLease := &common.State{
-		Version:        1,
+		Version:        "0.1.14",
 		WIP:            "",
 		LeaseExpiresAt: futureTime,
 	}

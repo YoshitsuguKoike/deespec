@@ -80,11 +80,10 @@ func TestIntegratedValidation(t *testing.T) {
 
 	// Run integrated validation
 	config := &DoctorConfig{
-		BasePath:     basePath,
-		WorkflowPath: workflowPath,
-		StatePath:    statePath,
-		HealthPath:   healthPath,
-		JournalPath:  journalPath,
+		BasePath:    basePath,
+		StatePath:   statePath,
+		HealthPath:  healthPath,
+		JournalPath: journalPath,
 	}
 
 	report, err := RunIntegratedValidation(config)
@@ -97,20 +96,20 @@ func TestIntegratedValidation(t *testing.T) {
 		t.Errorf("expected version 1, got %d", report.Version)
 	}
 
-	if len(report.Components) != 5 {
-		t.Errorf("expected 5 components, got %d", len(report.Components))
+	if len(report.Components) != 3 {
+		t.Errorf("expected 3 components, got %d", len(report.Components))
 	}
 
 	// Check each component exists
-	for _, name := range []string{"workflow", "state", "health", "journal", "prompts"} {
+	for _, name := range []string{"state", "health", "journal"} {
 		if _, ok := report.Components[name]; !ok {
 			t.Errorf("missing component: %s", name)
 		}
 	}
 
 	// Check summary
-	if report.Summary.Components != 5 {
-		t.Errorf("expected 5 components in summary, got %d", report.Summary.Components)
+	if report.Summary.Components != 3 {
+		t.Errorf("expected 3 components in summary, got %d", report.Summary.Components)
 	}
 
 	// All should be valid, so errors should be 0
@@ -177,11 +176,10 @@ func TestIntegratedValidationWithErrors(t *testing.T) {
 
 	// Run integrated validation
 	config := &DoctorConfig{
-		BasePath:     basePath,
-		WorkflowPath: workflowPath,
-		StatePath:    statePath,
-		HealthPath:   healthPath,
-		JournalPath:  journalPath,
+		BasePath:    basePath,
+		StatePath:   statePath,
+		HealthPath:  healthPath,
+		JournalPath: journalPath,
 	}
 
 	report, err := RunIntegratedValidation(config)
@@ -197,10 +195,10 @@ func TestIntegratedValidationWithErrors(t *testing.T) {
 		t.Logf("Report: %s", data)
 	}
 
-	// At least workflow and health should have errors
-	if workflow := report.Components["workflow"]; workflow != nil {
-		if workflow.Summary.Error == 0 {
-			t.Error("expected workflow to have errors")
+	// At least state and health should have errors
+	if state := report.Components["state"]; state != nil {
+		if state.Summary.Error == 0 {
+			t.Error("expected state to have errors")
 		}
 	}
 
@@ -214,9 +212,6 @@ func TestIntegratedValidationWithErrors(t *testing.T) {
 func TestComponentStatus(t *testing.T) {
 	report := &IntegratedReport{
 		Components: map[string]*common.ValidationResult{
-			"workflow": {
-				Summary: common.Summary{Error: 1},
-			},
 			"state": {
 				Summary: common.Summary{Warn: 1},
 			},
@@ -226,17 +221,10 @@ func TestComponentStatus(t *testing.T) {
 			"journal": {
 				Summary: common.Summary{Error: 2},
 			},
-			"prompts": {
-				Summary: common.Summary{OK: 1},
-			},
 		},
 	}
 
 	status := GetComponentStatus(report)
-
-	if status.Workflow != "error" {
-		t.Errorf("expected workflow status 'error', got %s", status.Workflow)
-	}
 
 	if status.State != "warn" {
 		t.Errorf("expected state status 'warn', got %s", status.State)
@@ -249,16 +237,12 @@ func TestComponentStatus(t *testing.T) {
 	if status.Journal != "error" {
 		t.Errorf("expected journal status 'error', got %s", status.Journal)
 	}
-
-	if status.Prompts != "ok" {
-		t.Errorf("expected prompts status 'ok', got %s", status.Prompts)
-	}
 }
 
 func TestJSONMarshal(t *testing.T) {
 	report := NewIntegratedReport()
-	report.Components["workflow"] = common.NewValidationResult()
 	report.Components["state"] = common.NewValidationResult()
+	report.Components["health"] = common.NewValidationResult()
 	report.Summary = IntegratedSummary{
 		Components: 2,
 		OK:         2,

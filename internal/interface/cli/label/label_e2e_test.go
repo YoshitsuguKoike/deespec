@@ -33,6 +33,7 @@ func TestLabelE2E(t *testing.T) {
 
 	container, err := di.NewContainer(di.Config{
 		DBPath:      dbPath,
+		AgentType:   "gemini-cli", // Use mock agent for tests
 		LabelConfig: labelConfig,
 	})
 	if err != nil {

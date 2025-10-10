@@ -15,7 +15,6 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/status"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/version"
-	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow"
 	"github.com/spf13/cobra"
 )
 
@@ -47,6 +46,13 @@ func NewRoot() *cobra.Command {
 						WarnOnLargeFiles:   true,
 					},
 				}
+				defaultAgentPoolConfig := config.AgentPoolConfig{
+					MaxConcurrent: map[string]int{
+						"claude-code": 2,
+						"gemini-cli":  1,
+						"codex":       1,
+					},
+				}
 				cfg = config.NewAppConfig(
 					".deespec", "claude", 60,
 					"", "", "", "",
@@ -57,6 +63,7 @@ func NewRoot() *cobra.Command {
 					false, false,
 					"", "", "warn", // Default log level
 					defaultLabelConfig,
+					defaultAgentPoolConfig,
 					"default", "",
 				)
 			}
@@ -83,9 +90,7 @@ func NewRoot() *cobra.Command {
 	cmd.AddCommand(run.NewCommand())
 	cmd.AddCommand(doctor.NewCommand())
 	cmd.AddCommand(journal.NewCommand())
-	cmd.AddCommand(common.NewStateCommand())
 	cmd.AddCommand(health.NewCommand())
-	cmd.AddCommand(workflow.NewCommand())
 	cmd.AddCommand(sbi.NewSBICommand())
 	cmd.AddCommand(clear.NewCommand())
 	cmd.AddCommand(lock_cmd.NewCommand()) // SQLite-based lock management

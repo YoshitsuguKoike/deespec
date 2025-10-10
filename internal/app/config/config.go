@@ -22,6 +22,11 @@ type LabelConfig struct {
 	Validation   LabelValidationConfig // 検証設定
 }
 
+// AgentPoolConfig holds agent pool concurrency settings
+type AgentPoolConfig struct {
+	MaxConcurrent map[string]int // Agent type -> max concurrent executions
+}
+
 // Config provides read-only access to application configuration.
 // This interface abstracts the configuration source (JSON, ENV, defaults)
 // and ensures the app layer doesn't depend on infrastructure details.
@@ -67,6 +72,9 @@ type Config interface {
 	// Label system
 	LabelConfig() LabelConfig // Label system configuration
 
+	// Agent pool
+	AgentPoolConfig() AgentPoolConfig // Agent pool concurrency configuration
+
 	// Metadata
 	ConfigSource() string // Source of configuration: "json", "env", or "default"
 	SettingPath() string  // Path to setting.json if loaded from file
@@ -104,7 +112,8 @@ type AppConfig struct {
 	policyPath  string
 	stderrLevel string
 
-	labelConfig LabelConfig
+	labelConfig     LabelConfig
+	agentPoolConfig AgentPoolConfig
 
 	configSource string
 	settingPath  string
@@ -225,6 +234,11 @@ func (c *AppConfig) LabelConfig() LabelConfig {
 	return c.labelConfig
 }
 
+// AgentPoolConfig returns the agent pool concurrency configuration
+func (c *AppConfig) AgentPoolConfig() AgentPoolConfig {
+	return c.agentPoolConfig
+}
+
 // ConfigSource returns the source of configuration
 func (c *AppConfig) ConfigSource() string {
 	return c.configSource
@@ -247,6 +261,7 @@ func NewAppConfig(
 	testMode, testQuiet bool,
 	workflow, policyPath, stderrLevel string,
 	labelConfig LabelConfig,
+	agentPoolConfig AgentPoolConfig,
 	configSource, settingPath string,
 ) *AppConfig {
 	return &AppConfig{
@@ -272,6 +287,7 @@ func NewAppConfig(
 		policyPath:             policyPath,
 		stderrLevel:            stderrLevel,
 		labelConfig:            labelConfig,
+		agentPoolConfig:        agentPoolConfig,
 		configSource:           configSource,
 		settingPath:            settingPath,
 	}

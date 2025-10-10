@@ -9,15 +9,27 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/common"
 )
 
+// RunTurnFunc is a function type for executing a turn
+type RunTurnFunc func(autoFB bool) error
+
 // SBIWorkflowRunner implements WorkflowRunner for SBI processing
 type SBIWorkflowRunner struct {
-	enabled bool
+	enabled     bool
+	runTurnFunc RunTurnFunc
 }
 
 // NewSBIWorkflowRunner creates a new SBI workflow runner
 func NewSBIWorkflowRunner() *SBIWorkflowRunner {
 	return &SBIWorkflowRunner{
 		enabled: true,
+	}
+}
+
+// NewSBIWorkflowRunnerWithFunc creates a new SBI workflow runner with a custom RunTurn function
+func NewSBIWorkflowRunnerWithFunc(runTurnFunc RunTurnFunc) *SBIWorkflowRunner {
+	return &SBIWorkflowRunner{
+		enabled:     true,
+		runTurnFunc: runTurnFunc,
 	}
 }
 
@@ -58,17 +70,19 @@ func (swr *SBIWorkflowRunner) Run(ctx context.Context, config workflow.WorkflowC
 		autoFB = true
 	}
 
-	// In test environment, return a test error to avoid calling runOnce
+	// In test environment, return a test error to avoid calling RunTurn
 	// which requires full application context
 	if isTestEnvironment() {
 		return errors.New("test environment: SBI workflow runner execution skipped")
 	}
 
-	// TODO: Implement SBI workflow execution without circular dependency
-	// This workflow runner is currently not used in the main execution path
-	// The main execution uses workflow.WorkflowManager directly
-	_ = autoFB // Will be used when implementation is added
-	return errors.New("SBI workflow runner: not implemented (use 'deespec run' instead)")
+	// If no RunTurn function was injected, return an error
+	if swr.runTurnFunc == nil {
+		return errors.New("SBI workflow runner: runTurnFunc not set (use NewSBIWorkflowRunnerWithFunc)")
+	}
+
+	// Execute the turn using the injected function
+	return swr.runTurnFunc(autoFB)
 }
 
 // Validate checks if the workflow can be executed

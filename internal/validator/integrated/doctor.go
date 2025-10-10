@@ -10,7 +10,6 @@ import (
 	healthValidator "github.com/YoshitsuguKoike/deespec/internal/validator/health"
 	journalValidator "github.com/YoshitsuguKoike/deespec/internal/validator/journal"
 	stateValidator "github.com/YoshitsuguKoike/deespec/internal/validator/state"
-	"github.com/YoshitsuguKoike/deespec/internal/validator/workflow"
 )
 
 // IntegratedReport represents the complete validation report from all components
@@ -31,20 +30,17 @@ type IntegratedSummary struct {
 
 // ComponentStatus represents the status of each component for text output
 type ComponentStatus struct {
-	Workflow string
-	State    string
-	Health   string
-	Journal  string
-	Prompts  string
+	State   string
+	Health  string
+	Journal string
 }
 
 // DoctorConfig contains configuration for doctor validation
 type DoctorConfig struct {
-	BasePath     string
-	WorkflowPath string
-	StatePath    string
-	HealthPath   string
-	JournalPath  string
+	BasePath    string
+	StatePath   string
+	HealthPath  string
+	JournalPath string
 }
 
 // NewIntegratedReport creates a new integrated report
@@ -60,33 +56,6 @@ func NewIntegratedReport() *IntegratedReport {
 // RunIntegratedValidation performs all validations and returns an integrated report
 func RunIntegratedValidation(config *DoctorConfig) (*IntegratedReport, error) {
 	report := NewIntegratedReport()
-
-	// Validate workflow
-	workflowValidator := workflow.NewValidator(config.BasePath)
-	workflowResult, err := workflowValidator.Validate(config.WorkflowPath)
-	if err != nil {
-		// Even if validation has internal error, we include the result
-		if workflowResult == nil {
-			// Create a minimal workflow result with error
-			workflowResult = &workflow.ValidationResult{
-				Version:     1,
-				GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
-				Files: []workflow.FileResult{{
-					File: filepath.Base(config.WorkflowPath),
-					Issues: []workflow.Issue{{
-						Type:    "error",
-						Field:   "/",
-						Message: fmt.Sprintf("validation error: %v", err),
-					}},
-				}},
-				Summary: workflow.Summary{
-					Files: 1,
-					Error: 1,
-				},
-			}
-		}
-	}
-	report.Components["workflow"] = convertToCommonResult(workflowResult)
 
 	// Validate state
 	stateResult, err := stateValidator.ValidateStateFile(config.StatePath)
@@ -122,52 +91,10 @@ func RunIntegratedValidation(config *DoctorConfig) (*IntegratedReport, error) {
 	journalResult := validateJournal(config.JournalPath)
 	report.Components["journal"] = journalResult
 
-	// Validate prompts (from workflow steps)
-	promptsResult := validatePrompts(config, workflowResult)
-	report.Components["prompts"] = promptsResult
-
 	// Calculate integrated summary
 	report.Summary = calculateIntegratedSummary(report.Components)
 
 	return report, nil
-}
-
-// convertToCommonResult converts workflow.ValidationResult to common.ValidationResult
-func convertToCommonResult(wfResult *workflow.ValidationResult) *common.ValidationResult {
-	if wfResult == nil {
-		return common.NewValidationResult()
-	}
-
-	result := common.NewValidationResult()
-	result.Version = wfResult.Version
-	result.GeneratedAt = wfResult.GeneratedAt
-
-	for _, file := range wfResult.Files {
-		fileResult := common.FileResult{
-			File:   file.File,
-			Issues: []common.ValidationIssue{},
-		}
-
-		for _, issue := range file.Issues {
-			fileResult.Issues = append(fileResult.Issues, common.ValidationIssue{
-				Type:    issue.Type,
-				Field:   issue.Field,
-				Message: issue.Message,
-			})
-		}
-
-		result.AddFileResult(fileResult)
-	}
-
-	// Override summary with the original to maintain consistency
-	result.Summary = common.Summary{
-		Files: wfResult.Summary.Files,
-		OK:    wfResult.Summary.OK,
-		Warn:  wfResult.Summary.Warn,
-		Error: wfResult.Summary.Error,
-	}
-
-	return result
 }
 
 // validateJournal converts journal validation to common format
@@ -266,39 +193,6 @@ func validateJournal(journalPath string) *common.ValidationResult {
 	return result
 }
 
-// validatePrompts validates all prompt files referenced in workflow
-func validatePrompts(config *DoctorConfig, workflowResult *workflow.ValidationResult) *common.ValidationResult {
-	result := common.NewValidationResult()
-
-	// For now, create a simple prompts validation result
-	// This would be expanded to actually validate prompt files from workflow steps
-	promptFile := common.FileResult{
-		File:   "prompts",
-		Issues: []common.ValidationIssue{},
-	}
-
-	// Check if workflow validation passed to determine prompt status
-	if workflowResult != nil && workflowResult.Summary.Error == 0 {
-		promptFile.Issues = append(promptFile.Issues, common.ValidationIssue{
-			Type:    "ok",
-			Message: "all prompts valid",
-		})
-		result.Summary.OK = 1
-	} else {
-		// If workflow has errors, we can't validate prompts properly
-		promptFile.Issues = append(promptFile.Issues, common.ValidationIssue{
-			Type:    "warn",
-			Message: "prompt validation skipped due to workflow errors",
-		})
-		result.Summary.Warn = 1
-	}
-
-	result.Files = append(result.Files, promptFile)
-	result.Summary.Files = 1
-
-	return result
-}
-
 // calculateIntegratedSummary aggregates summaries from all components
 func calculateIntegratedSummary(components map[string]*common.ValidationResult) IntegratedSummary {
 	summary := IntegratedSummary{
@@ -320,10 +214,6 @@ func calculateIntegratedSummary(components map[string]*common.ValidationResult) 
 func GetComponentStatus(report *IntegratedReport) ComponentStatus {
 	status := ComponentStatus{}
 
-	if workflow := report.Components["workflow"]; workflow != nil {
-		status.Workflow = getStatusString(workflow.Summary)
-	}
-
 	if state := report.Components["state"]; state != nil {
 		status.State = getStatusString(state.Summary)
 	}
@@ -334,10 +224,6 @@ func GetComponentStatus(report *IntegratedReport) ComponentStatus {
 
 	if journal := report.Components["journal"]; journal != nil {
 		status.Journal = getStatusString(journal.Summary)
-	}
-
-	if prompts := report.Components["prompts"]; prompts != nil {
-		status.Prompts = getStatusString(prompts.Summary)
 	}
 
 	return status

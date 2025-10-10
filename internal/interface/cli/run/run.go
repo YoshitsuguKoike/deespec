@@ -5,12 +5,15 @@ import (
 )
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -423,6 +426,124 @@ func cleanupStaleLocks() {
 	}
 }
 
+// isProcessRunning checks if a process with the given PID is running
+func isProcessRunning(pid int) bool {
+	// Use ps command to check if process exists
+	cmd := exec.Command("ps", "-p", strconv.Itoa(pid))
+	err := cmd.Run()
+	return err == nil
+}
+
+// promptUserConfirmation asks the user for yes/no confirmation
+func promptUserConfirmation(message string) bool {
+	fmt.Printf("\n%s (y/N): ", message)
+	reader := bufio.NewReader(os.Stdin)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false
+	}
+
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes"
+}
+
+// killProcessAndCleanup kills a process and cleans up database locks
+func killProcessAndCleanup(pid int, container *di.Container) error {
+	// Try to kill the process
+	common.Info("Stopping process PID %d...\n", pid)
+	cmd := exec.Command("kill", strconv.Itoa(pid))
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to kill process: %w", err)
+	}
+
+	// Wait a moment for process to terminate
+	time.Sleep(500 * time.Millisecond)
+
+	// Verify process is stopped
+	if isProcessRunning(pid) {
+		return fmt.Errorf("process %d is still running after kill signal", pid)
+	}
+
+	common.Info("Process %d stopped successfully\n", pid)
+
+	// Clean up database locks
+	common.Info("Cleaning up database locks...\n")
+	db := container.GetDB()
+	if db == nil {
+		return fmt.Errorf("database not available")
+	}
+
+	// Delete run_locks and state_locks
+	if _, err := db.Exec("DELETE FROM run_locks"); err != nil {
+		return fmt.Errorf("failed to delete run_locks: %w", err)
+	}
+	if _, err := db.Exec("DELETE FROM state_locks"); err != nil {
+		return fmt.Errorf("failed to delete state_locks: %w", err)
+	}
+
+	common.Info("Database locks cleaned up successfully\n")
+	return nil
+}
+
+// handleLockConflict handles the case when another instance is running
+// Returns true if the user wants to continue after cleanup, false otherwise
+func handleLockConflict(ctx context.Context, container *di.Container) (bool, error) {
+	lockService := container.GetLockService()
+	lockID, _ := lock.NewLockID("system-runlock")
+
+	existingLock, err := lockService.FindRunLock(ctx, lockID)
+	if err != nil || existingLock == nil {
+		// Lock no longer exists, can continue
+		return true, nil
+	}
+
+	pid := existingLock.PID()
+	hostname := existingLock.Hostname()
+	expiresAt := existingLock.ExpiresAt().Format("15:04:05")
+
+	// Check if process is actually running
+	if !isProcessRunning(pid) {
+		common.Warn("Lock held by PID %d, but process is not running (stale lock)\n", pid)
+		common.Info("Cleaning up stale lock...\n")
+
+		// Clean up stale lock
+		if err := lockService.ReleaseRunLock(ctx, lockID); err != nil {
+			return false, fmt.Errorf("failed to release stale lock: %w", err)
+		}
+
+		// Also clean up database locks
+		db := container.GetDB()
+		if db != nil {
+			db.Exec("DELETE FROM run_locks")
+			db.Exec("DELETE FROM state_locks")
+		}
+
+		common.Info("Stale lock cleaned up successfully\n")
+		return true, nil
+	}
+
+	// Process is running - prompt user for confirmation
+	common.Warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+	common.Warn("⚠️  Another instance is already running\n")
+	common.Warn("    PID: %d\n", pid)
+	common.Warn("    Hostname: %s\n", hostname)
+	common.Warn("    Lock expires: %s\n", expiresAt)
+	common.Warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+
+	if !promptUserConfirmation("Do you want to stop the other process and continue?") {
+		common.Info("Aborted by user\n")
+		return false, nil
+	}
+
+	// User confirmed - kill process and cleanup
+	if err := killProcessAndCleanup(pid, container); err != nil {
+		return false, fmt.Errorf("failed to cleanup: %w", err)
+	}
+
+	common.Info("✓ Ready to start\n\n")
+	return true, nil
+}
+
 // NewCommand creates the run command
 func NewCommand() *cobra.Command {
 	var autoFB bool
@@ -586,8 +707,39 @@ Examples:
 			}
 
 			if allStopped {
-				// All workflows stopped immediately (e.g., due to lock errors)
-				return fmt.Errorf("all workflows stopped - another instance may be running")
+				// All workflows stopped immediately - check if it's due to lock conflict
+				shouldContinue, err := handleLockConflict(ctx, container)
+				if err != nil {
+					return fmt.Errorf("failed to handle lock conflict: %w", err)
+				}
+				if !shouldContinue {
+					return fmt.Errorf("all workflows stopped - another instance may be running")
+				}
+
+				// User confirmed cleanup - retry starting workflows
+				common.Info("Retrying workflow startup...\n")
+				if err := manager.RunAll(); err != nil {
+					return fmt.Errorf("failed to restart workflows: %v", err)
+				}
+
+				// Wait briefly and check again
+				time.Sleep(500 * time.Millisecond)
+				stats = manager.GetStats()
+				allStopped = true
+				for _, stat := range stats {
+					if stat.IsRunning {
+						allStopped = false
+						break
+					}
+				}
+
+				if allStopped {
+					return fmt.Errorf("workflows still failed to start after cleanup")
+				}
+
+				common.Info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+				common.Info("✅ Workflows started successfully\n")
+				common.Info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
 			}
 
 			// Wait for shutdown signal

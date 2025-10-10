@@ -2,7 +2,7 @@
 
 このドキュメントは、今後実装すべき機能改善をトラッキングします。
 
-**最終更新日**: 2025-10-10
+**最終更新日**: 2025-10-10 (設定管理コマンド追加)
 **ステータス**: Phase 3完了後、Phase 8進行中
 
 ---
@@ -218,7 +218,169 @@ Description:
 
 ---
 
-### 5. journal.ndjson の自動作成
+### 5. 設定管理コマンド (config)
+
+**現状の問題:**
+- 設定を変更するには `.deespec/setting.json` を直接編集する必要がある
+- 設定項目の一覧や説明が分かりにくい
+- JSON構文エラーのリスク
+- 初心者には敷居が高い
+
+**提案する機能:**
+
+```bash
+# 全設定の表示
+deespec config list
+deespec config list --format json
+deespec config list --format yaml
+
+# 特定項目の取得
+deespec config get timeout_sec
+deespec config get max_turns
+
+# 設定の変更
+deespec config set timeout_sec 1200
+deespec config set max_turns 10
+deespec config set stderr_level debug
+
+# 設定の削除（デフォルトに戻す）
+deespec config unset timeout_sec
+deespec config reset <key>
+
+# 全設定を初期化
+deespec config reset
+deespec config reset --force
+
+# 設定のバリデーション
+deespec config validate
+
+# 設定のエクスポート・インポート
+deespec config export --output backup.json
+deespec config import --input backup.json
+
+# 設定項目の説明表示
+deespec config describe timeout_sec
+deespec config describe --all
+```
+
+**期待される出力例:**
+
+```bash
+$ deespec config list
+
+Configuration (.deespec/setting.json)
+=====================================
+
+Core Settings:
+  home:           .deespec
+  agent_bin:      claude
+  timeout_sec:    900          (default)
+
+Execution Limits:
+  max_attempts:   3            (default)
+  max_turns:      8            (default)
+
+Logging:
+  stderr_level:   info         (default)
+
+Feature Flags:
+  validate:       false        (default)
+  auto_fb:        false        (default)
+
+(default) = using default value
+```
+
+```bash
+$ deespec config get timeout_sec
+900
+
+$ deespec config set timeout_sec 1200
+✓ Configuration updated: timeout_sec = 1200
+
+$ deespec config describe timeout_sec
+timeout_sec
+  Type:     integer
+  Default:  900
+  Range:    60 - 3600
+  Description:
+    Timeout for agent execution in seconds.
+    If an agent does not respond within this time,
+    the execution will be terminated.
+```
+
+**実装方針:**
+
+1. **読み取り系コマンド**
+   - `setting.json` をパースして表示
+   - デフォルト値と比較してマーク表示
+
+2. **書き込み系コマンド**
+   - バリデーション実行
+   - `setting.json` を更新
+   - バックアップ作成（`.deespec/setting.json.bak`）
+
+3. **バリデーション**
+   - 型チェック（文字列/整数/真偽値）
+   - 範囲チェック（timeout_sec: 60-3600など）
+   - 列挙値チェック（stderr_level: debug|info|warn|error）
+
+4. **初期化**
+   - デフォルト値のテンプレートから復元
+   - 既存ファイルをバックアップ
+
+**メリット:**
+
+1. **ユーザビリティ向上**
+   - エディタ不要で設定変更可能
+   - 設定項目の発見が容易
+   - タイポや構文エラー防止
+
+2. **安全性向上**
+   - バリデーションによる不正な値の防止
+   - バックアップによる復旧可能性
+
+3. **標準的なCLIパターン**
+   - `git config`, `npm config` など一般的なパターン
+   - ユーザーの学習コストが低い
+
+4. **自動化対応**
+   - CI/CDでの設定変更が容易
+   - セットアップスクリプトの作成が簡単
+
+5. **既存方式との共存**
+   - ファイル直接編集も引き続き可能
+   - 既存ユーザーへの影響なし
+
+**実装場所:**
+- CLI: `internal/interface/cli/config/config.go` (新規作成)
+- UseCase: `internal/application/usecase/config/config_manager.go` (新規作成)
+- Service: `internal/application/service/config_service.go` (新規作成)
+
+**設定スキーマ定義:**
+```go
+type ConfigSchema struct {
+    Key          string
+    Type         ConfigType  // String, Int, Bool
+    Default      interface{}
+    Description  string
+    Validator    func(interface{}) error
+}
+
+var ConfigSchemas = []ConfigSchema{
+    {
+        Key:         "timeout_sec",
+        Type:        ConfigTypeInt,
+        Default:     900,
+        Description: "Timeout for agent execution in seconds",
+        Validator:   IntRange(60, 3600),
+    },
+    // ...
+}
+```
+
+---
+
+### 6. journal.ndjson の自動作成
 
 **現状の問題:**
 - SBI登録時に `journal.ndjson` が作成されない
@@ -256,7 +418,7 @@ cat .deespec/journal.ndjson | tail -1 | jq .
 
 ## 🟢 優先度: Low
 
-### 6. SBI編集コマンド
+### 7. SBI編集コマンド
 
 **提案する機能:**
 
@@ -276,7 +438,7 @@ deespec sbi update SBI-001 --status in_progress
 
 ---
 
-### 7. SBI削除コマンド
+### 8. SBI削除コマンド
 
 **提案する機能:**
 
@@ -297,7 +459,7 @@ deespec sbi delete SBI-001 SBI-002 SBI-003
 
 ---
 
-### 8. エクスポート・インポート機能
+### 9. エクスポート・インポート機能
 
 **提案する機能:**
 
@@ -319,7 +481,7 @@ deespec sbi import --input sbi-backup.json
 
 ---
 
-### 9. バージョン情報の充実化
+### 10. バージョン情報の充実化
 
 **現状:**
 ```bash

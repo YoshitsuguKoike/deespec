@@ -173,7 +173,31 @@ func (wm *WorkflowManager) runWorkflowLoop(runner WorkflowRunner, config Workflo
 
 		wm.debug("[%s] Starting execution cycle #%d", runner.Name(), executionNum)
 
-		err := runner.Run(wm.ctx, config)
+		// Execute runner.Run() asynchronously to allow heartbeat during execution
+		done := make(chan error, 1)
+		go func() {
+			done <- runner.Run(wm.ctx, config)
+		}()
+
+		// Create heartbeat ticker for task execution monitoring
+		executionHeartbeat := time.NewTicker(5 * time.Second)
+		executionComplete := false
+		var err error
+
+		// Monitor task execution with periodic heartbeat
+		for !executionComplete {
+			select {
+			case err = <-done:
+				executionComplete = true
+			case <-executionHeartbeat.C:
+				wm.info("💓 [%s] Processing task (execution #%d)...", runner.Name(), executionNum)
+			case <-wm.ctx.Done():
+				executionHeartbeat.Stop()
+				wm.info("Workflow %s stopping due to shutdown signal\n", runner.Name())
+				return
+			}
+		}
+		executionHeartbeat.Stop()
 
 		endTime := time.Now()
 		duration := endTime.Sub(startTime)

@@ -14,6 +14,7 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/run"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/status"
+	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/version"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow"
 	"github.com/spf13/cobra"
 )
@@ -89,6 +90,7 @@ func NewRoot() *cobra.Command {
 	cmd.AddCommand(clear.NewCommand())
 	cmd.AddCommand(lock_cmd.NewCommand()) // SQLite-based lock management
 	cmd.AddCommand(label.NewCommand())
+	cmd.AddCommand(version.NewCommand())
 
 	// Add global log level flag
 	cmd.PersistentFlags().StringVar(&globalLogLevel, "log-level", "",

@@ -808,10 +808,24 @@ func TestEPICRepository_PBIMappingConsistency(t *testing.T) {
 		t.Fatalf("Failed to save updated EPIC 1: %v", err)
 	}
 
+	// Verify EPIC no longer has the PBI
+	updatedEPIC, err := repo.Find(ctx, repository.EPICID(e1.ID().String()))
+	if err != nil {
+		t.Fatalf("Failed to find updated EPIC 1: %v", err)
+	}
+
+	if len(updatedEPIC.PBIIDs()) != 0 {
+		t.Errorf("Expected 0 PBIs after removal, got %d", len(updatedEPIC.PBIIDs()))
+	}
+
 	// Verify PBI no longer maps to any EPIC
 	_, err = repo.FindByPBIID(ctx, repository.PBIID(pbiID.String()))
 	if err == nil {
 		t.Error("Expected error when finding EPIC for removed PBI")
+	}
+
+	if !errors.Is(err, ErrEPICNotFound) {
+		t.Errorf("Expected ErrEPICNotFound, got %v", err)
 	}
 }
 

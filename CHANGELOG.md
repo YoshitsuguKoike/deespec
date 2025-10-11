@@ -7,7 +7,8 @@
 ### 修正 (Fixed)
 
 * **init コマンドの不要ファイル生成を削除**: 現在のバージョンで使用されていないファイルを生成しないように修正
-  - 削除: `prompts/system/` 配下のファイル（done.md, implement.md, plan.md, review.md, test.md）
+  - 削除: 廃止された `prompts/system/` サブディレクトリ配下のファイル（implement.md, plan.md, review.md, test.md）
+  - 追加: `prompts/DONE.md` テンプレート（タスク完了レポート生成用）
   - 削除: `specs/.gitkeep` と `specs/README.md`
   - 削除: `var/state.json`（DB-based 管理に移行済みのため）
   - 効果: よりクリーンな初期化、混乱を招く廃止ファイルを排除

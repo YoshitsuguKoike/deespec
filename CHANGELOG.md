@@ -24,6 +24,18 @@
 
 ### 修正 (Fixed)
 
+* **並列実行モードでの古いロック検出機能追加**: プロセス存在チェックの実装
+  - 問題: 並列実行（`--parallel`）が「another instance is already running」でブロック
+  - 原因: ロック取得時に期限（expires_at）のみチェック、プロセス存在を確認せず
+  - 事例: PID 66976のプロセスは存在しないが、期限が未来のためロックが有効と判断
+  - 順次実行との差: 順次実行は`handleLockConflict()`で別途プロセスチェック実施
+  - 修正: `isProcessRunning(pid)`ヘルパー追加（`ps -p <pid>`で確認）
+  - ロジック変更: `isStale = IsExpired() OR !isProcessRunning(PID)`
+  - 影響: 並列実行モードでもクラッシュしたプロセスのロックを自動クリーンアップ
+  - ファイル:
+    - internal/infrastructure/persistence/sqlite/run_lock_repository_impl.go
+    - internal/infrastructure/persistence/sqlite/state_lock_repository_impl.go
+
 * **ターン制限超過時のステータス遷移バグ修正**: 無限ループとランタイムエラーを解消
   - 問題: ターン制限（maxTurns）超過時、REVIEWING → REVIEWING への不正な遷移を試行
   - エラー: "invalid status transition from REVIEWING to REVIEWING"

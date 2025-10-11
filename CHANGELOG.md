@@ -6,6 +6,66 @@
 
 ### 追加 (Added)
 
+* **PBI管理システムの実装**: Markdown+SQLiteハイブリッドストレージによる新しいPBI管理
+  - **CLI コマンド群**:
+    - `deespec pbi register`: Markdownファイルまたは対話形式でPBIを登録
+      - ファイル入力とメタデータオーバーライド対応（--story-points, --priority, --status）
+      - シーケンシャルなPBI ID自動生成（PBI-001, PBI-002, ...）
+      - 全入力パラメータのバリデーション
+    - `deespec pbi show <id>`: PBI詳細を整形表示
+      - ステータス、ストーリーポイント、優先度、タイムスタンプ表示
+      - Markdown本文の全文表示
+    - `deespec pbi list`: PBI一覧をテーブル形式で表示
+      - ステータスフィルタリング対応
+      - ソート可能な出力形式
+    - `deespec pbi update <id>`: PBIメタデータを個別更新
+      - ステータス、ストーリーポイント、優先度を独立して更新可能
+      - Markdown本文は保持
+      - タイムスタンプ自動更新
+    - `deespec pbi edit <id>`: PBIのMarkdownファイルをエディタで編集
+      - $EDITOR環境変数に対応（未設定時はvimを使用）
+    - `deespec pbi delete <id>`: PBIと関連ファイルを削除
+      - 確認プロンプト付き（--forceでスキップ可能）
+      - データベースとMarkdownディレクトリの両方を削除
+  - **ハイブリッドストレージモデル**:
+    - Markdownファイル: PBIコンテンツの信頼できる情報源（.deespec/specs/pbi/{id}/pbi.md）
+    - SQLite: 高速クエリのためのメタデータインデックス（status, priority, timestamps）
+    - マイグレーションシステム: バージョン管理されたスキーマ進化
+  - **ドメインモデル**:
+    - ワークフロー層から分離された簡素化されたPBIエンティティ
+    - 関心の分離による明確なリポジトリインターフェース
+    - リポジトリベースのシーケンシャル番号付けによるID生成
+  - **ユースケース**:
+    - RegisterPBIUseCase: バリデーション付きPBI作成処理
+    - UpdatePBIUseCase: フィールドレベル制御によるメタデータ更新管理
+  - **マイグレーションサポート**:
+    - 001_create_pbis.sql: 初期PBIテーブルスキーマ
+    - 002_add_pbi_metadata.sql: メタデータカラム追加
+    - 003_fix_markdown_path.sql: パス制約の修正
+    - すべてのPBIコマンド実行時に自動的にマイグレーション実行
+
+* **テストカバレッジの拡充**:
+  - ドメイン実行テスト（decision, error, status, step, repository, service）
+  - ストラテジーテスト（EPIC/PBI分解、SBIコード生成、実装）
+  - リポジトリ実装テスト（notes, prompt templates, SBI tasks）
+  - 古いワークフロー統合PBIテストを削除
+
+* **ドキュメント整備**:
+  - データベーススキーマドキュメント（docs/database_schema.md）
+  - PBI実装計画書（docs/pbi_implement_plan.md）
+  - テスト用サンプルPBI（samples/docs/test-coverage-plan.md）
+
+### 非推奨 (Deprecated)
+
+以下のワークフロー統合PBIコンポーネントは非推奨となりました:
+- TaskUseCaseImpl.CreatePBI
+- WorkflowUseCaseImpl.DecomposePBI
+- PBIRepositoryImpl（旧SQLiteのみ実装）
+
+スタブ実装により後方互換性を維持しています。
+
+### 追加 (Added)
+
 * **並列実行機能の完全実装**: Clean Architectureに基づく適切な関心の分離
   - **CLI層でのRunLock管理**: run.goが最上位でRunLockを1回取得・解放
   - **UseCaseからRunLock削除**: ビジネスロジックがプロセス間排他を意識しない設計

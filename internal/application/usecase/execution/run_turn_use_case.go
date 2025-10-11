@@ -14,7 +14,6 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/application/port/output"
 	"github.com/YoshitsuguKoike/deespec/internal/application/service"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model"
-	"github.com/YoshitsuguKoike/deespec/internal/domain/model/lock"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/sbi"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
 )
@@ -56,39 +55,188 @@ func NewRunTurnUseCase(
 	}
 }
 
-// Execute runs a single workflow turn using DB-based state management
-// This implementation eliminates state.json dependency and uses SQLite as the single source of truth
-func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (*dto.RunTurnOutput, error) {
+// ExecuteForSBI executes a turn for a specific SBI (for parallel execution)
+// This method skips RunLock acquisition and SBI picking, assuming the SBI is already locked
+func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input dto.RunTurnInput) (*dto.RunTurnOutput, error) {
 	startTime := time.Now()
 
-	// 1. Acquire run lock
-	lockID, err := lock.NewLockID("system-runlock")
+	// Load the specified SBI from repository
+	currentSBI, err := uc.sbiRepo.Find(ctx, repository.SBIID(sbiID))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create lock ID: %w", err)
+		return nil, fmt.Errorf("failed to find SBI %s: %w", sbiID, err)
+	}
+	if currentSBI == nil {
+		return nil, fmt.Errorf("SBI %s not found", sbiID)
 	}
 
-	runLock, err := uc.lockService.AcquireRunLock(ctx, lockID, uc.leaseTTL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to acquire run lock: %w", err)
+	// Get execution state from SBI entity
+	execState := currentSBI.ExecutionState()
+	if execState == nil {
+		return nil, fmt.Errorf("SBI %s has no execution state", currentSBI.ID())
 	}
 
-	if runLock == nil {
-		// Another instance is running
+	currentTurn := execState.CurrentTurn.Value()
+	currentAttempt := execState.CurrentAttempt.Value()
+	prevStatus := currentSBI.Status()
+
+	// Increment turn for this execution
+	currentTurn++
+
+	// Check turn limit
+	if currentTurn > uc.maxTurns {
+		// Force termination - transition to DONE status
+		if err := currentSBI.UpdateStatus(model.StatusDone); err != nil {
+			return nil, fmt.Errorf("failed to mark SBI as done: %w", err)
+		}
+		if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
+			return nil, fmt.Errorf("failed to save SBI after force termination: %w", err)
+		}
+
+		// Write journal entry for force termination
+		journalRecord := &repository.JournalRecord{
+			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			SBIID:     currentSBI.ID().String(),
+			Turn:      currentTurn,
+			Step:      "force_terminated",
+			Status:    "DONE",
+			Attempt:   currentAttempt,
+			Decision:  "FORCE_TERMINATED",
+			ElapsedMs: time.Since(startTime).Milliseconds(),
+			Error:     fmt.Sprintf("Exceeded max turns (%d)", uc.maxTurns),
+			Artifacts: []interface{}{},
+		}
+
+		if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to append journal entry (force termination)\n")
+			fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "   SBI ID: %s, Turn: %d, Step: force_terminated\n",
+				currentSBI.ID().String(), currentTurn)
+		}
+
 		return &dto.RunTurnOutput{
-			NoOp:        true,
-			NoOpReason:  "lock_held",
-			ElapsedMs:   time.Since(startTime).Milliseconds(),
-			CompletedAt: time.Now(),
+			Turn:          currentTurn,
+			SBIID:         currentSBI.ID().String(),
+			NoOp:          false,
+			PrevStatus:    uc.mapDomainStatusToString(prevStatus),
+			NextStatus:    "DONE",
+			Decision:      "FORCE_TERMINATED",
+			ElapsedMs:     time.Since(startTime).Milliseconds(),
+			CompletedAt:   time.Now(),
+			TaskCompleted: true,
 		}, nil
 	}
 
-	defer func() {
-		if err := uc.lockService.ReleaseRunLock(ctx, lockID); err != nil {
-			// Log warning but don't fail the operation
+	// Execute workflow step
+	stepOutput, err := uc.executeStepForSBI(ctx, currentSBI, currentTurn, currentAttempt)
+	if err != nil {
+		stepOutput = &dto.ExecuteStepOutput{
+			Success:   false,
+			ErrorMsg:  err.Error(),
+			Decision:  "NEEDS_CHANGES",
+			ElapsedMs: time.Since(startTime).Milliseconds(),
 		}
-	}()
+	}
 
-	// 2. Pick or continue SBI from DB (not from state.json)
+	// Determine next status based on current status and decision
+	nextStatus, shouldIncrementAttempt := uc.determineNextStatusForSBI(
+		currentSBI.Status(),
+		stepOutput.Decision,
+		currentAttempt,
+	)
+
+	if shouldIncrementAttempt {
+		currentAttempt++
+	}
+
+	// Update SBI entity with new status and execution state
+	// Handle PENDING → PICKED transition if needed
+	if currentSBI.Status() == model.StatusPending && nextStatus != model.StatusPicked {
+		if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
+			return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
+		}
+	}
+
+	// Now transition to the target status
+	if err := currentSBI.UpdateStatus(nextStatus); err != nil {
+		return nil, fmt.Errorf("failed to update SBI status: %w", err)
+	}
+
+	// Update turn in execution state
+	currentSBI.IncrementTurn()
+
+	// Generate done.md if transitioning to DONE status
+	var doneArtifactPath string
+	if nextStatus == model.StatusDone {
+		doneArtifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/done.md", currentSBI.ID().String())
+		doneStepOutput, err := uc.executeStepForSBI(ctx, currentSBI, currentTurn, currentAttempt)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to generate done.md\n")
+			fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+		} else if doneStepOutput.Success {
+			doneArtifactPath = doneStepOutput.ArtifactPath
+		}
+	}
+
+	// Save SBI to DB
+	if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
+		return nil, fmt.Errorf("failed to save SBI to DB: %w", err)
+	}
+
+	// Write journal entry
+	artifacts := []interface{}{stepOutput.ArtifactPath}
+	if doneArtifactPath != "" {
+		artifacts = append(artifacts, doneArtifactPath)
+	}
+
+	journalRecord := &repository.JournalRecord{
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		SBIID:     currentSBI.ID().String(),
+		Turn:      currentTurn,
+		Step:      uc.statusToStep(uc.mapDomainStatusToString(nextStatus)),
+		Status:    uc.mapDomainStatusToString(nextStatus),
+		Attempt:   currentAttempt,
+		Decision:  stepOutput.Decision,
+		ElapsedMs: time.Since(startTime).Milliseconds(),
+		Error:     stepOutput.ErrorMsg,
+		Artifacts: artifacts,
+	}
+
+	if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to append journal entry\n")
+		fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "   SBI ID: %s, Turn: %d, Step: %s, Status: %s\n",
+			currentSBI.ID().String(), currentTurn,
+			uc.statusToStep(uc.mapDomainStatusToString(nextStatus)),
+			uc.mapDomainStatusToString(nextStatus))
+	}
+
+	// Build output
+	taskCompleted := (nextStatus == model.StatusDone)
+
+	return &dto.RunTurnOutput{
+		Turn:          currentTurn,
+		SBIID:         currentSBI.ID().String(),
+		NoOp:          false,
+		PrevStatus:    uc.mapDomainStatusToString(prevStatus),
+		NextStatus:    uc.mapDomainStatusToString(nextStatus),
+		Decision:      stepOutput.Decision,
+		Attempt:       currentAttempt,
+		ArtifactPath:  stepOutput.ArtifactPath,
+		ErrorMsg:      stepOutput.ErrorMsg,
+		ElapsedMs:     time.Since(startTime).Milliseconds(),
+		CompletedAt:   time.Now(),
+		TaskCompleted: taskCompleted,
+	}, nil
+}
+
+// Execute runs a single workflow turn using DB-based state management
+// This implementation eliminates state.json dependency and uses SQLite as the single source of truth
+// Note: RunLock should be acquired by the caller (CLI layer) before calling this method
+func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (*dto.RunTurnOutput, error) {
+	startTime := time.Now()
+
+	// 1. Pick or continue SBI from DB (not from state.json)
+	// Note: RunLock is managed by CLI layer, not by UseCase layer
 	sbiExecService := service.NewSBIExecutionService(uc.sbiRepo, uc.lockService)
 
 	// Try to pick next SBI with lock

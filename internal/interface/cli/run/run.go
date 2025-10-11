@@ -410,11 +410,11 @@ Examples:
 
 			if maxParallel > 1 {
 				// Use ParallelSBIWorkflowRunner for concurrent execution
-				// Create ExecuteTurnFunc that wraps RunTurnWithContainer
+				// Create ExecuteTurnFunc that executes a specific SBI
 				executeTurnFunc := func(ctx context.Context, container *di.Container, sbiID string, autoFB bool) error {
-					// TODO: Implement per-SBI execution logic
-					// For now, fallback to RunTurnWithContainer
-					return RunTurnWithContainer(container, autoFB)
+					// Use ExecuteSingleSBI which doesn't acquire RunLock
+					// The RunLock is managed by the parallel workflow manager itself
+					return ExecuteSingleSBI(ctx, container, sbiID, autoFB)
 				}
 
 				sbiRunner = workflow_sbi.NewParallelSBIWorkflowRunner(container, maxParallel, executeTurnFunc)
@@ -718,6 +718,70 @@ func runAgent(agent claudecli.Runner, prompt string, sbiDir string, stepName str
 // runOnce has been removed and replaced by runTurn()
 // See runTurn() below for the new UseCase-based implementation
 
+// ExecuteSingleSBI executes a turn for a specific SBI without acquiring RunLock
+// This function is designed for parallel execution where RunLock is managed externally
+// StateLock for the specific SBI should be acquired by the caller before calling this
+func ExecuteSingleSBI(ctx context.Context, container *di.Container, sbiID string, autoFB bool) error {
+	startTime := time.Now()
+
+	// Get paths and services
+	paths := app.GetPathsWithConfig(common.GetGlobalConfig())
+	lockService := container.GetLockService()
+	sbiRepo := container.GetSBIRepository()
+
+	// Create repository implementations
+	journalRepo := infraRepo.NewJournalRepositoryImpl(paths.Journal)
+
+	// Get AgentGateway from container
+	agentGateway := container.GetAgentGateway()
+
+	// Get max turns and lease TTL from config
+	maxTurns := 8
+	leaseTTL := 10 * time.Minute
+	if common.GetGlobalConfig() != nil {
+		maxTurns = common.GetGlobalConfig().MaxTurns()
+	}
+
+	// Create RunTurnUseCase
+	useCase := execution.NewRunTurnUseCase(
+		journalRepo,
+		sbiRepo,
+		lockService,
+		agentGateway,
+		maxTurns,
+		leaseTTL,
+	)
+
+	// Execute turn for the specific SBI
+	// Note: ExecuteForSBI skips SBI picking and uses the provided SBI ID
+	input := dto.RunTurnInput{
+		AutoFB: autoFB,
+	}
+
+	output, err := useCase.ExecuteForSBI(ctx, sbiID, input)
+	if err != nil {
+		common.Error("failed to execute turn for SBI %s: %v", sbiID, err)
+		return fmt.Errorf("execute turn for SBI %s: %w", sbiID, err)
+	}
+
+	// Log execution results (simplified for parallel execution)
+	if output.NoOp {
+		common.Debug("SBI %s: No-op (%s)", sbiID, output.NoOpReason)
+	} else {
+		common.Info("SBI %s: Turn %d completed (%s -> %s)",
+			sbiID[:8], output.Turn, output.PrevStatus, output.NextStatus)
+	}
+
+	// Update health
+	healthOk := output.ErrorMsg == ""
+	if err := app.WriteHealth(paths.Health, output.Turn, output.NextStep, healthOk, output.ErrorMsg); err != nil {
+		common.Warn("failed to write %s: %v\n", paths.Health, err)
+	}
+
+	common.Debug("SBI %s execution took %v", sbiID[:8], time.Since(startTime))
+	return nil
+}
+
 // RunTurnWithContainer executes a single workflow turn using a shared DI container
 // This function accepts a pre-initialized container to avoid repeated initialization
 func RunTurnWithContainer(container *di.Container, autoFB bool) error {
@@ -731,15 +795,42 @@ func RunTurnWithContainer(container *di.Container, autoFB bool) error {
 	sbiRepo := container.GetSBIRepository() // Added for DB-based task picking
 	ctx := context.Background()
 
+	// Acquire RunLock at CLI layer (not in UseCase layer)
+	// This ensures single instance execution across sequential/parallel modes
+	lockID, err := lock.NewLockID("system-runlock")
+	if err != nil {
+		return fmt.Errorf("failed to create lock ID: %w", err)
+	}
+
+	leaseTTL := 10 * time.Minute
+	runLock, err := lockService.AcquireRunLock(ctx, lockID, leaseTTL)
+	if err != nil {
+		return fmt.Errorf("failed to acquire run lock: %w", err)
+	}
+
+	if runLock == nil {
+		// Another instance is running - return error immediately
+		if existingLock, err := lockService.FindRunLock(ctx, lockID); err == nil && existingLock != nil {
+			return fmt.Errorf("another instance is already running (PID %d on %s, expires: %s)",
+				existingLock.PID(), existingLock.Hostname(), existingLock.ExpiresAt().Format("15:04:05"))
+		}
+		return fmt.Errorf("another instance is already running")
+	}
+
+	defer func() {
+		if err := lockService.ReleaseRunLock(ctx, lockID); err != nil {
+			common.Warn("Failed to release run lock: %v", err)
+		}
+	}()
+
 	// Create repository implementations
 	journalRepo := infraRepo.NewJournalRepositoryImpl(paths.Journal)
 
 	// Get AgentGateway from container
 	agentGateway := container.GetAgentGateway()
 
-	// Get max turns and lease TTL from config
+	// Get max turns from config (leaseTTL already defined above)
 	maxTurns := 8
-	leaseTTL := 10 * time.Minute
 	if common.GetGlobalConfig() != nil {
 		maxTurns = common.GetGlobalConfig().MaxTurns()
 	}

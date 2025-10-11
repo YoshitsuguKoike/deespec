@@ -7,10 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
-//go:embed templates/etc/* templates/etc/policies/* templates/prompts/* templates/var/* templates/specs/* templates/templates/*
+//go:embed templates/etc/* templates/etc/policies/* templates/prompts/* templates/templates/*
 var templatesFS embed.FS
 
 // Template represents a template file to be written
@@ -49,13 +48,6 @@ func GetTemplates() ([]Template, error) {
 		// Remove "templates/" prefix and ".tmpl" suffix for the destination path
 		destPath := strings.TrimPrefix(path, "templates/")
 		destPath = strings.TrimSuffix(destPath, ".tmpl")
-
-		// Special handling for state.json - inject current timestamp
-		if strings.HasSuffix(destPath, "state.json") {
-			contentStr := string(content)
-			contentStr = fmt.Sprintf(contentStr, time.Now().UTC().Format(time.RFC3339))
-			content = []byte(contentStr)
-		}
 
 		templates = append(templates, Template{
 			Path:    destPath,

@@ -4,9 +4,35 @@
 
 ## \[Unreleased]
 
+### 修正 (Fixed)
+
+* **init コマンドの不要ファイル生成を削除**: 現在のバージョンで使用されていないファイルを生成しないように修正
+  - 削除: `prompts/system/` 配下のファイル（done.md, implement.md, plan.md, review.md, test.md）
+  - 削除: `specs/.gitkeep` と `specs/README.md`
+  - 削除: `var/state.json`（DB-based 管理に移行済みのため）
+  - 効果: よりクリーンな初期化、混乱を招く廃止ファイルを排除
+
 ---
 
 ## \[v0.2.1] - 2025-10-11
+
+### 追加 (Added)
+
+* **一元的なバージョン管理システム**: VERSION ファイルによる集中管理
+  - プロジェクトルートに `VERSION` ファイルを配置
+  - Makefile が VERSION ファイルからバージョンを自動読み込み
+  - GitHub Actions release workflow も VERSION ファイルを参照
+  - `make version` コマンドで現在のバージョンを確認可能
+  - リリース時は VERSION ファイルを更新するだけで全てに反映
+  - 効果: Git タグの手動管理が不要、バージョン管理が簡素化
+
+### 変更 (Changed)
+
+* **リリースワークフロー**: タグベースから VERSION ファイルベースへ移行
+  - トリガー: VERSION ファイルの main ブランチへのプッシュで自動リリース
+  - ビルド時に VERSION ファイルから ldflags 経由でバージョン注入
+  - タグとリリースは GitHub Actions が自動作成
+  - ワークフロー: VERSION更新 → commit → push → 自動リリース
 
 ### 修正 (Fixed)
 

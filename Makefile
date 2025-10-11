@@ -1,13 +1,19 @@
 BINARY=deespec
 OUT=./dist/$(BINARY)
-VERSION?=dev
-LDFLAGS=-ldflags "-X main.version=$(VERSION)"
+VERSION=$(shell cat VERSION 2>/dev/null || echo "dev")
+LDFLAGS=-ldflags "-X github.com/YoshitsuguKoike/deespec/internal/buildinfo.Version=v$(VERSION)"
 
-.PHONY: build clean test test-coverage coverage-check coverage-html lint fmt vet
+.PHONY: build clean test test-coverage coverage-check coverage-html lint fmt vet version
+
+# Show current version from VERSION file
+version:
+	@echo "v$(VERSION)"
 
 build:
 	@mkdir -p dist
-	CGO_ENABLED=1 go build $(LDFLAGS) -o $(OUT) ./cmd/deespec
+	@echo "Building $(BINARY) v$(VERSION)..."
+	CGO_ENABLED=0 go build $(LDFLAGS) -o $(OUT) ./cmd/deespec
+	@echo "✅ Built $(OUT)"
 
 clean:
 	rm -rf dist coverage.txt coverage.html

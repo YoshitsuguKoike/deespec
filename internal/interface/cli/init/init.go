@@ -46,12 +46,13 @@ All files will be created under the .deespec/ directory.`,
 			// Create necessary directories
 			requiredDirs := []string{
 				filepath.Join(deespecDir, "etc", "policies"),
-				filepath.Join(deespecDir, "prompts", "system"),
+				filepath.Join(deespecDir, "prompts"),
 				filepath.Join(deespecDir, "specs", "sbi"),
 				filepath.Join(deespecDir, "specs", "pbi"),
 				filepath.Join(deespecDir, "templates"),
 				filepath.Join(deespecDir, "sessions"),
 				filepath.Join(deespecDir, "knowledge"),
+				filepath.Join(deespecDir, "var"),
 			}
 
 			for _, d := range requiredDirs {
@@ -119,7 +120,7 @@ All files will be created under the .deespec/ directory.`,
 
 			// Print success message
 			fmt.Printf("Initialized .deespec v0.1.14 structure in %s:\n", deespecDir)
-			fmt.Println("  ├── setting.json          # Configuration file (NEW)")
+			fmt.Println("  ├── setting.json          # Configuration file")
 			fmt.Println("  ├── etc/")
 			fmt.Println("  │   ├── workflow.yaml")
 			fmt.Println("  │   └── policies/")
@@ -127,20 +128,13 @@ All files will be created under the .deespec/ directory.`,
 			fmt.Println("  ├── prompts/")
 			fmt.Println("  │   ├── WIP.md            # Implementation prompt")
 			fmt.Println("  │   ├── REVIEW.md         # Code review prompt")
-			fmt.Println("  │   ├── REVIEW_AND_WIP.md # Combined prompt")
-			fmt.Println("  │   └── system/")
-			fmt.Println("  │       ├── plan.md")
-			fmt.Println("  │       ├── implement.md")
-			fmt.Println("  │       ├── test.md")
-			fmt.Println("  │       ├── review.md")
-			fmt.Println("  │       └── done.md")
+			fmt.Println("  │   └── REVIEW_AND_WIP.md # Combined prompt")
 			fmt.Println("  ├── specs/")
 			fmt.Println("  │   ├── sbi/")
 			fmt.Println("  │   └── pbi/")
+			fmt.Println("  ├── templates/            # Spec templates")
 			fmt.Println("  └── var/")
-			fmt.Println("      ├── state.json")
-			fmt.Println("      ├── health.json")
-			fmt.Println("      └── artifacts/")
+			fmt.Println("      └── health.json")
 
 			if !force {
 				fmt.Println("\nNote: Existing files were preserved. Use --force to overwrite.")

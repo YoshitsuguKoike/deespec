@@ -907,10 +907,10 @@ func TestEPICRepository_PaginationEdgeCases(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		filter         repository.EPICFilter
-		expectedCount  int
-		description    string
+		name          string
+		filter        repository.EPICFilter
+		expectedCount int
+		description   string
 	}{
 		{
 			name:          "Offset exceeds total",

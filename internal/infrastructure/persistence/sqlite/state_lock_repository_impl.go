@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/lock"
@@ -34,13 +36,16 @@ func (r *StateLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockI
 	// Check if lock already exists and is valid
 	existing, err := r.Find(ctx, lockID)
 	if err == nil {
-		// Lock exists - check if expired
-		if !existing.IsExpired() {
-			return nil, nil // Lock is held by another process
+		// Lock exists - check if expired OR process no longer exists
+		isStale := existing.IsExpired() || !isStateLockProcessRunning(existing.PID())
+
+		if !isStale {
+			return nil, nil // Lock is held by another active process
 		}
-		// Lock expired, remove it first
+
+		// Lock is stale (expired or process dead), remove it first
 		if err := r.Release(ctx, lockID); err != nil {
-			return nil, fmt.Errorf("release expired lock: %w", err)
+			return nil, fmt.Errorf("release stale lock: %w", err)
 		}
 	}
 
@@ -256,4 +261,14 @@ func (r *StateLockRepositoryImpl) List(ctx context.Context) ([]*lock.StateLock, 
 	}
 
 	return locks, nil
+}
+
+// isStateLockProcessRunning checks if a process with the given PID is running
+// Returns true if the process exists and is running, false otherwise
+func isStateLockProcessRunning(pid int) bool {
+	// Use ps command to check if process exists
+	// This works on Unix-like systems (Linux, macOS)
+	cmd := exec.Command("ps", "-p", strconv.Itoa(pid))
+	err := cmd.Run()
+	return err == nil
 }

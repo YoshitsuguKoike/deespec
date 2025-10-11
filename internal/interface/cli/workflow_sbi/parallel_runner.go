@@ -3,6 +3,7 @@ package workflow_sbi
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -113,6 +114,16 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 		return nil
 	}
 
+	// Log fetched SBIs
+	log.Printf("📋 [Parallel] Found %d executable SBIs:", len(sbis))
+	for i, s := range sbis {
+		log.Printf("  %d. SBI %s - %s [%s]",
+			i+1,
+			s.ID().String()[:8],
+			s.Title(),
+			s.Status())
+	}
+
 	// Create conflict detector for this execution batch
 	conflictDetector := service.NewConflictDetector()
 
@@ -120,6 +131,9 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, r.maxParallel) // Semaphore for concurrency control
 	errChan := make(chan error, len(sbis))    // Buffered channel for error collection
+
+	// Track started and skipped SBIs
+	var startedCount, skippedCount int
 
 	for _, currentSBI := range sbis {
 		// Check for cancellation before starting each task
@@ -133,6 +147,8 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 		// Skip if file conflict detected
 		if conflictDetector.HasConflict(currentSBI) {
 			// Skip this SBI to avoid concurrent file modifications
+			log.Printf("⏭️  [Parallel] Skipped SBI %s (file conflict)", currentSBI.ID().String()[:8])
+			skippedCount++
 			continue
 		}
 
@@ -141,6 +157,8 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 		if r.agentPool != nil {
 			if !r.agentPool.TryAcquire(agent) {
 				// Agent pool full for this agent, skip
+				log.Printf("⏭️  [Parallel] Skipped SBI %s (agent %s busy)", currentSBI.ID().String()[:8], agent)
+				skippedCount++
 				continue
 			}
 		}
@@ -152,8 +170,9 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 
 		wg.Add(1)
 		sem <- struct{}{} // Acquire semaphore
+		startedCount++
 
-		go func(s *sbi.SBI, agentName string) {
+		go func(s *sbi.SBI, agentName string, taskNum int) {
 			defer wg.Done()
 			defer func() { <-sem }()             // Release semaphore
 			defer conflictDetector.Unregister(s) // Unregister on goroutine exit
@@ -170,29 +189,42 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 				return
 			}
 
+			log.Printf("🚀 [Parallel #%d] Starting SBI %s - %s", taskNum, s.ID().String()[:8], s.Title())
+
 			sbiLock, err := lockService.AcquireStateLock(ctx, lockID, lock.LockTypeWrite, 10*time.Minute)
 			if err != nil {
+				log.Printf("⚠️  [Parallel #%d] SBI %s failed to acquire lock: %v", taskNum, s.ID().String()[:8], err)
 				errChan <- fmt.Errorf("SBI %s: failed to acquire lock: %w", s.ID(), err)
 				return
 			}
 
 			if sbiLock == nil {
 				// Another worker is processing this SBI, skip
+				log.Printf("⏭️  [Parallel #%d] SBI %s already locked by another worker", taskNum, s.ID().String()[:8])
 				return
 			}
 
 			defer func() {
 				if err := lockService.ReleaseStateLock(ctx, lockID); err != nil {
-					// Log error but don't fail
+					log.Printf("⚠️  [Parallel #%d] SBI %s failed to release lock: %v", taskNum, s.ID().String()[:8], err)
 				}
 			}()
 
 			// Execute turn for this SBI
+			startTime := time.Now()
 			if err := r.executeTurn(ctx, r.container, s.ID().String(), autoFB); err != nil {
+				duration := time.Since(startTime)
+				log.Printf("❌ [Parallel #%d] SBI %s failed after %v: %v", taskNum, s.ID().String()[:8], duration, err)
 				errChan <- fmt.Errorf("SBI %s: %w", s.ID(), err)
+			} else {
+				duration := time.Since(startTime)
+				log.Printf("✅ [Parallel #%d] SBI %s completed in %v", taskNum, s.ID().String()[:8], duration)
 			}
-		}(currentSBI, agent)
+		}(currentSBI, agent, startedCount)
 	}
+
+	// Log execution summary
+	log.Printf("⏳ [Parallel] Waiting for %d tasks to complete (skipped: %d)...", startedCount, skippedCount)
 
 	// Wait for all goroutines to complete
 	wg.Wait()
@@ -204,9 +236,13 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 		errors = append(errors, err)
 	}
 
+	// Log completion summary
 	if len(errors) > 0 {
+		log.Printf("⚠️  [Parallel] Completed with %d errors out of %d tasks", len(errors), startedCount)
 		// Return first error (could be enhanced to return all errors)
 		return fmt.Errorf("parallel execution errors: %v", errors[0])
+	} else {
+		log.Printf("✨ [Parallel] All %d tasks completed successfully", startedCount)
 	}
 
 	return nil

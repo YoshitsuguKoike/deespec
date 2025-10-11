@@ -24,6 +24,22 @@
 
 ### 修正 (Fixed)
 
+* **ロック取得時の競合状態修正**: アトミックなロック獲得による競合排除
+  - 問題: 並列/順次実行で「lock not found」エラーが発生
+  - 根本原因: Check-Then-Act競合状態
+    1. プロセスA: ロック存在確認 → 古いロック検出
+    2. プロセスB: 同じロックを削除
+    3. プロセスA: Release()実行 → ERROR: lock not found
+  - 修正: アトミックなロック獲得パターン実装
+    - 古いロック削除時に「not found」エラーを許容
+    - 削除後に再度ロック存在を確認（他プロセスが再作成した場合を検出）
+    - INSERT時にUNIQUE制約違反を検出（並行挿入の検出）
+  - 追加: `isUniqueConstraintError()`/`isStateLockUniqueConstraintError()`ヘルパー
+  - 効果: 並列/順次実行モードで同じロック判定ロジックを共有し、安定動作を実現
+  - ファイル:
+    - internal/infrastructure/persistence/sqlite/run_lock_repository_impl.go
+    - internal/infrastructure/persistence/sqlite/state_lock_repository_impl.go
+
 * **並列実行モードでの古いロック検出機能追加**: プロセス存在チェックの実装
   - 問題: 並列実行（`--parallel`）が「another instance is already running」でブロック
   - 原因: ロック取得時に期限（expires_at）のみチェック、プロセス存在を確認せず

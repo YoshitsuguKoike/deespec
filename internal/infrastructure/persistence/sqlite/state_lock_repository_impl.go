@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/lock"
@@ -31,38 +32,58 @@ func NewStateLockRepository(db *sql.DB) repository.StateLockRepository {
 	return &StateLockRepositoryImpl{db: db}
 }
 
-// Acquire attempts to acquire a state lock
+// Acquire attempts to acquire a state lock with atomic stale lock cleanup
 func (r *StateLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockID, lockType lock.LockType, ttl time.Duration) (*lock.StateLock, error) {
-	// Check if lock already exists and is valid
+	db := r.getDB(ctx)
+	now := time.Now().UTC()
+
+	// Step 1: Check for existing lock and determine if it's stale
 	existing, err := r.Find(ctx, lockID)
 	if err == nil {
-		// Lock exists - check if expired OR process no longer exists
+		// Lock exists - check if it's stale
 		isStale := existing.IsExpired() || !isStateLockProcessRunning(existing.PID())
 
 		if !isStale {
-			return nil, nil // Lock is held by another active process
+			// Lock is held by an active process
+			return nil, nil
 		}
 
-		// Lock is stale (expired or process dead), remove it first
-		if err := r.Release(ctx, lockID); err != nil {
-			return nil, fmt.Errorf("release stale lock: %w", err)
+		// Atomically delete stale lock
+		// Use a simple DELETE - if another process deleted it first, that's fine
+		result, _ := db.ExecContext(ctx,
+			`DELETE FROM state_locks WHERE lock_id = ? AND (expires_at < ? OR pid = ?)`,
+			lockID.String(),
+			now.Format(time.RFC3339),
+			existing.PID(),
+		)
+
+		// Check if we deleted it (1 row) or someone else did (0 rows)
+		if result != nil {
+			rows, _ := result.RowsAffected()
+			if rows == 0 {
+				// Another process deleted it - verify it's really gone before inserting
+				if stillExists, _ := r.Find(ctx, lockID); stillExists != nil {
+					// Lock was recreated by another process
+					return nil, nil
+				}
+			}
 		}
 	}
 
-	// Create new lock
+	// Step 2: Create new lock
 	stateLock, err := lock.NewStateLock(lockID, lockType, ttl)
 	if err != nil {
 		return nil, fmt.Errorf("create state lock: %w", err)
 	}
 
-	// Insert lock into database
-	query := `
+	// Step 3: Insert new lock
+	// If UNIQUE constraint fails, another process acquired the lock
+	insertQuery := `
 		INSERT INTO state_locks (lock_id, pid, hostname, acquired_at, expires_at, heartbeat_at, lock_type)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
-	db := r.getDB(ctx)
-	_, err = db.ExecContext(ctx, query,
+	_, err = db.ExecContext(ctx, insertQuery,
 		stateLock.LockID().String(),
 		stateLock.PID(),
 		stateLock.Hostname(),
@@ -71,7 +92,13 @@ func (r *StateLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockI
 		stateLock.HeartbeatAt().Format(time.RFC3339),
 		string(stateLock.LockType()),
 	)
+
 	if err != nil {
+		// Check if it's a UNIQUE constraint violation
+		if isStateLockUniqueConstraintError(err) {
+			// Another process acquired the lock first
+			return nil, nil
+		}
 		return nil, fmt.Errorf("insert state lock: %w", err)
 	}
 
@@ -271,4 +298,14 @@ func isStateLockProcessRunning(pid int) bool {
 	cmd := exec.Command("ps", "-p", strconv.Itoa(pid))
 	err := cmd.Run()
 	return err == nil
+}
+
+// isStateLockUniqueConstraintError checks if the error is a UNIQUE constraint violation
+func isStateLockUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// SQLite UNIQUE constraint error messages contain "UNIQUE constraint failed"
+	return strings.Contains(err.Error(), "UNIQUE constraint failed") ||
+		strings.Contains(err.Error(), "constraint failed")
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/lock"
@@ -32,25 +33,46 @@ func NewRunLockRepository(db *sql.DB) repository.RunLockRepository {
 	return &RunLockRepositoryImpl{db: db}
 }
 
-// Acquire attempts to acquire a run lock
+// Acquire attempts to acquire a run lock with atomic stale lock cleanup
 func (r *RunLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockID, ttl time.Duration) (*lock.RunLock, error) {
-	// Check if lock already exists and is valid
+	db := r.getDB(ctx)
+	now := time.Now().UTC()
+
+	// Step 1: Check for existing lock and determine if it's stale
 	existing, err := r.Find(ctx, lockID)
 	if err == nil {
-		// Lock exists - check if expired OR process no longer exists
+		// Lock exists - check if it's stale
 		isStale := existing.IsExpired() || !isProcessRunning(existing.PID())
 
 		if !isStale {
-			return nil, nil // Lock is held by another active process
+			// Lock is held by an active process
+			return nil, nil
 		}
 
-		// Lock is stale (expired or process dead), remove it first
-		if err := r.Release(ctx, lockID); err != nil {
-			return nil, fmt.Errorf("release stale lock: %w", err)
+		// Atomically delete stale lock
+		// Use a simple DELETE - if another process deleted it first, that's fine
+		result, _ := db.ExecContext(ctx,
+			`DELETE FROM run_locks WHERE lock_id = ? AND (expires_at < ? OR pid = ?)`,
+			lockID.String(),
+			now.Format(time.RFC3339),
+			existing.PID(),
+		)
+
+		// Check if we deleted it (1 row) or someone else did (0 rows)
+		// Either way, we can proceed to insert
+		if result != nil {
+			rows, _ := result.RowsAffected()
+			if rows == 0 {
+				// Another process deleted it - verify it's really gone before inserting
+				if stillExists, _ := r.Find(ctx, lockID); stillExists != nil {
+					// Lock was recreated by another process
+					return nil, nil
+				}
+			}
 		}
 	}
 
-	// Create new lock
+	// Step 2: Create new lock
 	runLock, err := lock.NewRunLock(lockID, ttl)
 	if err != nil {
 		return nil, fmt.Errorf("create run lock: %w", err)
@@ -62,14 +84,14 @@ func (r *RunLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockID,
 		return nil, fmt.Errorf("marshal metadata: %w", err)
 	}
 
-	// Insert lock into database
-	query := `
+	// Step 3: Insert new lock
+	// If UNIQUE constraint fails, another process acquired the lock
+	insertQuery := `
 		INSERT INTO run_locks (lock_id, pid, hostname, acquired_at, expires_at, heartbeat_at, metadata)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
-	db := r.getDB(ctx)
-	_, err = db.ExecContext(ctx, query,
+	_, err = db.ExecContext(ctx, insertQuery,
 		runLock.LockID().String(),
 		runLock.PID(),
 		runLock.Hostname(),
@@ -78,7 +100,13 @@ func (r *RunLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockID,
 		runLock.HeartbeatAt().Format(time.RFC3339),
 		string(metadataJSON),
 	)
+
 	if err != nil {
+		// Check if it's a UNIQUE constraint violation
+		if isUniqueConstraintError(err) {
+			// Another process acquired the lock first
+			return nil, nil
+		}
 		return nil, fmt.Errorf("insert run lock: %w", err)
 	}
 
@@ -292,4 +320,14 @@ func isProcessRunning(pid int) bool {
 	cmd := exec.Command("ps", "-p", strconv.Itoa(pid))
 	err := cmd.Run()
 	return err == nil
+}
+
+// isUniqueConstraintError checks if the error is a UNIQUE constraint violation
+func isUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// SQLite UNIQUE constraint error messages contain "UNIQUE constraint failed"
+	return strings.Contains(err.Error(), "UNIQUE constraint failed") ||
+		strings.Contains(err.Error(), "constraint failed")
 }

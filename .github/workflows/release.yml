@@ -26,8 +26,10 @@ jobs:
           mkdir -p dist
           EXT=""
           if [ "${{ matrix.goos }}" = "windows" ]; then EXT=".exe"; fi
+          VERSION="${{ github.ref_name }}"
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
-          go build -o dist/deespec_${{ matrix.goos }}_${{ matrix.goarch }}$EXT ./cmd/deespec
+          go build -ldflags "-X github.com/YoshitsuguKoike/deespec/internal/buildinfo.Version=${VERSION}" \
+            -o dist/deespec_${{ matrix.goos }}_${{ matrix.goarch }}$EXT ./cmd/deespec
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

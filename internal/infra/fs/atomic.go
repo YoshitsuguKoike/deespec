@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 )
 
 // AtomicWriteJSON writes JSON atomically with fsync(file) and fsync(parent dir),
@@ -98,11 +97,11 @@ func AppendNDJSONLine(path string, record interface{}) error {
 	// Acquire exclusive file lock using flock
 	// This prevents concurrent writes from corrupting the file
 	// LOCK_EX = exclusive lock (no other process can hold any lock)
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+	if err := flockExclusive(f); err != nil {
 		return fmt.Errorf("append ndjson: failed to acquire file lock: %w", err)
 	}
 	// Release lock when function returns (defer ensures this happens)
-	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	defer flockUnlock(f)
 
 	// Marshal record to JSON (single line, no indentation for NDJSON)
 	jsonBytes, err := json.Marshal(record)

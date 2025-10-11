@@ -4,7 +4,21 @@
 
 ## \[Unreleased]
 
+---
+
+## \[v0.2.1] - 2025-10-11
+
 ### 修正 (Fixed)
+
+* **Windowsクロスビルド対応**: プラットフォーム固有のシステムコールを抽象化
+  - 問題: `syscall.Flock`と`syscall.SIGTSTP`がWindowsビルドでundefinedエラー
+  - 修正: ビルドタグを使用してUNIX/Windows実装を分離
+  - ファイル追加:
+    - internal/infra/fs/flock_unix.go: UNIX系システム用のflock実装
+    - internal/infra/fs/flock_windows.go: Windows用のno-op実装
+    - internal/interface/cli/run/signal_unix.go: UNIX用シグナルハンドリング
+    - internal/interface/cli/run/signal_windows.go: Windows用シグナルハンドリング
+  - 効果: 全プラットフォーム (windows/linux/darwin × amd64/arm64) でビルド成功
 
 * **強制終了ロジックの根本的なバグ修正**: 二重遷移問題を完全に解決
   - 問題: Turn 4で追加された修正が不完全で、新たな無効遷移バグを導入していた

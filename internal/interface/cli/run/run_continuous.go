@@ -8,7 +8,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/application/dto"
@@ -26,17 +25,13 @@ func SetupSignalHandler() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan,
-		os.Interrupt,    // Ctrl+C (SIGINT)
-		syscall.SIGTERM, // kill command
-		syscall.SIGTSTP, // Ctrl+Z
-	)
+	signal.Notify(sigChan, getSignalsToHandle()...)
 
 	go func() {
 		sig := <-sigChan
 
-		// Show specific message for Ctrl+Z
-		if sig == syscall.SIGTSTP {
+		// Show specific message for Ctrl+Z (Unix only)
+		if isSIGTSTP(sig) {
 			common.Warn("\n⚠️  Ctrl+Z detected. Initiating graceful shutdown...\n")
 			common.Info("💡 Tip: Use Ctrl+C to stop the process in the future.\n")
 		} else {

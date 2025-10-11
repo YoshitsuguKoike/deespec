@@ -6,6 +6,37 @@
 
 ### 追加 (Added)
 
+* **並列実行機能の完全実装**: Clean Architectureに基づく適切な関心の分離
+  - **CLI層でのRunLock管理**: run.goが最上位でRunLockを1回取得・解放
+  - **UseCaseからRunLock削除**: ビジネスロジックがプロセス間排他を意識しない設計
+  - **並列実行専用関数**: ExecuteSingleSBI()とExecuteForSBI()の実装
+  - **2層ロックシステム**:
+    - RunLock: システム全体（Lock ID: "system-runlock"）
+    - StateLock: SBI個別（Lock ID: "sbi-<SBI_ID>"）
+  - **並列実行ログの改善**:
+    - 📋 [Parallel] Found N executable SBIs: 実行候補一覧
+    - 🚀 [Parallel #N] Starting/Completed: タスク番号付き進捗
+    - ⏭️ Skipped理由表示: ファイル競合、エージェント使用中
+    - ✅/❌ 完了状態とエラー: 実行時間表示
+    - ✨ 全体サマリー: 成功/失敗の統計
+  - **効果**:
+    - 並列実行が正常動作（`--parallel 3`で3タスク同時実行成功）
+    - 順次実行との完全な互換性維持
+    - テスト容易性向上（UseCaseがRunLockのモック不要）
+    - コード再利用性向上（実行モードに依存しない設計）
+  - **アーキテクチャ**:
+    ```
+    CLI層: RunLock取得 → UseCase実行 → RunLock解放
+    UseCase層: ビジネスロジックのみ（ロック不要）
+    並列実行: CLI層で1回RunLock → 各SBIはStateLockのみ
+    ```
+  - **ファイル**:
+    - internal/application/usecase/execution/run_turn_use_case.go
+    - internal/interface/cli/run/run.go
+    - internal/interface/cli/workflow_sbi/parallel_runner.go
+
+### 追加 (Added)
+
 * **テストカバレッジ強化**: Repository層の包括的なテスト追加
   - journal_repository_impl_test.go: 7つの新規テスト追加
     - 空タイムスタンプ正規化テスト

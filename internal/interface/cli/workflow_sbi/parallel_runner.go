@@ -31,6 +31,15 @@ type ParallelSBIWorkflowRunner struct {
 	mu          sync.RWMutex       // Protects enabled flag
 }
 
+// truncateID safely truncates an ID string to the specified length
+// Returns the full ID if it's shorter than maxLen
+func truncateID(id string, maxLen int) string {
+	if len(id) <= maxLen {
+		return id
+	}
+	return id[:maxLen]
+}
+
 // NewParallelSBIWorkflowRunner creates a new parallel SBI workflow runner
 func NewParallelSBIWorkflowRunner(container *di.Container, maxParallel int, executeTurn ExecuteTurnFunc) *ParallelSBIWorkflowRunner {
 	if maxParallel < 1 {
@@ -119,7 +128,7 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 	for i, s := range sbis {
 		log.Printf("  %d. SBI %s - %s [%s]",
 			i+1,
-			s.ID().String()[:8],
+			truncateID(s.ID().String(), 8),
 			s.Title(),
 			s.Status())
 	}
@@ -147,7 +156,7 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 		// Skip if file conflict detected
 		if conflictDetector.HasConflict(currentSBI) {
 			// Skip this SBI to avoid concurrent file modifications
-			log.Printf("⏭️  [Parallel] Skipped SBI %s (file conflict)", currentSBI.ID().String()[:8])
+			log.Printf("⏭️  [Parallel] Skipped SBI %s (file conflict)", truncateID(currentSBI.ID().String(), 8))
 			skippedCount++
 			continue
 		}
@@ -157,7 +166,7 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 		if r.agentPool != nil {
 			if !r.agentPool.TryAcquire(agent) {
 				// Agent pool full for this agent, skip
-				log.Printf("⏭️  [Parallel] Skipped SBI %s (agent %s busy)", currentSBI.ID().String()[:8], agent)
+				log.Printf("⏭️  [Parallel] Skipped SBI %s (agent %s busy)", truncateID(currentSBI.ID().String(), 8), agent)
 				skippedCount++
 				continue
 			}
@@ -189,24 +198,24 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 				return
 			}
 
-			log.Printf("🚀 [Parallel #%d] Starting SBI %s - %s", taskNum, s.ID().String()[:8], s.Title())
+			log.Printf("🚀 [Parallel #%d] Starting SBI %s - %s", taskNum, truncateID(s.ID().String(), 8), s.Title())
 
 			sbiLock, err := lockService.AcquireStateLock(ctx, lockID, lock.LockTypeWrite, 10*time.Minute)
 			if err != nil {
-				log.Printf("⚠️  [Parallel #%d] SBI %s failed to acquire lock: %v", taskNum, s.ID().String()[:8], err)
+				log.Printf("⚠️  [Parallel #%d] SBI %s failed to acquire lock: %v", taskNum, truncateID(s.ID().String(), 8), err)
 				errChan <- fmt.Errorf("SBI %s: failed to acquire lock: %w", s.ID(), err)
 				return
 			}
 
 			if sbiLock == nil {
 				// Another worker is processing this SBI, skip
-				log.Printf("⏭️  [Parallel #%d] SBI %s already locked by another worker", taskNum, s.ID().String()[:8])
+				log.Printf("⏭️  [Parallel #%d] SBI %s already locked by another worker", taskNum, truncateID(s.ID().String(), 8))
 				return
 			}
 
 			defer func() {
 				if err := lockService.ReleaseStateLock(ctx, lockID); err != nil {
-					log.Printf("⚠️  [Parallel #%d] SBI %s failed to release lock: %v", taskNum, s.ID().String()[:8], err)
+					log.Printf("⚠️  [Parallel #%d] SBI %s failed to release lock: %v", taskNum, truncateID(s.ID().String(), 8), err)
 				}
 			}()
 
@@ -214,11 +223,11 @@ func (r *ParallelSBIWorkflowRunner) Run(ctx context.Context, config workflow.Wor
 			startTime := time.Now()
 			if err := r.executeTurn(ctx, r.container, s.ID().String(), autoFB); err != nil {
 				duration := time.Since(startTime)
-				log.Printf("❌ [Parallel #%d] SBI %s failed after %v: %v", taskNum, s.ID().String()[:8], duration, err)
+				log.Printf("❌ [Parallel #%d] SBI %s failed after %v: %v", taskNum, truncateID(s.ID().String(), 8), duration, err)
 				errChan <- fmt.Errorf("SBI %s: %w", s.ID(), err)
 			} else {
 				duration := time.Since(startTime)
-				log.Printf("✅ [Parallel #%d] SBI %s completed in %v", taskNum, s.ID().String()[:8], duration)
+				log.Printf("✅ [Parallel #%d] SBI %s completed in %v", taskNum, truncateID(s.ID().String(), 8), duration)
 			}
 		}(currentSBI, agent, startedCount)
 	}

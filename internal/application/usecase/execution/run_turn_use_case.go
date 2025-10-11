@@ -132,8 +132,8 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 
 	// 4. Check turn limit
 	if currentTurn > uc.maxTurns {
-		// Force termination
-		if err := currentSBI.UpdateStatus(currentSBI.Status()); err != nil {
+		// Force termination - transition to DONE status
+		if err := currentSBI.UpdateStatus(model.StatusDone); err != nil {
 			return nil, fmt.Errorf("failed to mark SBI as done: %w", err)
 		}
 		if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {

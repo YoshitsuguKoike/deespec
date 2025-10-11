@@ -1005,17 +1005,14 @@ func TestEPICRepository_MetadataUpdates(t *testing.T) {
 		t.Fatalf("Failed to save EPIC: %v", err)
 	}
 
-	// Update priority
-	err = e.UpdatePriority(1)
-	if err != nil {
-		t.Fatalf("Failed to update priority: %v", err)
+	// Update metadata using UpdateMetadata method
+	newMetadata := epic.EPICMetadata{
+		EstimatedStoryPoints: 8,
+		Priority:             1,
+		Labels:               []string{"frontend", "ui", "critical"},
+		AssignedAgent:        "gemini-cli",
 	}
-
-	// Update labels
-	e.UpdateLabels([]string{"frontend", "ui", "critical"})
-
-	// Update agent
-	e.UpdateAssignedAgent("gemini-cli")
+	e.UpdateMetadata(newMetadata)
 
 	// Save updated EPIC
 	err = repo.Save(ctx, e)
@@ -1029,17 +1026,21 @@ func TestEPICRepository_MetadataUpdates(t *testing.T) {
 		t.Fatalf("Failed to find EPIC: %v", err)
 	}
 
-	if found.Priority() != 1 {
-		t.Errorf("Expected priority 1, got %d", found.Priority())
+	metadata := found.Metadata()
+	if metadata.Priority != 1 {
+		t.Errorf("Expected priority 1, got %d", metadata.Priority)
 	}
 
-	labels := found.Labels()
-	if len(labels) != 3 {
-		t.Errorf("Expected 3 labels, got %d", len(labels))
+	if len(metadata.Labels) != 3 {
+		t.Errorf("Expected 3 labels, got %d", len(metadata.Labels))
 	}
 
-	if found.AssignedAgent() != "gemini-cli" {
-		t.Errorf("Expected agent 'gemini-cli', got '%s'", found.AssignedAgent())
+	if metadata.AssignedAgent != "gemini-cli" {
+		t.Errorf("Expected agent 'gemini-cli', got '%s'", metadata.AssignedAgent)
+	}
+
+	if metadata.EstimatedStoryPoints != 8 {
+		t.Errorf("Expected estimated story points 8, got %d", metadata.EstimatedStoryPoints)
 	}
 }
 

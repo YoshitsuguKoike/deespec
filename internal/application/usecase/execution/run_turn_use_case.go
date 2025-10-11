@@ -217,12 +217,31 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 	currentSBI.IncrementTurn()
 	// TODO: Add method to update attempt if needed
 
+	// 7.5. Generate done.md if transitioning to DONE status
+	var doneArtifactPath string
+	if nextStatus == model.StatusDone {
+		doneArtifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/done.md", currentSBI.ID().String())
+		doneStepOutput, err := uc.executeStepForSBI(ctx, currentSBI, currentTurn, currentAttempt)
+		if err != nil {
+			// Log warning but don't fail - done.md is optional
+			fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to generate done.md\n")
+			fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+		} else if doneStepOutput.Success {
+			doneArtifactPath = doneStepOutput.ArtifactPath
+		}
+	}
+
 	// 8. Save SBI to DB
 	if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
 		return nil, fmt.Errorf("failed to save SBI to DB: %w", err)
 	}
 
 	// 9. Write journal entry
+	artifacts := []interface{}{stepOutput.ArtifactPath}
+	if doneArtifactPath != "" {
+		artifacts = append(artifacts, doneArtifactPath)
+	}
+
 	journalRecord := &repository.JournalRecord{
 		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		SBIID:     currentSBI.ID().String(),
@@ -233,7 +252,7 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		Decision:  stepOutput.Decision,
 		ElapsedMs: time.Since(startTime).Milliseconds(),
 		Error:     stepOutput.ErrorMsg,
-		Artifacts: []interface{}{stepOutput.ArtifactPath},
+		Artifacts: artifacts,
 	}
 
 	if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
@@ -280,7 +299,13 @@ func (uc *RunTurnUseCase) executeStepForSBI(ctx context.Context, sbiEntity *sbi.
 	step := uc.statusToStep(currentStatus)
 
 	// Determine artifact path
-	artifactPath := fmt.Sprintf(".deespec/specs/sbi/%s/%s_%d.md", sbiID, step, turn)
+	// Special case: done.md has no turn suffix
+	var artifactPath string
+	if step == "done" {
+		artifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/done.md", sbiID)
+	} else {
+		artifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/%s_%d.md", sbiID, step, turn)
+	}
 
 	// Build prompt with artifact generation instruction
 	prompt := uc.buildPromptWithArtifact(sbiEntity, step, turn, attempt, artifactPath)
@@ -376,6 +401,11 @@ func (uc *RunTurnUseCase) buildPromptWithArtifact(sbiEntity *sbi.SBI, step strin
 		data.ImplementPath = fmt.Sprintf(".deespec/specs/sbi/%s/implement_%d.md", sbiID, turn-1)
 	case "force_implement":
 		templatePath = ".deespec/prompts/REVIEW_AND_WIP.md"
+	case "done":
+		templatePath = ".deespec/prompts/DONE.md"
+		// Collect all implement and review paths
+		data.AllImplementPaths = uc.collectImplementPaths(sbiID, turn)
+		data.AllReviewPaths = uc.collectReviewPaths(sbiID, turn)
 	default:
 		// Fallback to simple prompt if no template found
 		return fmt.Sprintf("Execute step %s for SBI %s (turn %d, attempt %d)", step, sbiID, turn, attempt)
@@ -395,18 +425,20 @@ func (uc *RunTurnUseCase) buildPromptWithArtifact(sbiEntity *sbi.SBI, step strin
 
 // PromptTemplateData holds data for template expansion
 type PromptTemplateData struct {
-	WorkDir         string
-	SBIID           string
-	Title           string
-	Description     string
-	Turn            int
-	Attempt         int
-	Step            string
-	SBIDir          string
-	ArtifactPath    string
-	ImplementPath   string
-	PriorContext    string
-	TaskDescription string
+	WorkDir           string
+	SBIID             string
+	Title             string
+	Description       string
+	Turn              int
+	Attempt           int
+	Step              string
+	SBIDir            string
+	ArtifactPath      string
+	ImplementPath     string
+	AllImplementPaths []string
+	AllReviewPaths    []string
+	PriorContext      string
+	TaskDescription   string
 }
 
 // expandTemplate reads a template file and expands it with given data
@@ -519,6 +551,33 @@ The report should include:
 
 Use the Write tool to create this file with your full implementation report.
 `, priorContext, sbiID, title, description, turn, attempt, artifactPath)
+
+	case "done":
+		return fmt.Sprintf(`%s# Task Completion Report
+
+**SBI ID**: %s
+**Title**: %s
+**Description**: %s
+**Final Turn**: %d
+
+## Context
+
+This task has been completed. Please create a comprehensive completion report.
+
+Write your complete completion report to the file:
+
+**Output File**: %s
+
+The report should include:
+1. Task overview and what was accomplished
+2. Implementation approach and key decisions
+3. Files modified and major changes
+4. Challenges encountered and solutions
+5. Testing approach and results
+6. Technical debt or follow-up items
+
+Use the Write tool to create this file with your full completion report.
+`, priorContext, sbiID, title, description, turn, artifactPath)
 
 	default:
 		return fmt.Sprintf("Execute step %s for SBI %s (turn %d, attempt %d)", step, sbiID, turn, attempt)
@@ -707,4 +766,36 @@ func (uc *RunTurnUseCase) determineNextStatus(currentStatus string, decision str
 		// Unknown status, default to READY
 		return "READY", false
 	}
+}
+
+// collectImplementPaths collects all implement_N.md paths for an SBI
+func (uc *RunTurnUseCase) collectImplementPaths(sbiID string, maxTurn int) []string {
+	var paths []string
+	sbiDir := fmt.Sprintf(".deespec/specs/sbi/%s", sbiID)
+
+	// Check for implement files from turn 1 to maxTurn
+	for turn := 1; turn < maxTurn; turn++ {
+		implementPath := filepath.Join(sbiDir, fmt.Sprintf("implement_%d.md", turn))
+		if _, err := os.Stat(implementPath); err == nil {
+			paths = append(paths, implementPath)
+		}
+	}
+
+	return paths
+}
+
+// collectReviewPaths collects all review_N.md paths for an SBI
+func (uc *RunTurnUseCase) collectReviewPaths(sbiID string, maxTurn int) []string {
+	var paths []string
+	sbiDir := fmt.Sprintf(".deespec/specs/sbi/%s", sbiID)
+
+	// Check for review files from turn 1 to maxTurn
+	for turn := 1; turn < maxTurn; turn++ {
+		reviewPath := filepath.Join(sbiDir, fmt.Sprintf("review_%d.md", turn))
+		if _, err := os.Stat(reviewPath); err == nil {
+			paths = append(paths, reviewPath)
+		}
+	}
+
+	return paths
 }

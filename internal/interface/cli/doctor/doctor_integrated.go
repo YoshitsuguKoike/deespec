@@ -18,12 +18,18 @@ import (
 func NewCommand() *cobra.Command {
 	var format string
 	var jsonOutput bool
+	var repairJournal bool
 
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Check environment & configuration (integrated validation)",
 		Long:  "Performs comprehensive validation of all deespec components",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Handle repair-journal flag first
+			if repairJournal {
+				return runRepairJournal()
+			}
+
 			// Support legacy --json flag for config info
 			if jsonOutput {
 				return runDoctorJSON()
@@ -74,6 +80,7 @@ func NewCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&format, "format", "", "Output format (json for CI integration)")
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output config info in JSON format (legacy)")
+	cmd.Flags().BoolVar(&repairJournal, "repair-journal", false, "Repair corrupted journal.ndjson file")
 
 	return cmd
 }

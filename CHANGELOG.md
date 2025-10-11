@@ -6,6 +6,48 @@
 
 ### 追加 (Added)
 
+* **done.mdレポート生成機能 (Phase 2)**:
+  - `.deespec/prompts/DONE.md` テンプレート追加: タスク完了時の包括的レポート生成
+  - Status=DONE遷移時に自動的にdone.mdを生成
+  - `AllImplementPaths`, `AllReviewPaths`フィールド追加: 全実装・レビュー履歴を参照可能
+  - `collectImplementPaths()`, `collectReviewPaths()`: 過去の全アーティファクトパス収集関数
+  - done.mdファイルは`done.md`として保存（turnサフィックスなし）
+  - テンプレート変数: `{{.AllImplementPaths}}`, `{{.AllReviewPaths}}`追加
+  - 生成失敗時は警告のみで処理継続（非致命的エラー）
+
+* **Journal書き込み堅牢化 (Phase 3)**:
+  - **NDJSON形式への完全移行**:
+    - JSON配列形式からNewline Delimited JSON形式に変更
+    - `AppendNDJSONLine()` 関数実装: 行単位のアトミック追記
+    - O(1)の追記操作で大量エントリでもパフォーマンス劣化なし
+  - **ファイルロック機構の実装**:
+    - `syscall.Flock`による排他ロック（LOCK_EX）実装
+    - 並行書き込み時のファイル破損を完全防止
+    - ロック取得・解放の確実な管理（defer使用）
+  - **Atomic Write + fsync実装**:
+    - `O_APPEND`フラグによるPOSIXアトミック書き込み
+    - `FsyncFile()`による永続化保証（クラッシュリカバリ対応）
+    - 3層防御: OS層（flock）、FS層（O_APPEND）、アプリ層（fsync）
+  - **journal_repository_impl.go完全書き換え**:
+    - `Append()`: NDJSON形式での追記（ファイルロック付き）
+    - `Load()`: 行単位読み込み、破損行は警告してスキップ
+    - 後方互換性: `timestamp`/`ts`両フィールド対応
+    - エラー耐性: 破損したjournal.ndjsonでも有効行のみ処理継続
+  - **journal修復機能（既存実装の確認）**:
+    - `doctor --repair-journal`: 破損したjournal.ndjsonの自動修復
+    - バックアップ作成後、有効な行のみで再構築
+    - タイムスタンプ付きバックアップファイル生成
+
+* **ワークフロー改善ドキュメント**:
+  - `docs/workflow_step_improvements.md`: Phase 1-4の詳細な実装計画
+  - 問題分析、解決策提案、移行プラン、テスト計画を記載
+  - Phase 1（Turn番号・Step表示修正）: 完了
+  - Phase 2（done.mdレポート生成）: 完了
+  - Phase 3（Journal堅牢化）: 完了
+  - Phase 4（Stepフィールドリファクタリング）: オプション（実施不要と判断）
+
+### 追加 (Added)
+
 * **clearコマンドのDB対応**: データベースデータの物理削除機能を追加
   - `clearDatabase()`: 全タスクテーブル（sbis, pbis, epics等）の物理削除
   - トランザクション内で安全に削除（task_labels, epic_pbis, pbi_sbis → sbis, pbis, epics の順序）

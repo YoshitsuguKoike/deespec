@@ -165,8 +165,30 @@ func (b *BaseTask) UpdateStatus(newStatus model.Status) error {
 	}
 
 	b.status = newStatus
+	// Automatically update step based on status
+	b.currentStep = b.deriveStepFromStatus(newStatus)
 	b.updatedAt = model.NewTimestamp()
 	return nil
+}
+
+// deriveStepFromStatus returns the appropriate step for a given status
+func (b *BaseTask) deriveStepFromStatus(status model.Status) model.Step {
+	switch status {
+	case model.StatusPending:
+		return model.StepPick
+	case model.StatusPicked:
+		return model.StepPick
+	case model.StatusImplementing:
+		return model.StepImplement
+	case model.StatusReviewing:
+		return model.StepReview
+	case model.StatusDone:
+		return model.StepDone
+	case model.StatusFailed:
+		return model.StepDone
+	default:
+		return model.StepPick
+	}
 }
 
 // UpdateStep moves to a new workflow step

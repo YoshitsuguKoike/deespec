@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 )
 
 // AtomicWriteJSON writes JSON atomically with fsync(file) and fsync(parent dir),
@@ -63,4 +64,66 @@ func AcquireLock(lockPath string) (release func() error, err error) {
 		_ = f.Close()
 	}
 	return func() error { return os.Remove(lockPath) }, nil
+}
+
+// AppendNDJSONLine appends a single JSON line to an NDJSON file with file locking.
+// This function ensures safe concurrent writes by using flock(2) for exclusive locking.
+// The JSON object is marshaled to a single line (no indentation) and appended with a newline.
+//
+// Key features:
+// - File locking (flock LOCK_EX) prevents concurrent write corruption
+// - Atomic append operation (O_APPEND ensures atomic writes on POSIX systems)
+// - fsync guarantees durability before returning
+// - Automatic directory creation if needed
+//
+// Error handling:
+// - Returns error if JSON marshaling fails
+// - Returns error if file operations fail
+// - Lock is always released even if write fails
+func AppendNDJSONLine(path string, record interface{}) error {
+	// Ensure parent directory exists
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("append ndjson: failed to create directory: %w", err)
+	}
+
+	// Open file in append mode (create if not exists)
+	// O_APPEND ensures atomic writes at end of file on POSIX systems
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("append ndjson: failed to open file: %w", err)
+	}
+	defer f.Close()
+
+	// Acquire exclusive file lock using flock
+	// This prevents concurrent writes from corrupting the file
+	// LOCK_EX = exclusive lock (no other process can hold any lock)
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		return fmt.Errorf("append ndjson: failed to acquire file lock: %w", err)
+	}
+	// Release lock when function returns (defer ensures this happens)
+	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+
+	// Marshal record to JSON (single line, no indentation for NDJSON)
+	jsonBytes, err := json.Marshal(record)
+	if err != nil {
+		return fmt.Errorf("append ndjson: failed to marshal record: %w", err)
+	}
+
+	// Append newline to create NDJSON format (one JSON object per line)
+	line := append(jsonBytes, '\n')
+
+	// Write the complete line atomically
+	// O_APPEND flag ensures this write goes to end of file atomically
+	if _, err := f.Write(line); err != nil {
+		return fmt.Errorf("append ndjson: failed to write line: %w", err)
+	}
+
+	// fsync ensures data is written to persistent storage
+	// This guarantees durability even if system crashes after this call
+	if err := FsyncFile(f); err != nil {
+		return fmt.Errorf("append ndjson: failed to sync file: %w", err)
+	}
+
+	return nil
 }

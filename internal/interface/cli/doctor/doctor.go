@@ -77,11 +77,15 @@ type DoctorSummaryJSON struct {
 func newDoctorCmd() *cobra.Command {
 	var jsonOutput bool
 	var format string
+	var repairJournal bool
 
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Check environment & configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if repairJournal {
+				return runRepairJournal()
+			}
 			if jsonOutput {
 				return runDoctorJSON()
 			}
@@ -244,6 +248,7 @@ func newDoctorCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	cmd.Flags().StringVar(&format, "format", "", "Output format (json for CI integration)")
+	cmd.Flags().BoolVar(&repairJournal, "repair-journal", false, "Repair corrupted journal.ndjson file")
 	return cmd
 }
 
@@ -956,6 +961,84 @@ func checkSBIMetaTemplate(path string) error {
 			return fmt.Errorf("missing required field '%s'", field)
 		}
 	}
+
+	return nil
+}
+
+// runRepairJournal repairs a corrupted journal.ndjson file
+func runRepairJournal() error {
+	paths := app.GetPathsWithConfig(common.GetGlobalConfig())
+	journalPath := paths.Journal
+
+	fmt.Printf("Repairing journal file: %s\n", journalPath)
+
+	// Check if file exists
+	if _, err := os.Stat(journalPath); os.IsNotExist(err) {
+		fmt.Println("ERROR: journal.ndjson not found")
+		return fmt.Errorf("journal file not found at %s", journalPath)
+	}
+
+	// Read the journal file
+	content, err := os.ReadFile(journalPath)
+	if err != nil {
+		return fmt.Errorf("failed to read journal file: %w", err)
+	}
+
+	if len(content) == 0 {
+		fmt.Println("INFO: journal.ndjson is empty (nothing to repair)")
+		return nil
+	}
+
+	// Parse and validate each line
+	lines := strings.Split(string(content), "\n")
+	validLines := []string{}
+	invalidCount := 0
+
+	for i, line := range lines {
+		// Skip empty lines
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		// Try to parse as JSON
+		var entry map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: Skipping invalid line %d: %v\n", i+1, err)
+			invalidCount++
+			continue
+		}
+
+		// Valid JSON line
+		validLines = append(validLines, line)
+	}
+
+	if invalidCount == 0 {
+		fmt.Println("OK: No corrupted lines found in journal.ndjson")
+		return nil
+	}
+
+	fmt.Printf("Found %d valid lines and %d invalid lines\n", len(validLines), invalidCount)
+
+	// Create backup
+	backupPath := journalPath + ".backup." + time.Now().Format("20060102-150405")
+	if err := os.Rename(journalPath, backupPath); err != nil {
+		return fmt.Errorf("failed to create backup: %w", err)
+	}
+	fmt.Printf("Backup created: %s\n", backupPath)
+
+	// Write repaired journal
+	repaired := strings.Join(validLines, "\n")
+	if len(validLines) > 0 {
+		repaired += "\n" // Ensure trailing newline
+	}
+	if err := os.WriteFile(journalPath, []byte(repaired), 0644); err != nil {
+		// Try to restore backup if write fails
+		os.Rename(backupPath, journalPath)
+		return fmt.Errorf("failed to write repaired file: %w", err)
+	}
+
+	fmt.Printf("SUCCESS: Journal repaired with %d valid lines\n", len(validLines))
+	fmt.Printf("Removed %d corrupted lines\n", invalidCount)
 
 	return nil
 }

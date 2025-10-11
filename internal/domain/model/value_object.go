@@ -141,15 +141,15 @@ type Turn struct {
 	value int
 }
 
-// NewTurn creates a new Turn starting from 1
+// NewTurn creates a new Turn starting from 0
 func NewTurn() Turn {
-	return Turn{value: 1}
+	return Turn{value: 0}
 }
 
 // NewTurnFromInt creates a Turn from an integer value
 func NewTurnFromInt(value int) (Turn, error) {
-	if value < 1 {
-		return Turn{}, errors.New("turn value must be at least 1")
+	if value < 0 {
+		return Turn{}, errors.New("turn value must be at least 0")
 	}
 	return Turn{value: value}, nil
 }

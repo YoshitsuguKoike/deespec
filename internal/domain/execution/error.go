@@ -97,3 +97,21 @@ func IsMaxAttempts(err error) bool {
 	execErr, ok := err.(ExecutionError)
 	return ok && execErr.Code == ErrMaxAttemptsReached.Code
 }
+
+// IsInvalidTransition checks if the error is an invalid transition error
+func IsInvalidTransition(err error) bool {
+	execErr, ok := err.(ExecutionError)
+	return ok && execErr.Code == ErrInvalidTransition.Code
+}
+
+// IsInvalidDecision checks if the error is an invalid decision error
+func IsInvalidDecision(err error) bool {
+	execErr, ok := err.(ExecutionError)
+	return ok && execErr.Code == ErrInvalidDecision.Code
+}
+
+// IsExecutionStuck checks if the error is an execution stuck error
+func IsExecutionStuck(err error) bool {
+	execErr, ok := err.(ExecutionError)
+	return ok && execErr.Code == ErrExecutionStuck.Code
+}

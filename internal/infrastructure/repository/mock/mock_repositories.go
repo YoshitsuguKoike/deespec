@@ -182,7 +182,7 @@ func (m *MockPBIRepository) Save(ctx context.Context, p *pbi.PBI) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.pbis[p.ID().String()] = p
+	m.pbis[p.ID] = p
 	return nil
 }
 

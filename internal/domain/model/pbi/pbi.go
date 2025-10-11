@@ -2,207 +2,142 @@ package pbi
 
 import (
 	"errors"
+	"fmt"
+	"path/filepath"
 	"time"
-
-	"github.com/YoshitsuguKoike/deespec/internal/domain/model"
-	"github.com/YoshitsuguKoike/deespec/internal/domain/model/task"
 )
 
-// PBI represents a Product Backlog Item (medium-sized task)
-// PBI can optionally belong to an EPIC and can contain multiple SBIs
-// PBI is an aggregate root in DDD terms
+// PBI represents a Product Backlog Item
+// Note: Body content is stored in .deespec/specs/pbi/{id}/pbi.md, not in the database
 type PBI struct {
-	base     *task.BaseTask
-	sbiIDs   []model.TaskID // Child SBI IDs
-	metadata PBIMetadata
+	ID                   string
+	Title                string // Extracted from H1 in pbi.md
+	Status               Status
+	EstimatedStoryPoints int
+	Priority             Priority
+	ParentEpicID         string // Optional parent EPIC ID
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
-// PBIMetadata contains PBI-specific metadata
-type PBIMetadata struct {
-	StoryPoints        int
-	Priority           int
-	Labels             []string
-	AssignedAgent      string // e.g., "claude-code", "gemini-cli"
-	AcceptanceCriteria []string
-}
+// Status represents the PBI status (5 stages)
+type Status string
 
-// NewPBI creates a new PBI
-func NewPBI(title, description string, parentEPICID *model.TaskID, metadata PBIMetadata) (*PBI, error) {
-	baseTask, err := task.NewBaseTask(
-		model.TaskTypePBI,
-		title,
-		description,
-		parentEPICID, // PBI can optionally have an EPIC as parent
-	)
-	if err != nil {
-		return nil, err
-	}
+const (
+	StatusPending    Status = "pending"     // 未着手
+	StatusPlanning   Status = "planning"    // 計画中
+	StatusPlaned     Status = "planed"      // 計画完了
+	StatusInProgress Status = "in_progress" // 実行中
+	StatusDone       Status = "done"        // 完了
+)
 
+// Priority represents the PBI priority
+type Priority int
+
+const (
+	PriorityNormal Priority = 0 // 通常
+	PriorityHigh   Priority = 1 // 高
+	PriorityUrgent Priority = 2 // 緊急
+)
+
+// NewPBI creates a new PBI with default values
+func NewPBI(title string) *PBI {
+	now := time.Now()
 	return &PBI{
-		base:     baseTask,
-		sbiIDs:   []model.TaskID{},
-		metadata: metadata,
-	}, nil
-}
-
-// ReconstructPBI reconstructs a PBI from stored data
-func ReconstructPBI(
-	id model.TaskID,
-	title string,
-	description string,
-	status model.Status,
-	currentStep model.Step,
-	parentEPICID *model.TaskID,
-	sbiIDs []model.TaskID,
-	metadata PBIMetadata,
-	createdAt time.Time,
-	updatedAt time.Time,
-) *PBI {
-	baseTask := task.ReconstructBaseTask(
-		id,
-		model.TaskTypePBI,
-		title,
-		description,
-		status,
-		currentStep,
-		parentEPICID,
-		createdAt,
-		updatedAt,
-	)
-
-	return &PBI{
-		base:     baseTask,
-		sbiIDs:   sbiIDs,
-		metadata: metadata,
+		Title:     title,
+		Status:    StatusPending,
+		Priority:  PriorityNormal,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
-// Implement Task interface
-func (p *PBI) ID() model.TaskID {
-	return p.base.ID()
-}
-
-func (p *PBI) Type() model.TaskType {
-	return p.base.Type()
-}
-
-func (p *PBI) Title() string {
-	return p.base.Title()
-}
-
-func (p *PBI) Description() string {
-	return p.base.Description()
-}
-
-func (p *PBI) Status() model.Status {
-	return p.base.Status()
-}
-
-func (p *PBI) CurrentStep() model.Step {
-	return p.base.CurrentStep()
-}
-
-func (p *PBI) ParentTaskID() *model.TaskID {
-	return p.base.ParentTaskID()
-}
-
-func (p *PBI) CreatedAt() model.Timestamp {
-	return p.base.CreatedAt()
-}
-
-func (p *PBI) UpdatedAt() model.Timestamp {
-	return p.base.UpdatedAt()
-}
-
-func (p *PBI) UpdateStatus(newStatus model.Status) error {
-	return p.base.UpdateStatus(newStatus)
-}
-
-func (p *PBI) UpdateStep(newStep model.Step) error {
-	return p.base.UpdateStep(newStep)
-}
-
-// PBI-specific methods
-
-// AddSBI adds a child SBI to this PBI
-func (p *PBI) AddSBI(sbiID model.TaskID) error {
-	// Check if SBI already exists
-	for _, id := range p.sbiIDs {
-		if id.Equals(sbiID) {
-			return errors.New("SBI already exists in this PBI")
-		}
+// Validate validates the PBI
+func (p *PBI) Validate() error {
+	if p.Title == "" {
+		return errors.New("title is required")
 	}
 
-	p.sbiIDs = append(p.sbiIDs, sbiID)
+	if p.EstimatedStoryPoints < 0 || p.EstimatedStoryPoints > 13 {
+		return errors.New("story points must be between 0 and 13")
+	}
+
+	if p.Priority < PriorityNormal || p.Priority > PriorityUrgent {
+		return errors.New("priority must be between 0 and 2")
+	}
+
+	if !p.Status.IsValid() {
+		return fmt.Errorf("invalid status: %s", p.Status)
+	}
+
 	return nil
 }
 
-// RemoveSBI removes a child SBI from this PBI
-func (p *PBI) RemoveSBI(sbiID model.TaskID) error {
-	for i, id := range p.sbiIDs {
-		if id.Equals(sbiID) {
-			p.sbiIDs = append(p.sbiIDs[:i], p.sbiIDs[i+1:]...)
-			return nil
-		}
+// GetMarkdownPath returns the path to the Markdown file
+func (p *PBI) GetMarkdownPath() string {
+	return filepath.Join(".deespec", "specs", "pbi", p.ID, "pbi.md")
+}
+
+// IsValid checks if the status is valid
+func (s Status) IsValid() bool {
+	switch s {
+	case StatusPending, StatusPlanning, StatusPlaned, StatusInProgress, StatusDone:
+		return true
+	default:
+		return false
 	}
-	return errors.New("SBI not found in this PBI")
 }
 
-// SBIIDs returns the list of child SBI IDs
-func (p *PBI) SBIIDs() []model.TaskID {
-	// Return a copy to prevent external modification
-	result := make([]model.TaskID, len(p.sbiIDs))
-	copy(result, p.sbiIDs)
-	return result
+// String returns the string representation of Status
+func (s Status) String() string {
+	return string(s)
 }
 
-// HasSBIs checks if this PBI has any SBIs
-func (p *PBI) HasSBIs() bool {
-	return len(p.sbiIDs) > 0
+// String returns the string representation of Priority
+func (p Priority) String() string {
+	switch p {
+	case PriorityNormal:
+		return "通常"
+	case PriorityHigh:
+		return "高"
+	case PriorityUrgent:
+		return "緊急"
+	default:
+		return "不明"
+	}
 }
 
-// SBICount returns the number of child SBIs
-func (p *PBI) SBICount() int {
-	return len(p.sbiIDs)
-}
-
-// Metadata returns the PBI metadata
-func (p *PBI) Metadata() PBIMetadata {
-	return p.metadata
-}
-
-// UpdateMetadata updates the PBI metadata
-func (p *PBI) UpdateMetadata(metadata PBIMetadata) {
-	p.metadata = metadata
+// UpdateStatus updates the PBI status
+func (p *PBI) UpdateStatus(newStatus Status) error {
+	if !newStatus.IsValid() {
+		return fmt.Errorf("invalid status: %s", newStatus)
+	}
+	p.Status = newStatus
+	p.UpdatedAt = time.Now()
+	return nil
 }
 
 // UpdateTitle updates the PBI title
-func (p *PBI) UpdateTitle(title string) error {
-	return p.base.UpdateTitle(title)
-}
-
-// UpdateDescription updates the PBI description
-func (p *PBI) UpdateDescription(description string) {
-	p.base.UpdateDescription(description)
-}
-
-// HasParentEPIC checks if this PBI belongs to an EPIC
-func (p *PBI) HasParentEPIC() bool {
-	return p.base.ParentTaskID() != nil
-}
-
-// CanDelete checks if the PBI can be deleted
-func (p *PBI) CanDelete() bool {
-	// PBI can only be deleted if it has no child SBIs
-	return !p.HasSBIs()
+func (p *PBI) UpdateTitle(newTitle string) error {
+	if newTitle == "" {
+		return errors.New("title cannot be empty")
+	}
+	p.Title = newTitle
+	p.UpdatedAt = time.Now()
+	return nil
 }
 
 // IsCompleted checks if the PBI is completed
 func (p *PBI) IsCompleted() bool {
-	return p.base.Status() == model.StatusDone
+	return p.Status == StatusDone
 }
 
-// IsFailed checks if the PBI has failed
-func (p *PBI) IsFailed() bool {
-	return p.base.Status() == model.StatusFailed
+// IsPending checks if the PBI is pending
+func (p *PBI) IsPending() bool {
+	return p.Status == StatusPending
+}
+
+// IsInProgress checks if the PBI is in progress
+func (p *PBI) IsInProgress() bool {
+	return p.Status == StatusInProgress
 }

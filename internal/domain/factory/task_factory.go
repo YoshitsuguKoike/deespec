@@ -28,12 +28,14 @@ func (f *Factory) CreateEPIC(title, description string, metadata epic.EPICMetada
 }
 
 // CreatePBI creates a new PBI task
-func (f *Factory) CreatePBI(title, description string, parentEPICID *model.TaskID, metadata pbi.PBIMetadata) (*pbi.PBI, error) {
+// Note: This is a legacy interface. New code should use pbi.NewPBI directly.
+func (f *Factory) CreatePBI(title string) (*pbi.PBI, error) {
 	if title == "" {
 		return nil, errors.New("PBI title cannot be empty")
 	}
 
-	return pbi.NewPBI(title, description, parentEPICID, metadata)
+	p := pbi.NewPBI(title)
+	return p, nil
 }
 
 // CreateSBI creates a new SBI task
@@ -60,7 +62,13 @@ func (f *Factory) CreateTaskFromType(
 		return epic.NewEPIC(title, description, epic.EPICMetadata{})
 
 	case model.TaskTypePBI:
-		return pbi.NewPBI(title, description, parentID, pbi.PBIMetadata{})
+		// Note: Legacy interface - this creates a simplified PBI
+		// New code should use the pbi package directly
+		p := pbi.NewPBI(title)
+		if parentID != nil {
+			p.ParentEpicID = parentID.String()
+		}
+		return nil, errors.New("CreateTaskFromType for PBI is deprecated - use pbi.NewPBI directly")
 
 	case model.TaskTypeSBI:
 		return sbi.NewSBI(title, description, parentID, sbi.SBIMetadata{})

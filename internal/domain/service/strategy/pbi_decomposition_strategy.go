@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model"
-	"github.com/YoshitsuguKoike/deespec/internal/domain/model/pbi"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/task"
 )
 
@@ -24,14 +23,13 @@ func NewPBIDecompositionStrategy(agentExecutor AgentExecutor) *PBIDecompositionS
 
 // Execute performs PBI decomposition into SBIs
 func (s *PBIDecompositionStrategy) Execute(ctx context.Context, t task.Task) (*ImplementationResult, error) {
-	// Type assertion to PBI
-	pbiTask, ok := t.(*pbi.PBI)
-	if !ok {
+	// Verify task type
+	if t.Type() != model.TaskTypePBI {
 		return nil, errors.New("task is not a PBI")
 	}
 
 	// Build prompt for AI agent to decompose PBI into SBIs
-	prompt := s.buildDecompositionPrompt(pbiTask)
+	prompt := s.buildDecompositionPrompt(t)
 
 	// Execute AI agent to generate SBI proposals
 	response, err := s.agentExecutor.Execute(ctx, prompt, model.TaskTypePBI)
@@ -48,7 +46,7 @@ func (s *PBIDecompositionStrategy) Execute(ctx context.Context, t task.Task) (*I
 		Path:        "sbi_proposals.md",
 		Content:     response,
 		Type:        ArtifactTypeTask,
-		Description: "SBI proposals for PBI: " + pbiTask.Title(),
+		Description: "SBI proposals for PBI: " + t.Title(),
 	}
 
 	return &ImplementationResult{
@@ -57,7 +55,7 @@ func (s *PBIDecompositionStrategy) Execute(ctx context.Context, t task.Task) (*I
 		Artifacts: []Artifact{artifact},
 		NextStep:  model.StepReview, // Move to review step
 		Metadata: map[string]interface{}{
-			"pbi_id":     pbiTask.ID().String(),
+			"pbi_id":     t.ID().String(),
 			"sbi_count":  0, // Will be populated after review
 			"decomposed": true,
 		},
@@ -75,19 +73,11 @@ func (s *PBIDecompositionStrategy) GetName() string {
 }
 
 // buildDecompositionPrompt builds the AI prompt for PBI decomposition
-func (s *PBIDecompositionStrategy) buildDecompositionPrompt(pbiTask *pbi.PBI) string {
-	metadata := pbiTask.Metadata()
-	acceptanceCriteria := ""
-	for i, criterion := range metadata.AcceptanceCriteria {
-		acceptanceCriteria += "\n" + string(rune(i+1)) + ". " + criterion
-	}
-
+func (s *PBIDecompositionStrategy) buildDecompositionPrompt(t task.Task) string {
 	return `You are a software development planner. Your task is to decompose a PBI into Small Backlog Items (SBIs).
 
-PBI Title: ` + pbiTask.Title() + `
-PBI Description: ` + pbiTask.Description() + `
-Story Points: ` + string(rune(metadata.StoryPoints)) + `
-Acceptance Criteria:` + acceptanceCriteria + `
+PBI Title: ` + t.Title() + `
+PBI Description: ` + t.Description() + `
 
 Please decompose this PBI into 2-8 SBIs. Each SBI should be a concrete implementation task. For each SBI, provide:
 1. Title (specific, technical)

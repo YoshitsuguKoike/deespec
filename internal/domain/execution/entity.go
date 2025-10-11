@@ -48,17 +48,15 @@ func (e *SBIExecution) TransitionTo(nextStep ExecutionStep) error {
 		return fmt.Errorf("invalid transition from %s to %s", e.Step, nextStep)
 	}
 
+	// Handle attempt counter for implementation steps (before updating step)
+	if nextStep.IsImplementation() {
+		e.Attempt++
+	}
+
 	// Update step and related fields
 	e.Step = nextStep
 	e.Status = nextStep.ToStatus()
 	e.UpdatedAt = time.Now()
-
-	// Handle attempt counter for implementation steps
-	if nextStep.IsImplementation() {
-		if e.Step != StepImplementTry && e.Step != StepImplementSecondTry {
-			e.Attempt++
-		}
-	}
 
 	// Mark as completed if done
 	if nextStep == StepDone {

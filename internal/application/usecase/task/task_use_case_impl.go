@@ -81,73 +81,9 @@ func (uc *TaskUseCaseImpl) CreateEPIC(ctx context.Context, req dto.CreateEPICReq
 }
 
 // CreatePBI creates a new PBI task
+// DEPRECATED: Use the new pbi.RegisterPBIUseCase instead
 func (uc *TaskUseCaseImpl) CreatePBI(ctx context.Context, req dto.CreatePBIRequest) (*dto.PBIDTO, error) {
-	// Validate request
-	if req.Title == "" {
-		return nil, errors.New("title is required")
-	}
-
-	// Convert parent EPIC ID if provided
-	var parentEPICID *model.TaskID
-	if req.ParentEPICID != nil {
-		id, err := model.NewTaskIDFromString(*req.ParentEPICID)
-		if err != nil {
-			return nil, err
-		}
-		parentEPICID = &id
-
-		// Verify parent EPIC exists
-		_, err = uc.epicRepo.Find(ctx, repository.EPICID(*req.ParentEPICID))
-		if err != nil {
-			return nil, errors.New("parent EPIC not found")
-		}
-	}
-
-	// Create PBI using factory
-	pbiTask, err := uc.taskFactory.CreatePBI(
-		req.Title,
-		req.Description,
-		parentEPICID,
-		pbi.PBIMetadata{
-			StoryPoints:        req.StoryPoints,
-			Priority:           req.Priority,
-			Labels:             req.Labels,
-			AssignedAgent:      req.AssignedAgent,
-			AcceptanceCriteria: req.AcceptanceCriteria,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Save PBI and update parent EPIC in transaction
-	err = uc.txManager.InTransaction(ctx, func(txCtx context.Context) error {
-		if err := uc.pbiRepo.Save(txCtx, pbiTask); err != nil {
-			return err
-		}
-
-		// If has parent EPIC, add this PBI to it
-		if parentEPICID != nil {
-			parentEPIC, err := uc.epicRepo.Find(txCtx, repository.EPICID(parentEPICID.String()))
-			if err != nil {
-				return err
-			}
-			if err := parentEPIC.AddPBI(pbiTask.ID()); err != nil {
-				return err
-			}
-			if err := uc.epicRepo.Save(txCtx, parentEPIC); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert to DTO
-	return uc.pbiToDTO(pbiTask), nil
+	return nil, errors.New("CreatePBI is deprecated - use 'deespec pbi register' command instead")
 }
 
 // CreateSBI creates a new SBI task
@@ -212,19 +148,8 @@ func (uc *TaskUseCaseImpl) CreateSBI(ctx context.Context, req dto.CreateSBIReque
 			return err
 		}
 
-		// If has parent PBI, add this SBI to it
-		if parentPBIID != nil {
-			parentPBI, err := uc.pbiRepo.Find(txCtx, repository.PBIID(parentPBIID.String()))
-			if err != nil {
-				return err
-			}
-			if err := parentPBI.AddSBI(sbiTask.ID()); err != nil {
-				return err
-			}
-			if err := uc.pbiRepo.Save(txCtx, parentPBI); err != nil {
-				return err
-			}
-		}
+		// TODO: PBI-SBI relationship management will be implemented when PBI system is fully integrated
+		// For now, SBIs can be created independently
 
 		return nil
 	})
@@ -262,13 +187,9 @@ func (uc *TaskUseCaseImpl) GetEPIC(ctx context.Context, epicID string) (*dto.EPI
 }
 
 // GetPBI retrieves a PBI by ID
+// DEPRECATED: Use the new pbi commands instead
 func (uc *TaskUseCaseImpl) GetPBI(ctx context.Context, pbiID string) (*dto.PBIDTO, error) {
-	pbiTask, err := uc.pbiRepo.Find(ctx, repository.PBIID(pbiID))
-	if err != nil {
-		return nil, err
-	}
-
-	return uc.pbiToDTO(pbiTask), nil
+	return nil, errors.New("GetPBI is deprecated - use 'deespec pbi show' command instead")
 }
 
 // GetSBI retrieves an SBI by ID
@@ -425,40 +346,11 @@ func (uc *TaskUseCaseImpl) epicToDTO(epicTask *epic.EPIC) *dto.EPICDTO {
 	}
 }
 
+// pbiToDTO is deprecated - new PBI system uses a different structure
 func (uc *TaskUseCaseImpl) pbiToDTO(pbiTask *pbi.PBI) *dto.PBIDTO {
-	metadata := pbiTask.Metadata()
-	sbiIDs := pbiTask.SBIIDs()
-	sbiIDStrs := make([]string, len(sbiIDs))
-	for i, id := range sbiIDs {
-		sbiIDStrs[i] = id.String()
-	}
-
-	var parentID *string
-	if pbiTask.ParentTaskID() != nil {
-		pid := pbiTask.ParentTaskID().String()
-		parentID = &pid
-	}
-
-	return &dto.PBIDTO{
-		TaskDTO: dto.TaskDTO{
-			ID:          pbiTask.ID().String(),
-			Type:        pbiTask.Type().String(),
-			Title:       pbiTask.Title(),
-			Description: pbiTask.Description(),
-			Status:      pbiTask.Status().String(),
-			CurrentStep: pbiTask.CurrentStep().String(),
-			ParentID:    parentID,
-			CreatedAt:   pbiTask.CreatedAt().Value(),
-			UpdatedAt:   pbiTask.UpdatedAt().Value(),
-		},
-		StoryPoints:        metadata.StoryPoints,
-		Priority:           metadata.Priority,
-		Labels:             metadata.Labels,
-		AssignedAgent:      metadata.AssignedAgent,
-		AcceptanceCriteria: metadata.AcceptanceCriteria,
-		SBIIDs:             sbiIDStrs,
-		SBICount:           pbiTask.SBICount(),
-	}
+	// New PBI system doesn't use the old task-based DTO structure
+	// Use 'deespec pbi show' command instead
+	return &dto.PBIDTO{}
 }
 
 func (uc *TaskUseCaseImpl) sbiToDTO(sbiTask *sbi.SBI) *dto.SBIDTO {

@@ -11,6 +11,7 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/journal"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/label"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/lock_cmd"
+	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/pbi"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/run"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/sbi"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/status"
@@ -91,6 +92,7 @@ func NewRoot() *cobra.Command {
 	cmd.AddCommand(doctor.NewCommand())
 	cmd.AddCommand(journal.NewCommand())
 	cmd.AddCommand(health.NewCommand())
+	cmd.AddCommand(pbi.NewPBICommand()) // PBI management
 	cmd.AddCommand(sbi.NewSBICommand())
 	cmd.AddCommand(clear.NewCommand())
 	cmd.AddCommand(lock_cmd.NewCommand()) // SQLite-based lock management

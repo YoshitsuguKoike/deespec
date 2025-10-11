@@ -7,7 +7,6 @@ import (
 
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/epic"
-	"github.com/YoshitsuguKoike/deespec/internal/domain/model/pbi"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/sbi"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/task"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
@@ -17,8 +16,8 @@ import (
 type TaskRepositoryImpl struct {
 	db       *sql.DB
 	epicRepo *EPICRepositoryImpl
-	pbiRepo  *PBIRepositoryImpl
-	sbiRepo  *SBIRepositoryImpl
+	// pbiRepo removed: PBI system is being refactored to Markdown + SQLite hybrid
+	sbiRepo *SBIRepositoryImpl
 }
 
 // NewTaskRepository creates a new SQLite-based task repository
@@ -26,8 +25,8 @@ func NewTaskRepository(db *sql.DB) repository.TaskRepository {
 	return &TaskRepositoryImpl{
 		db:       db,
 		epicRepo: &EPICRepositoryImpl{db: db},
-		pbiRepo:  &PBIRepositoryImpl{db: db},
-		sbiRepo:  &SBIRepositoryImpl{db: db},
+		// pbiRepo removed: PBI system is being refactored to Markdown + SQLite hybrid
+		sbiRepo: &SBIRepositoryImpl{db: db},
 	}
 }
 
@@ -44,7 +43,7 @@ func (r *TaskRepositoryImpl) FindByID(ctx context.Context, id repository.TaskID)
 	case repository.TaskTypeEPIC:
 		return r.epicRepo.Find(ctx, repository.EPICID(id))
 	case repository.TaskTypePBI:
-		return r.pbiRepo.Find(ctx, repository.PBIID(id))
+		return nil, fmt.Errorf("PBI workflow is temporarily disabled - use 'deespec pbi show %s' instead", id)
 	case repository.TaskTypeSBI:
 		return r.sbiRepo.Find(ctx, repository.SBIID(id))
 	default:
@@ -62,11 +61,8 @@ func (r *TaskRepositoryImpl) Save(ctx context.Context, t task.Task) error {
 		}
 		return r.epicRepo.Save(ctx, epicTask)
 	case model.TaskTypePBI:
-		pbiTask, ok := t.(*pbi.PBI)
-		if !ok {
-			return fmt.Errorf("type assertion failed: expected *pbi.PBI")
-		}
-		return r.pbiRepo.Save(ctx, pbiTask)
+		// PBI workflow is temporarily disabled
+		return fmt.Errorf("PBI workflow is temporarily disabled - use 'deespec pbi' commands instead")
 	case model.TaskTypeSBI:
 		sbiTask, ok := t.(*sbi.SBI)
 		if !ok {
@@ -122,18 +118,9 @@ func (r *TaskRepositoryImpl) List(ctx context.Context, filter repository.TaskFil
 				tasks = append(tasks, e)
 			}
 		case repository.TaskTypePBI:
-			pbiFilter := repository.PBIFilter{
-				Statuses: filter.Statuses,
-				Limit:    filter.Limit,
-				Offset:   filter.Offset,
-			}
-			pbis, err := r.pbiRepo.List(ctx, pbiFilter)
-			if err != nil {
-				return nil, err
-			}
-			for _, p := range pbis {
-				tasks = append(tasks, p)
-			}
+			// PBI workflow is temporarily disabled
+			// Use 'deespec pbi list' command instead
+			continue
 		case repository.TaskTypeSBI:
 			sbiFilter := repository.SBIFilter{
 				Statuses: convertStatusesToModel(filter.Statuses),

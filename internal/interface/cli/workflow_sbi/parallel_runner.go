@@ -312,6 +312,7 @@ func (r *ParallelSBIWorkflowRunner) fetchExecutableSBIsAlt(
 			model.StatusPending,
 			model.StatusPicked,
 			model.StatusImplementing,
+			model.StatusReviewing,
 		},
 		Limit:  limit,
 		Offset: 0,

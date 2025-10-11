@@ -260,31 +260,36 @@ func (uc *WorkflowUseCaseImpl) DecomposeEPIC(ctx context.Context, epicID string)
 }
 
 // DecomposePBI decomposes a PBI into SBIs
+// TEMPORARILY DISABLED: PBI system is being refactored to use Markdown + SQLite hybrid
+// Old workflow-based PBI decomposition is deprecated
 func (uc *WorkflowUseCaseImpl) DecomposePBI(ctx context.Context, pbiID string) (*dto.ImplementTaskResponse, error) {
-	pbiTask, err := uc.pbiRepo.Find(ctx, repository.PBIID(pbiID))
-	if err != nil {
-		return nil, err
-	}
+	return nil, errors.New("DecomposePBI is temporarily disabled - PBI system is being refactored. Use 'deespec pbi register' to create PBIs")
 
-	// Execute PBI decomposition strategy
-	result, err := uc.strategyRegistry.ExecuteImplementation(ctx, pbiTask)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert artifacts to paths
-	artifactPaths := make([]string, len(result.Artifacts))
-	for i, artifact := range result.Artifacts {
-		artifactPaths[i] = artifact.Path
-	}
-
-	return &dto.ImplementTaskResponse{
-		Success:   result.Success,
-		Message:   result.Message,
-		TaskID:    pbiID,
-		NextStep:  result.NextStep.String(),
-		Artifacts: artifactPaths,
-	}, nil
+	// TODO: Re-enable when new PBI system integrates with workflow
+	// pbiTask, err := uc.pbiRepo.Find(ctx, repository.PBIID(pbiID))
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// // Execute PBI decomposition strategy
+	// result, err := uc.strategyRegistry.ExecuteImplementation(ctx, pbiTask)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// // Convert artifacts to paths
+	// artifactPaths := make([]string, len(result.Artifacts))
+	// for i, artifact := range result.Artifacts {
+	// 	artifactPaths[i] = artifact.Path
+	// }
+	//
+	// return &dto.ImplementTaskResponse{
+	// 	Success:   result.Success,
+	// 	Message:   result.Message,
+	// 	TaskID:    pbiID,
+	// 	NextStep:  result.NextStep.String(),
+	// 	Artifacts: artifactPaths,
+	// }, nil
 }
 
 // GenerateSBICode generates code for an SBI

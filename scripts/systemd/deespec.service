@@ -1,0 +1,59 @@
+# DeeSpec systemd service for Amazon Linux
+# Parallel execution mode (up to 3 concurrent SBIs)
+#
+# Installation:
+#   sudo cp deespec.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable deespec.service
+#   sudo systemctl start deespec.service
+
+[Unit]
+Description=DeeSpec Continuous Task Runner (Parallel Mode)
+Documentation=https://github.com/YoshitsuguKoike/deespec
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+
+# Working directory - adjust this path as needed
+WorkingDirectory=/home/ec2-user/workspace/deespec
+
+# Command to run
+# --interval 1s: Check for new tasks every second
+# --parallel 3: Run up to 3 SBIs concurrently
+# --auto-fb: Automatically register feedback SBIs
+# --log-level info: Log informational messages
+ExecStart=/usr/local/bin/deespec run --interval 1s --parallel 3 --auto-fb --log-level info
+
+# Graceful shutdown settings
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+# Auto-restart configuration
+Restart=always
+RestartSec=10s
+StartLimitInterval=300s
+StartLimitBurst=5
+
+# Resource limits (adjust based on your instance size)
+# These limits ensure coexistence with VSCode and other processes
+MemoryMax=2G
+MemoryHigh=1.5G
+CPUQuota=60%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=deespec
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=/home/ec2-user/workspace/deespec/.deespec
+
+[Install]
+WantedBy=multi-user.target

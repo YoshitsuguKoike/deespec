@@ -4,6 +4,23 @@
 
 ## \[Unreleased]
 
+### 追加 (Added)
+
+* **Amazon Linux デプロイメントスクリプト**: systemdによる常駐プロセス構成
+  - `scripts/systemd/deespec.service`: 並列実行モード（最大3タスク同時）のサービスファイル
+  - `scripts/setup-amazon-linux.sh`: 自動セットアップスクリプト（ワンライナーインストール対応）
+  - `scripts/ec2-userdata.sh`: EC2起動時の自動セットアップ用User Dataスクリプト
+  - `docs/deployment/amazon-linux-setup.md`: 完全なデプロイメントガイド
+  - 機能:
+    - インスタンス起動時の自動開始（systemd WantedBy=multi-user.target）
+    - クラッシュ時の自動再起動（Restart=always）
+    - リソース制限によるVSCodeとの共存（MemoryMax=2G, CPUQuota=60%）
+    - 1秒間隔でのタスクチェック（--interval 1s）
+    - 最大3タスクの並列実行（--parallel 3）
+    - グレースフルシャットダウン対応（SIGTERM）
+  - 対象: Amazon Linux 2 / Amazon Linux 2023
+  - 用途: Web版VSCodeと並行して常駐プロセスとして動作
+
 ### 修正 (Fixed)
 
 * **init コマンドの不要ファイル生成を削除**: 現在のバージョンで使用されていないファイルを生成しないように修正

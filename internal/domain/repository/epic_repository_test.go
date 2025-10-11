@@ -45,16 +45,18 @@ func (m *MockEPICRepository) Save(ctx context.Context, e *epic.EPIC) error {
 
 	id := repository.EPICID(e.ID().String())
 
-	// If EPIC already exists, clear old PBI mappings first
-	if oldEPIC, exists := m.epics[id]; exists {
-		for _, oldPBIID := range oldEPIC.PBIIDs() {
-			delete(m.pbiMap, repository.PBIID(oldPBIID.String()))
+	// Clear all PBI mappings that point to this EPIC
+	// We need to scan the entire map because we can't rely on the old EPIC's PBIIDs
+	// (the EPIC might have been modified before Save was called)
+	for pbiID, epicID := range m.pbiMap {
+		if epicID == id {
+			delete(m.pbiMap, pbiID)
 		}
 	}
 
 	m.epics[id] = e
 
-	// Update PBI mappings with current PBIs
+	// Add new PBI mappings for current PBIs
 	for _, pbiID := range e.PBIIDs() {
 		m.pbiMap[repository.PBIID(pbiID.String())] = id
 	}

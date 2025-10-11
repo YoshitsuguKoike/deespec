@@ -41,7 +41,7 @@ func TestFBDraftRepositoryImpl_PersistDraft_Success(t *testing.T) {
 		ReasonCode:    dto.DepUnresolved,
 		Title:         "Test Feedback Draft",
 		Summary:       "This task has unresolved dependencies",
-		EvidencePaths: []string{"/path/to/evidence1.txt", "/path/to/evidence2.txt"},
+		EvidencePaths: []string{"testdata/evidence1.txt", "testdata/evidence2.txt"},
 		SuggestedFBID: "fb-001",
 		CreatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 	}
@@ -356,7 +356,7 @@ func TestFBDraftRepositoryImpl_RecordDraftInJournal_Success(t *testing.T) {
 		ReasonCode:    dto.DepUnresolved,
 		Title:         "Test Feedback Draft",
 		Summary:       "Test summary",
-		EvidencePaths: []string{"/path/to/evidence.txt"},
+		EvidencePaths: []string{"testdata/evidence.txt"},
 		SuggestedFBID: "fb-001",
 		CreatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 	}
@@ -822,7 +822,7 @@ func TestFBDraftRepositoryImpl_IntegrationTest(t *testing.T) {
 		ReasonCode:    dto.DepCycle,
 		Title:         "Integration Test",
 		Summary:       "Testing full workflow",
-		EvidencePaths: []string{"/path/to/evidence.txt"},
+		EvidencePaths: []string{"testdata/evidence.txt"},
 		SuggestedFBID: "fb-integration",
 		CreatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 	}

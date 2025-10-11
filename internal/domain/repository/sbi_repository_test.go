@@ -891,7 +891,7 @@ func TestSBIRepository_ExecutionState(t *testing.T) {
 	s.IncrementTurn()
 	s.IncrementAttempt()
 	s.RecordError("test error")
-	s.AddArtifact("/path/to/artifact.md")
+	s.AddArtifact("artifacts/artifact.md")
 
 	sbiID := repository.SBIID(s.ID().String())
 	err = repo.Save(ctx, s)

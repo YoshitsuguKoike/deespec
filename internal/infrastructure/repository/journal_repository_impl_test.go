@@ -562,7 +562,7 @@ func TestJournalRepositoryImpl_ComplexArtifacts(t *testing.T) {
 		123,
 		map[string]interface{}{
 			"type":     "report",
-			"path":     "/path/to/report.json",
+			"path":     "testdata/report.json",
 			"metadata": map[string]interface{}{"version": "1.0", "size": 2048},
 		},
 		[]interface{}{"item1", "item2", map[string]interface{}{"nested": "value"}},

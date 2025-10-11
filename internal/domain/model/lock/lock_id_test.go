@@ -14,7 +14,7 @@ func TestNewLockID(t *testing.T) {
 	}{
 		{"Valid ID", "sbi-123", false},
 		{"Valid UUID", "550e8400-e29b-41d4-a716-446655440000", false},
-		{"Valid path", "/path/to/state.json", false},
+		{"Valid path", "path/to/state.json", false},
 		{"Empty ID", "", true},
 	}
 
@@ -39,7 +39,7 @@ func TestLockID_String(t *testing.T) {
 	}{
 		{"Simple ID", "test-123"},
 		{"UUID format", "550e8400-e29b-41d4-a716-446655440000"},
-		{"Path format", "/var/lock/state.json"},
+		{"Path format", "var/lock/state.json"},
 		{"Special characters", "lock:sbi:970fee40-8cc8-49a0-af57-22b720fc678a"},
 	}
 
@@ -120,7 +120,7 @@ func TestLockID_LongValues(t *testing.T) {
 		name  string
 		value string
 	}{
-		{"Long UUID path", "/very/long/path/to/state/file/with/uuid/550e8400-e29b-41d4-a716-446655440000/state.json"},
+		{"Long UUID path", "very/long/path/to/state/file/with/uuid/550e8400-e29b-41d4-a716-446655440000/state.json"},
 		{"Repeated pattern", "lock-" + string(make([]byte, 1000))},
 		{"256 chars", string(make([]byte, 256))},
 	}

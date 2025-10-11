@@ -1268,3 +1268,455 @@ func TestTaskRepository_PaginationEdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskRepository_UpdateTask(t *testing.T) {
+	repo := NewMockTaskRepository()
+	ctx := context.Background()
+
+	// Create and save a PBI
+	p, err := pbi.NewPBI("Original Title", "Original Description", nil, pbi.PBIMetadata{
+		StoryPoints: 3,
+		Priority:    1,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create PBI: %v", err)
+	}
+
+	taskID := repository.TaskID(p.ID().String())
+	err = repo.Save(ctx, p)
+	if err != nil {
+		t.Fatalf("Failed to save PBI: %v", err)
+	}
+
+	// Update the PBI
+	err = p.UpdateTitle("Updated Title")
+	if err != nil {
+		t.Fatalf("Failed to update title: %v", err)
+	}
+
+	p.UpdateDescription("Updated Description")
+	p.UpdateMetadata(pbi.PBIMetadata{
+		StoryPoints: 8,
+		Priority:    2,
+		Labels:      []string{"updated", "critical"},
+	})
+
+	// Save the updated PBI
+	err = repo.Save(ctx, p)
+	if err != nil {
+		t.Fatalf("Failed to save updated PBI: %v", err)
+	}
+
+	// Verify the update was persisted
+	found, err := repo.FindByID(ctx, taskID)
+	if err != nil {
+		t.Fatalf("Failed to find PBI: %v", err)
+	}
+
+	if found.Title() != "Updated Title" {
+		t.Errorf("Expected title 'Updated Title', got '%s'", found.Title())
+	}
+
+	if found.Description() != "Updated Description" {
+		t.Errorf("Expected description 'Updated Description', got '%s'", found.Description())
+	}
+
+	// Cast to PBI to check metadata
+	foundPBI, ok := found.(*pbi.PBI)
+	if !ok {
+		t.Fatal("Expected task to be a PBI")
+	}
+
+	metadata := foundPBI.Metadata()
+	if metadata.StoryPoints != 8 {
+		t.Errorf("Expected story points 8, got %d", metadata.StoryPoints)
+	}
+
+	if metadata.Priority != 2 {
+		t.Errorf("Expected priority 2, got %d", metadata.Priority)
+	}
+
+	if len(metadata.Labels) != 2 {
+		t.Errorf("Expected 2 labels, got %d", len(metadata.Labels))
+	}
+}
+
+func TestTaskRepository_ExecutionStatePersistence_SBI(t *testing.T) {
+	repo := NewMockTaskRepository()
+	ctx := context.Background()
+
+	// Create an SBI
+	s, err := sbi.NewSBI("Test SBI", "Description", nil, sbi.SBIMetadata{})
+	if err != nil {
+		t.Fatalf("Failed to create SBI: %v", err)
+	}
+
+	// Modify execution state
+	s.IncrementTurn()
+	s.IncrementAttempt()
+	s.RecordError("test error message")
+	s.AddArtifact("artifacts/artifact1.md")
+	s.AddArtifact("artifacts/artifact2.md")
+
+	taskID := repository.TaskID(s.ID().String())
+	err = repo.Save(ctx, s)
+	if err != nil {
+		t.Fatalf("Failed to save SBI: %v", err)
+	}
+
+	// Verify execution state was persisted
+	found, err := repo.FindByID(ctx, taskID)
+	if err != nil {
+		t.Fatalf("Failed to find SBI: %v", err)
+	}
+
+	foundSBI, ok := found.(*sbi.SBI)
+	if !ok {
+		t.Fatal("Expected task to be an SBI")
+	}
+
+	execState := foundSBI.ExecutionState()
+
+	// Turn starts at 0, after IncrementTurn() it should be 1
+	if execState.CurrentTurn.Value() != 1 {
+		t.Errorf("Expected turn 1, got %d", execState.CurrentTurn.Value())
+	}
+
+	// After IncrementTurn, attempt resets to 1, then IncrementAttempt makes it 2
+	if execState.CurrentAttempt.Value() != 2 {
+		t.Errorf("Expected attempt 2, got %d", execState.CurrentAttempt.Value())
+	}
+
+	if execState.LastError != "test error message" {
+		t.Errorf("Expected error 'test error message', got '%s'", execState.LastError)
+	}
+
+	if len(execState.ArtifactPaths) != 2 {
+		t.Errorf("Expected 2 artifacts, got %d", len(execState.ArtifactPaths))
+	}
+}
+
+func TestTaskRepository_MetadataUpdates_EPIC(t *testing.T) {
+	repo := NewMockTaskRepository()
+	ctx := context.Background()
+
+	// Create EPIC with initial metadata
+	e, err := epic.NewEPIC("EPIC Test", "Description", epic.EPICMetadata{
+		EstimatedStoryPoints: 10,
+		Priority:             1,
+		Labels:               []string{"backend"},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create EPIC: %v", err)
+	}
+
+	taskID := repository.TaskID(e.ID().String())
+	err = repo.Save(ctx, e)
+	if err != nil {
+		t.Fatalf("Failed to save EPIC: %v", err)
+	}
+
+	// Update metadata
+	newMetadata := epic.EPICMetadata{
+		EstimatedStoryPoints: 50,
+		Priority:             3,
+		Labels:               []string{"frontend", "ui", "critical"},
+		AssignedAgent:        "team-alpha",
+	}
+	e.UpdateMetadata(newMetadata)
+
+	// Save updated EPIC
+	err = repo.Save(ctx, e)
+	if err != nil {
+		t.Fatalf("Failed to save updated EPIC: %v", err)
+	}
+
+	// Verify updates were persisted
+	found, err := repo.FindByID(ctx, taskID)
+	if err != nil {
+		t.Fatalf("Failed to find EPIC: %v", err)
+	}
+
+	foundEPIC, ok := found.(*epic.EPIC)
+	if !ok {
+		t.Fatal("Expected task to be an EPIC")
+	}
+
+	metadata := foundEPIC.Metadata()
+	if metadata.EstimatedStoryPoints != 50 {
+		t.Errorf("Expected estimated story points 50, got %d", metadata.EstimatedStoryPoints)
+	}
+
+	if metadata.Priority != 3 {
+		t.Errorf("Expected priority 3, got %d", metadata.Priority)
+	}
+
+	if len(metadata.Labels) != 3 {
+		t.Errorf("Expected 3 labels, got %d", len(metadata.Labels))
+	}
+
+	if metadata.AssignedAgent != "team-alpha" {
+		t.Errorf("Expected assigned agent 'team-alpha', got '%s'", metadata.AssignedAgent)
+	}
+}
+
+func TestTaskRepository_MetadataUpdates_SBI(t *testing.T) {
+	repo := NewMockTaskRepository()
+	ctx := context.Background()
+
+	// Create SBI with initial metadata
+	s, err := sbi.NewSBI("SBI Test", "Description", nil, sbi.SBIMetadata{
+		EstimatedHours: 2.0,
+		Priority:       1,
+		Labels:         []string{"backend"},
+		AssignedAgent:  "claude-code",
+		FilePaths:      []string{"file1.go"},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create SBI: %v", err)
+	}
+
+	taskID := repository.TaskID(s.ID().String())
+	err = repo.Save(ctx, s)
+	if err != nil {
+		t.Fatalf("Failed to save SBI: %v", err)
+	}
+
+	// Update metadata
+	newMetadata := sbi.SBIMetadata{
+		EstimatedHours: 8.0,
+		Priority:       3,
+		Labels:         []string{"frontend", "ui", "urgent"},
+		AssignedAgent:  "gemini-cli",
+		FilePaths:      []string{"file1.go", "file2.go", "file3.go"},
+	}
+	s.UpdateMetadata(newMetadata)
+
+	// Save updated SBI
+	err = repo.Save(ctx, s)
+	if err != nil {
+		t.Fatalf("Failed to save updated SBI: %v", err)
+	}
+
+	// Verify updates were persisted
+	found, err := repo.FindByID(ctx, taskID)
+	if err != nil {
+		t.Fatalf("Failed to find SBI: %v", err)
+	}
+
+	foundSBI, ok := found.(*sbi.SBI)
+	if !ok {
+		t.Fatal("Expected task to be an SBI")
+	}
+
+	metadata := foundSBI.Metadata()
+	if metadata.EstimatedHours != 8.0 {
+		t.Errorf("Expected estimated hours 8.0, got %f", metadata.EstimatedHours)
+	}
+
+	if metadata.Priority != 3 {
+		t.Errorf("Expected priority 3, got %d", metadata.Priority)
+	}
+
+	if len(metadata.Labels) != 3 {
+		t.Errorf("Expected 3 labels, got %d", len(metadata.Labels))
+	}
+
+	if metadata.AssignedAgent != "gemini-cli" {
+		t.Errorf("Expected agent 'gemini-cli', got '%s'", metadata.AssignedAgent)
+	}
+
+	if len(metadata.FilePaths) != 3 {
+		t.Errorf("Expected 3 file paths, got %d", len(metadata.FilePaths))
+	}
+}
+
+func TestTaskRepository_TableDrivenSaveTests(t *testing.T) {
+	repo := NewMockTaskRepository()
+	ctx := context.Background()
+
+	tests := []struct {
+		name        string
+		taskCreator func() (task.Task, error)
+		validate    func(t *testing.T, tsk task.Task)
+	}{
+		{
+			name: "PBI with comprehensive metadata",
+			taskCreator: func() (task.Task, error) {
+				return pbi.NewPBI("Feature PBI", "Complex feature implementation", nil, pbi.PBIMetadata{
+					StoryPoints:      13,
+					Priority:         1,
+					Labels:           []string{"backend", "api", "critical"},
+					AcceptanceCriteria: []string{"Criteria 1", "Criteria 2"},
+				})
+			},
+			validate: func(t *testing.T, tsk task.Task) {
+				p, ok := tsk.(*pbi.PBI)
+				if !ok {
+					t.Fatal("Expected PBI")
+				}
+				if p.Metadata().StoryPoints != 13 {
+					t.Errorf("Expected 13 story points, got %d", p.Metadata().StoryPoints)
+				}
+				if len(p.Metadata().Labels) != 3 {
+					t.Errorf("Expected 3 labels, got %d", len(p.Metadata().Labels))
+				}
+			},
+		},
+		{
+			name: "SBI with file paths and agent",
+			taskCreator: func() (task.Task, error) {
+				return sbi.NewSBI("Implementation Task", "Implement new feature", nil, sbi.SBIMetadata{
+					EstimatedHours: 6.5,
+					Priority:       2,
+					Labels:         []string{"refactoring", "testing"},
+					AssignedAgent:  "claude-code",
+					FilePaths:      []string{"src/main.go", "src/utils.go"},
+				})
+			},
+			validate: func(t *testing.T, tsk task.Task) {
+				s, ok := tsk.(*sbi.SBI)
+				if !ok {
+					t.Fatal("Expected SBI")
+				}
+				if s.Metadata().EstimatedHours != 6.5 {
+					t.Errorf("Expected 6.5 hours, got %f", s.Metadata().EstimatedHours)
+				}
+				if len(s.Metadata().FilePaths) != 2 {
+					t.Errorf("Expected 2 file paths, got %d", len(s.Metadata().FilePaths))
+				}
+			},
+		},
+		{
+			name: "EPIC with assigned agent",
+			taskCreator: func() (task.Task, error) {
+				return epic.NewEPIC("Major Initiative", "Large scale project", epic.EPICMetadata{
+					EstimatedStoryPoints: 100,
+					Priority:             0,
+					Labels:               []string{"q4-2024", "strategic"},
+					AssignedAgent:        "engineering-team",
+				})
+			},
+			validate: func(t *testing.T, tsk task.Task) {
+				e, ok := tsk.(*epic.EPIC)
+				if !ok {
+					t.Fatal("Expected EPIC")
+				}
+				if e.Metadata().EstimatedStoryPoints != 100 {
+					t.Errorf("Expected 100 story points, got %d", e.Metadata().EstimatedStoryPoints)
+				}
+				if e.Metadata().AssignedAgent != "engineering-team" {
+					t.Errorf("Expected assigned agent 'engineering-team', got '%s'", e.Metadata().AssignedAgent)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tsk, err := tt.taskCreator()
+			if err != nil {
+				t.Fatalf("Failed to create task: %v", err)
+			}
+
+			err = repo.Save(ctx, tsk)
+			if err != nil {
+				t.Fatalf("Failed to save task: %v", err)
+			}
+
+			// Retrieve and validate
+			taskID := repository.TaskID(tsk.ID().String())
+			found, err := repo.FindByID(ctx, taskID)
+			if err != nil {
+				t.Fatalf("Failed to find task: %v", err)
+			}
+
+			tt.validate(t, found)
+		})
+	}
+}
+
+func TestTaskRepository_InvalidStatusTransition(t *testing.T) {
+	repo := NewMockTaskRepository()
+	ctx := context.Background()
+
+	// Create a PBI
+	p, err := pbi.NewPBI("Test PBI", "Description", nil, pbi.PBIMetadata{})
+	if err != nil {
+		t.Fatalf("Failed to create PBI: %v", err)
+	}
+
+	taskID := repository.TaskID(p.ID().String())
+	err = repo.Save(ctx, p)
+	if err != nil {
+		t.Fatalf("Failed to save PBI: %v", err)
+	}
+
+	// Try invalid transition (PENDING -> DONE without going through proper states)
+	err = p.UpdateStatus(model.StatusDone)
+	if err == nil {
+		t.Error("Expected error for invalid status transition, got nil")
+	}
+
+	// Verify task status remains unchanged in repository
+	found, err := repo.FindByID(ctx, taskID)
+	if err != nil {
+		t.Fatalf("Failed to find PBI: %v", err)
+	}
+
+	if found.Status() != model.StatusPending {
+		t.Errorf("Expected status to remain PENDING, got %s", found.Status())
+	}
+}
+
+func TestTaskRepository_MultipleTypesSameFilter(t *testing.T) {
+	repo := NewMockTaskRepository()
+	ctx := context.Background()
+
+	// Create tasks of different types with same labels
+	e, _ := epic.NewEPIC("EPIC 1", "Description", epic.EPICMetadata{
+		Labels: []string{"backend", "critical"},
+	})
+	p, _ := pbi.NewPBI("PBI 1", "Description", nil, pbi.PBIMetadata{
+		Labels: []string{"backend"},
+	})
+	s, _ := sbi.NewSBI("SBI 1", "Description", nil, sbi.SBIMetadata{
+		Labels: []string{"backend", "critical"},
+	})
+
+	repo.Save(ctx, e)
+	repo.Save(ctx, p)
+	repo.Save(ctx, s)
+
+	// Filter by multiple types and status
+	filter := repository.TaskFilter{
+		Types:    []repository.TaskType{repository.TaskTypeEPIC, repository.TaskTypeSBI},
+		Statuses: []repository.Status{repository.Status(model.StatusPending.String())},
+	}
+
+	tasks, err := repo.List(ctx, filter)
+	if err != nil {
+		t.Fatalf("Failed to list tasks: %v", err)
+	}
+
+	// Should return EPIC and SBI (both PENDING), but not PBI (filtered by type)
+	if len(tasks) != 2 {
+		t.Errorf("Expected 2 tasks (EPIC + SBI), got %d", len(tasks))
+	}
+
+	// Verify types
+	typeCount := make(map[model.TaskType]int)
+	for _, tsk := range tasks {
+		typeCount[tsk.Type()]++
+	}
+
+	if typeCount[model.TaskTypeEPIC] != 1 {
+		t.Errorf("Expected 1 EPIC, got %d", typeCount[model.TaskTypeEPIC])
+	}
+	if typeCount[model.TaskTypeSBI] != 1 {
+		t.Errorf("Expected 1 SBI, got %d", typeCount[model.TaskTypeSBI])
+	}
+	if typeCount[model.TaskTypePBI] != 0 {
+		t.Errorf("Expected 0 PBIs, got %d", typeCount[model.TaskTypePBI])
+	}
+}

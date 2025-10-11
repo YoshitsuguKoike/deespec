@@ -773,7 +773,7 @@ func TestJournalRepository_ComplexArtifacts(t *testing.T) {
 		123,
 		map[string]interface{}{
 			"type": "file",
-			"path": "/path/to/file.txt",
+			"path": "testdata/file.txt",
 			"size": 1024,
 		},
 		[]string{"item1", "item2", "item3"},

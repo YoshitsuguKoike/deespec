@@ -6,12 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
 	"github.com/YoshitsuguKoike/deespec/internal/app/config"
-	"github.com/YoshitsuguKoike/deespec/internal/app/state"
 )
 
 // Allowed placeholders for prompt expansion
@@ -32,8 +30,8 @@ var rePH = regexp.MustCompile(`\{[a-zA-Z_][a-zA-Z0-9_]*\}`)
 // 1. Config values (highest priority)
 // 2. Workflow vars
 // 3. Runtime defaults (lowest priority)
-// Deprecated: Use BuildVarMapWithConfig instead
-func BuildVarMap(ctx context.Context, p app.Paths, wfVars map[string]string, st *state.State) map[string]string {
+// Deprecated: Use BuildVarMapWithConfig instead. State management migrated to DB.
+func BuildVarMap(ctx context.Context, p app.Paths, wfVars map[string]string, st interface{}) map[string]string {
 	return BuildVarMapWithConfig(ctx, p, wfVars, st, nil)
 }
 
@@ -42,28 +40,13 @@ func BuildVarMap(ctx context.Context, p app.Paths, wfVars map[string]string, st 
 // 2. Workflow vars
 // 3. Runtime defaults (lowest priority)
 //
-// Deprecated: Workflow variable expansion is not currently used in the main execution path.
-func BuildVarMapWithConfig(ctx context.Context, p app.Paths, wfVars map[string]string, st *state.State, cfg config.Config) map[string]string {
+// Deprecated: Workflow variable expansion is not currently used in the main execution path. State management migrated to DB.
+func BuildVarMapWithConfig(ctx context.Context, p app.Paths, wfVars map[string]string, st interface{}, cfg config.Config) map[string]string {
 	vars := map[string]string{}
 
-	// Default values
-	// turn: from state
-	if st != nil {
-		vars["turn"] = strconv.Itoa(st.Turn)
-		// task_id: extract from meta if available
-		if st.Meta != nil {
-			if taskID, ok := st.Meta["task_id"].(string); ok {
-				vars["task_id"] = taskID
-			} else {
-				vars["task_id"] = ""
-			}
-		} else {
-			vars["task_id"] = ""
-		}
-	} else {
-		vars["turn"] = "0"
-		vars["task_id"] = ""
-	}
+	// Default values (state management migrated to DB, always use defaults)
+	vars["turn"] = "0"
+	vars["task_id"] = ""
 
 	// project_name: derive from working directory
 	wd, err := os.Getwd()

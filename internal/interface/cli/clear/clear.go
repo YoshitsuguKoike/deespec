@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -17,6 +16,9 @@ import (
 	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
+	"github.com/YoshitsuguKoike/deespec/internal/domain/model"
+	"github.com/YoshitsuguKoike/deespec/internal/domain/model/lock"
+	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -28,7 +30,7 @@ type ClearOptions struct {
 // Clear clears past instructions by archiving current state
 func Clear(paths app.Paths, opts ClearOptions) error {
 	// 1. Check for WIP (Work In Progress)
-	if err := checkNoWIP(paths.State); err != nil {
+	if err := checkNoWIP(); err != nil {
 		return err
 	}
 
@@ -72,43 +74,55 @@ func Clear(paths app.Paths, opts ClearOptions) error {
 }
 
 // checkNoWIP ensures there's no work in progress
-func checkNoWIP(statePath string) error {
-	// Check if state.json exists
-	data, err := os.ReadFile(statePath)
+func checkNoWIP() error {
+	// Initialize container to access DB and LockService
+	container, err := common.InitializeContainer()
 	if err != nil {
-		if os.IsNotExist(err) {
-			// No state file, safe to proceed
-			return nil
-		}
-		return fmt.Errorf("failed to read state: %w", err)
-	}
-
-	// Parse state.json
-	var st common.State
-	if err := json.Unmarshal(data, &st); err != nil {
-		// If we can't parse it, it's probably corrupted or old format
-		// Allow clear to proceed with warning
-		common.Warn("State file is corrupted or old format, allowing clear to proceed\n")
+		// If we can't initialize, allow clear with warning
+		common.Warn("Failed to initialize container, allowing clear to proceed: %v\n", err)
 		return nil
 	}
+	defer container.Close()
 
-	// Check if lease exists and is still active
-	leaseActive := st.LeaseExpiresAt != "" && !common.LeaseExpired(&st)
+	ctx := context.Background()
 
-	// If lease is active, block the clear
-	if leaseActive {
-		return fmt.Errorf("cannot clear: active lease exists until %s", st.LeaseExpiresAt)
+	// Check for active SBIs in the database
+	sbiRepo := container.GetSBIRepository()
+	filter := repository.SBIFilter{
+		Statuses: []model.Status{
+			model.StatusPicked,
+			model.StatusImplementing,
+			model.StatusReviewing,
+		},
+		Limit:  10,
+		Offset: 0,
+	}
+	sbis, err := sbiRepo.List(ctx, filter)
+	if err != nil {
+		// If we can't query, allow clear with warning
+		common.Warn("Failed to query SBI database, allowing clear to proceed: %v\n", err)
+	} else if len(sbis) > 0 {
+		// Found active SBIs
+		sbiIDs := make([]string, len(sbis))
+		for i, sbi := range sbis {
+			sbiIDs[i] = sbi.ID().String()
+		}
+		return fmt.Errorf("cannot clear: %d active SBI(s) in progress: %v", len(sbis), sbiIDs)
 	}
 
-	// If WIP exists but lease is expired or missing, allow clear with warning
-	if st.WIP != "" && !leaseActive {
-		if st.LeaseExpiresAt != "" {
-			common.Warn("Clearing with expired lease (WIP: %s was abandoned)\n", st.WIP)
-		} else {
-			common.Warn("Clearing with WIP but no lease (WIP: %s may be stale)\n", st.WIP)
+	// Check for active locks in LockService
+	lockService := container.GetLockService()
+
+	// Check for system runlock
+	runlockID, _ := lock.NewLockID("system-runlock")
+	if runLock, err := lockService.FindRunLock(ctx, runlockID); err == nil && runLock != nil {
+		if !runLock.IsExpired() {
+			return fmt.Errorf("cannot clear: active runlock exists (PID %d, expires: %s)",
+				runLock.PID(), runLock.ExpiresAt().Format("15:04:05"))
 		}
 	}
 
+	common.Info("No active work in progress, safe to proceed with clear\n")
 	return nil
 }
 

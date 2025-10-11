@@ -1,8 +1,11 @@
 package common
 
+// All tests in this file are commented out as they depend on removed state.json functionality
+/*
 import (
 	"testing"
 )
+*/
 
 // Test command constructors that exist
 // Commented out: newRunCmd function no longer exists in this package
@@ -35,6 +38,8 @@ func TestCommandConstructors(t *testing.T) {
 */
 
 // Test State helper methods
+// Commented out: State struct removed - state management migrated to DB
+/*
 func TestStateHelpers(t *testing.T) {
 	st := &State{
 		WIP:     "TEST-001",
@@ -49,6 +54,7 @@ func TestStateHelpers(t *testing.T) {
 	_ = st.Status
 	_ = st.Attempt
 }
+*/
 
 // Test ClearLease function
 // Commented out: ClearLease function has been removed
@@ -114,6 +120,8 @@ func TestParseDecisionEdgeCases(t *testing.T) {
 */
 
 // Test loadState and saveState functions
+// Commented out: LoadState function removed - state management migrated to DB
+/*
 func TestStateIO(t *testing.T) {
 	// Test loading non-existent file with relative path
 	_, err := LoadState("non_existent_file_for_test.json")
@@ -121,6 +129,7 @@ func TestStateIO(t *testing.T) {
 		t.Error("Expected error when loading non-existent file")
 	}
 }
+*/
 
 // Test nextStatusTransition edge cases
 // Commented out: nextStatusTransition is a private function in common package

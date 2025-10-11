@@ -1,17 +1,16 @@
 package status
 
 import (
-	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/common"
-)
-
-import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/YoshitsuguKoike/deespec/internal/app"
+	"github.com/YoshitsuguKoike/deespec/internal/domain/model"
+	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
+	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/common"
 	"github.com/spf13/cobra"
 )
 
@@ -72,39 +71,87 @@ func NewCommand() *cobra.Command {
 		Use:   "status",
 		Short: "Show current workflow status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			paths := app.GetPathsWithConfig(common.GetGlobalConfig())
-			st, err := common.LoadState(paths.State)
+			// Initialize container to access DB
+			container, err := common.InitializeContainer()
 			if err != nil {
 				if jsonOutput {
 					output := StatusOutput{
 						Ts:    time.Now().UTC().Format(time.RFC3339Nano),
 						Turn:  0,
-						Step:  "unknown",
+						Step:  "idle",
 						Ok:    false,
-						Error: fmt.Sprintf("read state: %v", err),
+						Error: fmt.Sprintf("failed to initialize container: %v", err),
 					}
 					b, _ := json.Marshal(output)
 					fmt.Println(string(b))
 					os.Exit(1)
 				}
-				return fmt.Errorf("read state: %w", err)
+				return fmt.Errorf("failed to initialize container: %w", err)
+			}
+			defer container.Close()
+
+			// Query DB for currently executing SBI
+			sbiRepo := container.GetSBIRepository()
+			ctx := context.Background()
+
+			// Find SBI in PICKED, IMPLEMENTING, or REVIEWING status
+			filter := repository.SBIFilter{
+				Statuses: []model.Status{
+					model.StatusPicked,
+					model.StatusImplementing,
+					model.StatusReviewing,
+				},
+				Limit:  1,
+				Offset: 0,
+			}
+			sbis, err := sbiRepo.List(ctx, filter)
+			if err != nil {
+				if jsonOutput {
+					output := StatusOutput{
+						Ts:    time.Now().UTC().Format(time.RFC3339Nano),
+						Turn:  0,
+						Step:  "idle",
+						Ok:    false,
+						Error: fmt.Sprintf("failed to query SBI: %v", err),
+					}
+					b, _ := json.Marshal(output)
+					fmt.Println(string(b))
+					os.Exit(1)
+				}
+				return fmt.Errorf("failed to query SBI: %w", err)
+			}
+
+			// Determine status
+			var turn int
+			var step string
+			var updatedAt time.Time
+			var sbiID string
+
+			if len(sbis) > 0 {
+				// Found an executing SBI
+				sbi := sbis[0]
+				if execState := sbi.ExecutionState(); execState != nil {
+					turn = execState.CurrentTurn.Value()
+				}
+				step = sbi.CurrentStep().String()
+				updatedAt = sbi.UpdatedAt().Value()
+				sbiID = sbi.ID().String()
+			} else {
+				// No executing SBI, check for idle state
+				step = "idle"
+				turn = 0
+				updatedAt = time.Now()
+			}
+
+			// Get the last journal error to determine ok status
+			lastError, err := getLastJournalError()
+			if err != nil {
+				// If we can't read the journal, report the issue but continue
+				lastError = fmt.Sprintf("journal read error: %v", err)
 			}
 
 			if jsonOutput {
 				// JSON output mode
-				turn := st.Turn
-				step := st.Current
-				if step == "" {
-					step = "unknown"
-				}
-
-				// Get the last journal error to determine ok status
-				lastError, err := getLastJournalError()
-				if err != nil {
-					// If we can't read the journal, report the issue but continue
-					lastError = fmt.Sprintf("journal read error: %v", err)
-				}
-
 				output := StatusOutput{
 					Ts:    time.Now().UTC().Format(time.RFC3339Nano),
 					Turn:  turn,
@@ -120,12 +167,12 @@ func NewCommand() *cobra.Command {
 				fmt.Println(string(b))
 			} else {
 				// Normal text output
-				fmt.Printf("Current : %s\n", st.Current)
-				fmt.Printf("Turn    : %d\n", st.Turn)
-				// Meta is now map[string]interface{}, need type assertion
-				if updatedAt, ok := st.Meta["updated_at"].(string); ok {
-					fmt.Printf("Updated : %s\n", updatedAt)
+				if sbiID != "" {
+					fmt.Printf("SBI     : %s\n", sbiID)
 				}
+				fmt.Printf("Current : %s\n", step)
+				fmt.Printf("Turn    : %d\n", turn)
+				fmt.Printf("Updated : %s\n", updatedAt.Format(time.RFC3339))
 			}
 
 			return nil

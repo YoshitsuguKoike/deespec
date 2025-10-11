@@ -17,10 +17,10 @@ type Paths struct {
 	Var      string // .deespec/var
 
 	// Key files
-	State     string // .deespec/var/state.json
+	State     string // .deespec/var/state.json (DEPRECATED: Use SQLite database for state management)
 	Journal   string // .deespec/var/journal.ndjson
 	Health    string // .deespec/var/health.json
-	StateLock string // .deespec/var/state.lock
+	StateLock string // .deespec/var/state.lock (DEPRECATED: Use LockService for lock management)
 }
 
 // ResolvePaths returns all paths with default home directory

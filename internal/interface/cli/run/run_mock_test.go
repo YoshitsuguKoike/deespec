@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/common"
+	// "github.com/YoshitsuguKoike/deespec/internal/interface/cli/common" // Removed: tests using common.State commented out
 	// "github.com/YoshitsuguKoike/deespec/internal/interface/cli/notes" // Moved to Application layer
 	"go.uber.org/goleak"
 )
@@ -57,6 +57,8 @@ func TestSummarizeText(t *testing.T) {
 	}
 }
 
+// Commented out: buildImplementPrompt function removed - state management migrated to DB
+/*
 func TestBuildImplementPrompt(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli/run.SetupSignalHandler.func1"))
 	// Create test state
@@ -70,7 +72,10 @@ func TestBuildImplementPrompt(t *testing.T) {
 		t.Error("buildImplementPrompt returned empty string")
 	}
 }
+*/
 
+// Commented out: buildReviewPrompt function removed - state management migrated to DB
+/*
 func TestBuildReviewPrompt(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli/run.SetupSignalHandler.func1"))
 	// Create test state
@@ -84,6 +89,7 @@ func TestBuildReviewPrompt(t *testing.T) {
 		t.Error("buildReviewPrompt returned empty string")
 	}
 }
+*/
 
 func TestGetCurrentWorkDir(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/YoshitsuguKoike/deespec/internal/interface/cli/run.SetupSignalHandler.func1"))
@@ -283,6 +289,8 @@ func TestLogClaudeInteraction(t *testing.T) {
 	)
 }
 
+// Commented out: getTaskDescription function removed - state management migrated to DB
+/*
 func TestGetTaskDescription(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -313,7 +321,10 @@ func TestGetTaskDescription(t *testing.T) {
 		})
 	}
 }
+*/
 
+// Commented out: determineStep function removed - state management migrated to DB
+/*
 func TestDetermineStep(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -369,7 +380,10 @@ func TestDetermineStep(t *testing.T) {
 		})
 	}
 }
+*/
 
+// Commented out: buildPromptByStatus function removed - state management migrated to DB
+/*
 func TestBuildPromptByStatus(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
@@ -424,6 +438,7 @@ func TestBuildPromptByStatus(t *testing.T) {
 		})
 	}
 }
+*/
 
 // func TestNewRunCmd(t *testing.T) {
 // 	// Test that newRunCmd creates a valid command

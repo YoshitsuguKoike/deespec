@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
-	"github.com/YoshitsuguKoike/deespec/internal/app/state"
 	"github.com/YoshitsuguKoike/deespec/internal/workflow"
 )
 
@@ -48,12 +47,8 @@ func ExpandStepPrompt(ctx context.Context, step workflow.Step, vars map[string]s
 //
 // Deprecated: Workflow prompt expansion is not currently used in the main execution path.
 func ExpandWorkflowPrompts(ctx context.Context, wf *workflow.Workflow, paths app.Paths) ([]*ExpandedPrompt, error) {
-	// Load state if it exists
-	st, err := state.LoadState(paths.State)
-	if err != nil {
-		// State might not exist yet, use nil
-		st = nil
-	}
+	// Note: State management migrated to DB, using nil for legacy compatibility
+	var st interface{} = nil
 
 	// Build the variable map
 	vars := workflow.BuildVarMap(ctx, paths, wf.Vars, st)
@@ -94,12 +89,8 @@ func PrepareStepExecution(ctx context.Context, wf *workflow.Workflow, stepID str
 		return nil, fmt.Errorf("step %s not found in workflow", stepID)
 	}
 
-	// Load state if it exists
-	st, err := state.LoadState(paths.State)
-	if err != nil {
-		// State might not exist yet, use nil
-		st = nil
-	}
+	// Note: State management migrated to DB, using nil for legacy compatibility
+	var st interface{} = nil
 
 	// Build the variable map
 	vars := workflow.BuildVarMap(ctx, paths, wf.Vars, st)

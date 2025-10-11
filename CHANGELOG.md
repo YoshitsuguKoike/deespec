@@ -6,6 +6,33 @@
 
 ### 追加 (Added)
 
+* **clearコマンドのDB対応**: データベースデータの物理削除機能を追加
+  - `clearDatabase()`: 全タスクテーブル（sbis, pbis, epics等）の物理削除
+  - トランザクション内で安全に削除（task_labels, epic_pbis, pbi_sbis → sbis, pbis, epics の順序）
+  - run_locks, state_locksも削除してクリーンな状態に
+  - labelsとschema_migrationsは保持（グローバルデータ）
+  - `sbi list`/`sbi history`での不整合を解消
+
+### 変更 (Changed)
+
+* **clearコマンドのstate.json管理改善**: deprecated警告の完全除去
+  - `LoadState()`と`SaveStateCAS()`を直接ファイルI/Oに置き換え
+  - `checkNoWIP()`: `os.ReadFile()`と`json.Unmarshal()`で直接読み込み
+  - `resetStateFiles()`: state.jsonを削除（DB-based管理に完全移行）
+  - deprecated警告が一切表示されなくなりました
+
+### 削除 (Removed)
+
+* **state.json関連の削除**: DB-based state managementへの完全移行
+  - `internal/app/state/loader.go`: 削除
+  - `internal/app/state/writer.go`: 削除
+  - `internal/app/state/state_test.go`: 削除
+  - `internal/domain/repository/state_repository.go`: 削除
+  - `internal/infrastructure/repository/state_repository_impl.go`: 削除
+  - `internal/interface/cli/common/state_stub.go`: 削除（deprecatedスタブ）
+
+### 追加 (Added)
+
 * **プロンプトシステムのテンプレート化 (OptionA + OptionB完了)**:
   - **OptionA: 既存コンテキスト読み込み指示の実装**
     - `buildPriorContextInstructions()`: AIエージェントに既存アーティファクト読み込みを指示

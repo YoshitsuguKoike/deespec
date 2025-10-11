@@ -24,10 +24,8 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/application/usecase/execution"
 	"github.com/YoshitsuguKoike/deespec/internal/application/workflow"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/lock"
-	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
 	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/di"
 	infraRepo "github.com/YoshitsuguKoike/deespec/internal/infrastructure/repository"
-	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/claude_prompt"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/workflow_sbi"
 	"github.com/YoshitsuguKoike/deespec/internal/interface/external/claudecli"
 )
@@ -151,202 +149,6 @@ func parseDecision(s string) string {
 	return "NEEDS_CHANGES"
 }
 
-// getTaskDescription returns task description based on status and attempt
-func getTaskDescription(st *common.State) string {
-	switch st.Status {
-	case "READY", "", "WIP":
-		if st.Attempt == 1 {
-			todo := ""
-			if todoVal, ok := st.Inputs["todo"].(string); ok {
-				todo = todoVal
-			}
-			if todo == "" {
-				todo = fmt.Sprintf("Implement SBI task %s", st.WIP)
-			}
-			return todo
-		} else if st.Attempt == 2 {
-			taskDesc := fmt.Sprintf("Second attempt for %s. Review feedback and implement improvements.", st.WIP)
-			// LastArtifacts is now []string, not map - look for review file in array
-			for _, artifact := range st.LastArtifacts {
-				if strings.Contains(artifact, "review") {
-					if content, err := os.ReadFile(artifact); err == nil {
-						taskDesc = fmt.Sprintf("Second attempt based on review feedback:\n\n%s", string(content))
-					}
-					break
-				}
-			}
-			return taskDesc
-		} else {
-			taskDesc := fmt.Sprintf("Third attempt for %s. Final chance to implement correctly.", st.WIP)
-			// LastArtifacts is now []string, not map - look for review file in array
-			for _, artifact := range st.LastArtifacts {
-				if strings.Contains(artifact, "review") {
-					if content, err := os.ReadFile(artifact); err == nil {
-						taskDesc = fmt.Sprintf("Third attempt based on review feedback:\n\n%s", string(content))
-					}
-					break
-				}
-			}
-			return taskDesc
-		}
-
-	case "REVIEW":
-		implArtifact := ""
-		if st.Attempt == 1 {
-			implArtifact = filepath.Join(".deespec", "specs", "sbi", st.WIP, fmt.Sprintf("implement_%d.md", st.Turn))
-		} else {
-			implArtifact = filepath.Join(".deespec", "specs", "sbi", st.WIP, fmt.Sprintf("implement_attempt%d_%d.md", st.Attempt, st.Turn))
-		}
-		return fmt.Sprintf("Review the implementation at: %s", implArtifact)
-
-	case "REVIEW&WIP":
-		return fmt.Sprintf("Force implementation for %s after 3 failed attempts. As reviewer, implement the solution directly.", st.WIP)
-
-	default:
-		return fmt.Sprintf("Process task %s", st.WIP)
-	}
-}
-
-// buildPromptByStatus creates appropriate prompt based on status and turn
-// Phase 9.1e: Added labelRepo parameter for Repository-based label enrichment
-func buildPromptByStatus(st *common.State, labelRepo repository.LabelRepository) string {
-	builder := claude_prompt.NewClaudeCodePromptBuilder(
-		getCurrentWorkDir(),
-		filepath.Join(".deespec", "specs", "sbi", st.WIP),
-		st.WIP,
-		st.Turn,
-		determineStep(st.Status, st.Attempt),
-		labelRepo, // Phase 9.1e: Repository for label enrichment
-	)
-
-	// Determine task description based on status and attempt
-	taskDesc := getTaskDescription(st)
-
-	// Try to load external prompt first
-	externalPrompt, err := builder.LoadExternalPrompt(st.Status, taskDesc)
-	if err == nil {
-		common.Info("Loaded external prompt from .deespec/prompts/ for status: %s\n", st.Status)
-		return externalPrompt
-	}
-
-	// Fall back to hardcoded prompts
-	common.Info("Using default prompt (external prompt not found: %v)\n", err)
-
-	switch st.Status {
-	case "READY", "":
-		// Initial implementation (Turn 1, Step 2: implement_try)
-		todo := ""
-		if todoVal, ok := st.Inputs["todo"].(string); ok {
-			todo = todoVal
-		}
-		if todo == "" {
-			todo = fmt.Sprintf("Implement SBI task %s", st.WIP)
-		}
-		return builder.BuildImplementPrompt(todo)
-
-	case "WIP":
-		// Implementation or re-implementation
-		if st.Attempt == 1 {
-			// First attempt (Step 2: implement_try)
-			todo := ""
-			if todoVal, ok := st.Inputs["todo"].(string); ok {
-				todo = todoVal
-			}
-			if todo == "" {
-				todo = fmt.Sprintf("Implement SBI task %s", st.WIP)
-			}
-			return builder.BuildImplementPrompt(todo)
-		} else if st.Attempt == 2 {
-			// Second attempt (Step 4: implement_2nd_try)
-			taskDesc := fmt.Sprintf("Second attempt for %s. Review feedback and implement improvements.", st.WIP)
-			// LastArtifacts is now []string, not map - look for review file in array
-			for _, artifact := range st.LastArtifacts {
-				if strings.Contains(artifact, "review") {
-					if content, err := os.ReadFile(artifact); err == nil {
-						taskDesc = fmt.Sprintf("Second attempt based on review feedback:\n\n%s", string(content))
-					}
-					break
-				}
-			}
-			return builder.BuildImplementPrompt(taskDesc)
-		} else {
-			// Third attempt (Step 6: implement_3rd_try)
-			taskDesc := fmt.Sprintf("Third attempt for %s. Final chance to implement correctly.", st.WIP)
-			// LastArtifacts is now []string, not map - look for review file in array
-			for _, artifact := range st.LastArtifacts {
-				if strings.Contains(artifact, "review") {
-					if content, err := os.ReadFile(artifact); err == nil {
-						taskDesc = fmt.Sprintf("Third attempt based on review feedback:\n\n%s", string(content))
-					}
-					break
-				}
-			}
-			return builder.BuildImplementPrompt(taskDesc)
-		}
-
-	case "REVIEW":
-		// Review implementation
-		implArtifact := ""
-		if st.Attempt == 1 {
-			implArtifact = filepath.Join(".deespec", "specs", "sbi", st.WIP, fmt.Sprintf("implement_%d.md", st.Turn))
-		} else {
-			implArtifact = filepath.Join(".deespec", "specs", "sbi", st.WIP, fmt.Sprintf("implement_attempt%d_%d.md", st.Attempt, st.Turn))
-		}
-		// No test artifact since test step is removed
-		return builder.BuildReviewPrompt(implArtifact, "")
-
-	case "REVIEW&WIP":
-		// Force termination - reviewer implements (Step 8: reviewer_force_implement)
-		taskDesc := fmt.Sprintf("Force implementation for %s after 3 failed attempts. As reviewer, implement the solution directly.", st.WIP)
-		return builder.BuildImplementPrompt(taskDesc)
-
-	case "DONE":
-		return "# Task completed\n\nThe SBI execution has been completed."
-
-	default:
-		return fmt.Sprintf("# Unknown status: %s\n\nCannot determine appropriate action.", st.Status)
-	}
-}
-
-// determineStep maps status and attempt to execution step
-func determineStep(status string, attempt int) string {
-	switch status {
-	case "READY", "":
-		return "implement_try"
-	case "WIP":
-		if attempt == 1 {
-			return "implement_try"
-		} else if attempt == 2 {
-			return "implement_2nd_try"
-		} else {
-			return "implement_3rd_try"
-		}
-	case "REVIEW":
-		if attempt == 1 {
-			return "first_review"
-		} else if attempt == 2 {
-			return "second_review"
-		} else {
-			return "third_review"
-		}
-	case "REVIEW&WIP":
-		return "reviewer_force_implement"
-	case "DONE":
-		return "done"
-	default:
-		return "unknown"
-	}
-}
-
-// Legacy functions kept for compatibility
-func buildImplementPrompt(st *common.State) string {
-	return buildPromptByStatus(st, nil) // nil for backward compatibility
-}
-
-func buildReviewPrompt(st *common.State) string {
-	return buildPromptByStatus(st, nil) // nil for backward compatibility
-}
-
 func getCurrentWorkDir() string {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -362,51 +164,7 @@ func cleanupStaleLocks() {
 		return
 	}
 
-	// Get paths using config
-	paths := app.GetPathsWithConfig(common.GetGlobalConfig())
-
-	// Check for state.lock file
-	if lockInfo, err := os.Stat(paths.StateLock); err == nil {
-		// Lock file exists, check if it's stale
-		shouldRemove := false
-		removeReason := ""
-
-		// Load state to check lease
-		if st, loadErr := common.LoadState(paths.State); loadErr == nil {
-			if st.LeaseExpiresAt != "" && common.LeaseExpired(st) {
-				// Lease expired
-				shouldRemove = true
-				removeReason = fmt.Sprintf("expired lease for task %s", st.WIP)
-			} else if st.LeaseExpiresAt == "" {
-				// No active lease, check lock age
-				lockAge := time.Since(lockInfo.ModTime())
-				if lockAge > 10*time.Minute {
-					shouldRemove = true
-					removeReason = fmt.Sprintf("lock file is %v old with no active lease", lockAge.Round(time.Second))
-				}
-			}
-		} else {
-			// Can't read state, check lock age
-			lockAge := time.Since(lockInfo.ModTime())
-			if lockAge > 10*time.Minute {
-				shouldRemove = true
-				removeReason = fmt.Sprintf("lock file is %v old and state unreadable", lockAge.Round(time.Second))
-			}
-		}
-
-		if shouldRemove {
-			common.Info("[Manager Startup] Removing stale lock: %s\n", removeReason)
-			if err := os.Remove(paths.StateLock); err != nil {
-				common.Warn("[Manager Startup] Failed to remove stale lock: %v\n", err)
-			} else {
-				common.Info("[Manager Startup] Successfully removed stale lock\n")
-			}
-		} else {
-			common.Info("[Manager Startup] Active lock found, will respect it\n")
-		}
-	}
-
-	// Also check for runlock using new Lock Service
+	// Check for runlock using Lock Service (DB-based)
 	if container, err := common.InitializeContainer(); err == nil {
 		defer container.Close()
 		lockService := container.GetLockService()
@@ -974,7 +732,6 @@ func RunTurnWithContainer(container *di.Container, autoFB bool) error {
 	ctx := context.Background()
 
 	// Create repository implementations
-	stateRepo := infraRepo.NewStateRepositoryImpl(paths.State)
 	journalRepo := infraRepo.NewJournalRepositoryImpl(paths.Journal)
 
 	// Get AgentGateway from container
@@ -987,11 +744,10 @@ func RunTurnWithContainer(container *di.Container, autoFB bool) error {
 		maxTurns = common.GetGlobalConfig().MaxTurns()
 	}
 
-	// Create RunTurnUseCase with SBIRepository for DB-based task management
+	// Create RunTurnUseCase with DB-based repositories
 	useCase := execution.NewRunTurnUseCase(
-		stateRepo,
 		journalRepo,
-		sbiRepo, // Added for DB-based task picking
+		sbiRepo,
 		lockService,
 		agentGateway,
 		maxTurns,

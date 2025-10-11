@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/YoshitsuguKoike/deespec/internal/app"
-	"github.com/YoshitsuguKoike/deespec/internal/app/state"
 )
 
 func TestValidatePlaceholders(t *testing.T) {
@@ -189,7 +188,7 @@ func TestExpandPrompt(t *testing.T) {
 }
 
 func TestBuildVarMap(t *testing.T) {
-	// Environment variables are no longer used
+	// Note: State management migrated to DB. These deprecated functions now always use defaults.
 	// Config should be passed through BuildVarMapWithConfig instead
 
 	// Get the current working directory for project name
@@ -199,21 +198,14 @@ func TestBuildVarMap(t *testing.T) {
 	tests := []struct {
 		name     string
 		wfVars   map[string]string
-		state    *state.State
 		wantVars map[string]string
 	}{
 		{
 			name:   "defaults only",
 			wfVars: nil,
-			state: &state.State{
-				Turn: 5,
-				Meta: map[string]interface{}{
-					"task_id": "TASK-123",
-				},
-			},
 			wantVars: map[string]string{
-				"turn":         "5",
-				"task_id":      "TASK-123",
+				"turn":         "0",
+				"task_id":      "",
 				"project_name": defaultProjectName,
 				"language":     "ja",
 			},
@@ -224,21 +216,16 @@ func TestBuildVarMap(t *testing.T) {
 				"project_name": "custom-project",
 				"language":     "en",
 			},
-			state: &state.State{
-				Turn: 3,
-				Meta: map[string]interface{}{},
-			},
 			wantVars: map[string]string{
-				"turn":         "3",
+				"turn":         "0",
 				"task_id":      "",
 				"project_name": "custom-project",
 				"language":     "en",
 			},
 		},
 		{
-			name:   "nil state handled",
+			name:   "nil workflow vars handled",
 			wfVars: nil,
-			state:  nil,
 			wantVars: map[string]string{
 				"turn":         "0",
 				"task_id":      "",
@@ -250,13 +237,10 @@ func TestBuildVarMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Environment variables are no longer used
-			// Config is passed through BuildVarMapWithConfig instead
-
-			// Call BuildVarMap
+			// Call BuildVarMap with nil state (state management migrated to DB)
 			ctx := context.Background()
 			paths := app.GetPaths() // Use default paths
-			got := BuildVarMap(ctx, paths, tt.wfVars, tt.state)
+			got := BuildVarMap(ctx, paths, tt.wfVars, nil)
 
 			// Compare
 			if !reflect.DeepEqual(got, tt.wantVars) {

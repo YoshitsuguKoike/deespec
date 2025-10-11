@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/YoshitsuguKoike/deespec/internal/interface/cli/common"
 	validatorCommon "github.com/YoshitsuguKoike/deespec/internal/validator/common"
@@ -68,28 +69,28 @@ func runHealthVerify(filePath, format string) error {
 func printHealthTextResult(result *validatorCommon.ValidationResult) {
 	for _, fileResult := range result.Files {
 		if len(fileResult.Issues) == 0 {
-			fmt.Printf("OK: %s valid\n", common.GetFileName(fileResult.File))
+			fmt.Printf("OK: %s valid\n", filepath.Base(fileResult.File))
 		} else {
 			for _, issue := range fileResult.Issues {
 				switch issue.Type {
 				case "error":
 					if issue.Field != "" {
 						common.Error("%s %s: %s\n",
-							common.GetFileName(fileResult.File), issue.Field, issue.Message)
+							filepath.Base(fileResult.File), issue.Field, issue.Message)
 					} else {
 						common.Error("%s %s\n",
-							common.GetFileName(fileResult.File), issue.Message)
+							filepath.Base(fileResult.File), issue.Message)
 					}
 				case "warn":
 					if issue.Field != "" {
 						fmt.Printf("WARN: %s %s: %s\n",
-							common.GetFileName(fileResult.File), issue.Field, issue.Message)
+							filepath.Base(fileResult.File), issue.Field, issue.Message)
 					} else {
 						fmt.Printf("WARN: %s %s\n",
-							common.GetFileName(fileResult.File), issue.Message)
+							filepath.Base(fileResult.File), issue.Message)
 					}
 				case "ok":
-					fmt.Printf("OK: %s %s\n", common.GetFileName(fileResult.File), issue.Message)
+					fmt.Printf("OK: %s %s\n", filepath.Base(fileResult.File), issue.Message)
 				}
 			}
 		}

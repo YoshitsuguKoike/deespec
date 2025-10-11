@@ -21,9 +21,8 @@ import (
 
 // RunTurnUseCase orchestrates a single workflow turn execution
 type RunTurnUseCase struct {
-	stateRepo    repository.StateRepository
 	journalRepo  repository.JournalRepository
-	sbiRepo      repository.SBIRepository // Added for DB-based task picking
+	sbiRepo      repository.SBIRepository
 	lockService  service.LockService
 	agentGateway output.AgentGateway
 	// TODO: Add PromptBuilder interface
@@ -33,7 +32,6 @@ type RunTurnUseCase struct {
 
 // NewRunTurnUseCase creates a new RunTurnUseCase
 func NewRunTurnUseCase(
-	stateRepo repository.StateRepository,
 	journalRepo repository.JournalRepository,
 	sbiRepo repository.SBIRepository,
 	lockService service.LockService,
@@ -49,7 +47,6 @@ func NewRunTurnUseCase(
 	}
 
 	return &RunTurnUseCase{
-		stateRepo:    stateRepo,
 		journalRepo:  journalRepo,
 		sbiRepo:      sbiRepo,
 		lockService:  lockService,
@@ -270,92 +267,6 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		ElapsedMs:     time.Since(startTime).Milliseconds(),
 		CompletedAt:   time.Now(),
 		TaskCompleted: taskCompleted,
-	}, nil
-}
-
-// pickTask attempts to pick the next task from the database
-func (uc *RunTurnUseCase) pickTask(ctx context.Context, autoFB bool, turn int, state *repository.ExecutionState) (bool, error) {
-	// Create SBI execution service
-	sbiExecService := service.NewSBIExecutionService(uc.sbiRepo, uc.lockService)
-
-	// Pick next SBI from database with lock acquisition
-	nextSBI, sbiLock, err := sbiExecService.PickAndLockNextSBI(ctx, uc.leaseTTL)
-	if err != nil {
-		return false, fmt.Errorf("failed to pick and lock SBI: %w", err)
-	}
-
-	if nextSBI == nil {
-		// No tasks available
-		return false, nil
-	}
-
-	// Note: Lock will be held until the SBI execution completes
-	// We defer release here, but in production this should be managed
-	// by the caller to ensure lock is released after execution
-	if sbiLock != nil {
-		defer func() {
-			if err := sbiExecService.ReleaseSBILock(ctx, nextSBI.ID().String()); err != nil {
-				// Log error but don't fail the operation
-			}
-		}()
-	}
-
-	// Update state from DB (DB is single source of truth)
-	state.WIP = nextSBI.ID().String()
-	state.Status = "WIP"
-	state.Turn = 1    // Reset turn for new SBI
-	state.Attempt = 1 // Reset attempt for new SBI
-	state.LeaseExpiresAt = time.Now().Add(uc.leaseTTL).UTC().Format(time.RFC3339Nano)
-
-	// Initialize execution state for the SBI
-	if execState := nextSBI.ExecutionState(); execState != nil {
-		state.Turn = execState.CurrentTurn.Value()
-		state.Attempt = execState.CurrentAttempt.Value()
-	}
-
-	return true, nil
-}
-
-// executeStep executes a single workflow step
-func (uc *RunTurnUseCase) executeStep(ctx context.Context, state *repository.ExecutionState, turn int) (*dto.ExecuteStepOutput, error) {
-	// TODO: Build prompt using PromptBuilder interface
-	// For now, use a simple placeholder
-	prompt := fmt.Sprintf("Execute step %s for SBI %s (attempt %d)", state.Current, state.WIP, state.Attempt)
-
-	// Execute agent
-	startTime := time.Now()
-	agentResult, err := uc.agentGateway.Execute(ctx, output.AgentRequest{
-		Prompt:  prompt,
-		Timeout: 5 * time.Minute,
-	})
-	if err != nil {
-		return &dto.ExecuteStepOutput{
-			Success:     false,
-			ErrorMsg:    err.Error(),
-			ElapsedMs:   time.Since(startTime).Milliseconds(),
-			StartedAt:   startTime,
-			CompletedAt: time.Now(),
-		}, err
-	}
-
-	// Extract decision for review steps
-	decision := "PENDING"
-	if state.Status == "REVIEW" || state.Status == "REVIEW&WIP" {
-		decision = uc.extractDecision(agentResult.Output)
-	}
-
-	// TODO: Save artifact to filesystem
-	// This should be done via an ArtifactRepository
-	artifactPath := fmt.Sprintf(".deespec/specs/sbi/%s/%s_%d.md", state.WIP, state.Current, turn)
-
-	return &dto.ExecuteStepOutput{
-		Success:      true,
-		Output:       agentResult.Output,
-		Decision:     decision,
-		ArtifactPath: artifactPath,
-		ElapsedMs:    time.Since(startTime).Milliseconds(),
-		StartedAt:    startTime,
-		CompletedAt:  time.Now(),
 	}, nil
 }
 
@@ -698,28 +609,6 @@ func (uc *RunTurnUseCase) mapStringToDomainStatus(statusStr string) model.Status
 	}
 }
 
-// syncSBIToStateFile is deprecated - DB is now single source of truth
-// This function is kept for backward compatibility but does nothing
-func (uc *RunTurnUseCase) syncSBIToStateFile(ctx context.Context, sbiEntity *sbi.SBI) error {
-	// No-op: State sync removed - DB is single source of truth
-	return nil
-}
-
-func (uc *RunTurnUseCase) isLeaseExpired(state *repository.ExecutionState) bool {
-	if state.LeaseExpiresAt == "" {
-		return true
-	}
-	expiresAt, err := time.Parse(time.RFC3339Nano, state.LeaseExpiresAt)
-	if err != nil {
-		return true
-	}
-	return time.Now().After(expiresAt)
-}
-
-func (uc *RunTurnUseCase) renewLease(state *repository.ExecutionState) {
-	state.LeaseExpiresAt = time.Now().Add(uc.leaseTTL).UTC().Format(time.RFC3339Nano)
-}
-
 func (uc *RunTurnUseCase) statusToStep(status string) string {
 	switch status {
 	case "READY", "WIP":
@@ -777,22 +666,6 @@ func findSubstring(s, substr string) int {
 		}
 	}
 	return -1
-}
-
-func (uc *RunTurnUseCase) buildJournalRecord(state *repository.ExecutionState, stepOutput *dto.ExecuteStepOutput, turn int, startTime time.Time) map[string]interface{} {
-	artifacts := []interface{}{stepOutput.ArtifactPath}
-
-	return map[string]interface{}{
-		"ts":         time.Now().UTC().Format(time.RFC3339Nano),
-		"turn":       turn,
-		"step":       state.Current,
-		"status":     state.Status,
-		"attempt":    state.Attempt,
-		"decision":   state.Decision,
-		"elapsed_ms": time.Since(startTime).Milliseconds(),
-		"error":      stepOutput.ErrorMsg,
-		"artifacts":  artifacts,
-	}
 }
 
 // determineNextStatus determines the next status based on current state

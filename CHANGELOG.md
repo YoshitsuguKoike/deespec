@@ -6,6 +6,42 @@
 
 ### 追加 (Added)
 
+* **テストカバレッジ強化**: Repository層の包括的なテスト追加
+  - journal_repository_impl_test.go: 7つの新規テスト追加
+    - 空タイムスタンプ正規化テスト
+    - nilアーティファクト処理テスト
+    - 並行追記テスト（50 goroutines）
+    - 複雑なアーティファクト構造テスト
+    - Unicode対応テスト
+  - 新規テストファイル追加（7ファイル、8,852行）
+    - fbdraft_repository_test.go: FBドラフトリポジトリテスト
+    - journal_repository_test.go: ジャーナルリポジトリテスト
+    - label_repository_test.go: ラベルリポジトリテスト
+    - lock_repository_test.go: ロックリポジトリテスト
+    - epic_repository_impl_test.go: EPIC実装テスト
+    - label_repository_impl_test.go: ラベル実装テスト
+  - lock repository tests: run_lock/state_lockの並行操作テスト
+
+### 修正 (Fixed)
+
+* **ターン制限超過時のステータス遷移バグ修正**: 無限ループとランタイムエラーを解消
+  - 問題: ターン制限（maxTurns）超過時、REVIEWING → REVIEWING への不正な遷移を試行
+  - エラー: "invalid status transition from REVIEWING to REVIEWING"
+  - 修正: ターン制限超過時は明示的にDONEステータスへ遷移
+  - 影響: Turn 8でDECISION=PENDINGの場合、Turn 9で強制終了が正常に動作
+  - ファイル: internal/application/usecase/execution/run_turn_use_case.go:136
+
+### 変更 (Changed)
+
+* **ドキュメント構造改善**: PBI設計ドキュメントをモジュール化
+  - pbi_how_to_work.md: メイン概要とリンクのみに簡素化（535行削減）
+  - pbi_how_to_work_01.md: ファイルベース vs コマンド引数の設計比較
+  - pbi_how_to_work_02.md: 追加の設計考慮事項
+  - pbi_how_to_work_03.md: 実装ガイドラインとGoコード例
+  - 目的: ドキュメントの保守性と可読性の向上
+
+### 追加 (Added)
+
 * **done.mdレポート生成機能 (Phase 2)**:
   - `.deespec/prompts/DONE.md` テンプレート追加: タスク完了時の包括的レポート生成
   - Status=DONE遷移時に自動的にdone.mdを生成

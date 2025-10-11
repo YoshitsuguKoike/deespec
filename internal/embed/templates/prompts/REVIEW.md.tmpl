@@ -49,17 +49,59 @@ Make your decision based on the review:
 - `DECISION: FAILED` - Critical issues or unable to complete
 
 ## Review Report Format
-End with a structured review report:
-```
-## Turn {{.Turn}} Review Report
-[Review summary in the specified language]
-- Decision: [SUCCEEDED/NEEDS_CHANGES/FAILED]
-- Critical Issues: [count or "None"]
-- Test Coverage: [status]
-- Recommendations: [brief list if NEEDS_CHANGES]
+
+**IMPORTANT: レビュー判定の記載方法**
+
+レビューファイルには以下の2箇所にDECISIONを記載してください：
+
+### 1. 冒頭のサマリーセクション（人間向け）**必須構造**
+ファイルの**最初の10行以内**に`## Summary`セクションを作成し、**見出しの直後にDECISIONを記載**してください：
+
+```markdown
+## Summary
+DECISION: SUCCEEDED
+
+[この後に詳細な解説を記載：実装の品質、見つかった問題、テスト結果など]
 ```
 
-The decision line must be exactly one of:
-- `DECISION: SUCCEEDED`
-- `DECISION: NEEDS_CHANGES`
-- `DECISION: FAILED`
+**重要**: DECISIONは## Summaryの直後（1-2行以内）に必ず記載してください。詳細な説明はその後に続けます。
+
+### 2. 最終行（機械判定用）
+ファイルの**最終行**に以下の形式でJSONを記載してください：
+
+```
+{"decision": "SUCCEEDED"}
+```
+
+### サンプル構造
+```
+## Summary
+DECISION: SUCCEEDED
+
+実装を確認した結果、全ての要件を満たしています。
+テストは全て合格し、コード品質も良好です。
+
+## Turn {{.Turn}} Review Report
+[詳細なレビュー内容...]
+
+## Test Results
+[テスト結果...]
+
+## Recommendations
+[推奨事項...]
+
+{"decision": "SUCCEEDED"}
+```
+
+### 重要な注意事項
+- 冒頭の`## Summary`内のDECISIONと最終行のJSONの`decision`は**必ず同じ値**にしてください
+- 両方が一致している場合のみ、システムはファイルから判定を読み取ります
+- 不一致の場合は、システムはagent出力から判定を行います
+- **このフォーマットはレビュー言語に関わらず必須です**（英語、日本語、その他の言語すべてで適用）
+
+The decision must be exactly one of:
+- `SUCCEEDED` - Implementation is correct and complete
+- `NEEDS_CHANGES` - Issues found that need fixing
+- `FAILED` - Critical issues or unable to complete
+
+Use the Write tool to create this file with your full review report.

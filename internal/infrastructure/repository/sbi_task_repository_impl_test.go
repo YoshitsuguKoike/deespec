@@ -63,7 +63,7 @@ func TestSBITaskRepositoryImpl_LoadAllTasks_EmptyDirectory(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)
@@ -77,7 +77,7 @@ func TestSBITaskRepositoryImpl_LoadAllTasks_EmptyDirectory(t *testing.T) {
 }
 
 func TestSBITaskRepositoryImpl_LoadAllTasks_NonExistentDirectory(t *testing.T) {
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	nonExistentPath := "/tmp/non_existent_directory_" + t.Name()
@@ -107,7 +107,7 @@ func TestSBITaskRepositoryImpl_LoadAllTasks_SingleTask(t *testing.T) {
 
 	createTestMetaYAML(t, taskDir, "SBI-001", "Test Task 1", 1, 1, nil)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)
@@ -155,7 +155,7 @@ func TestSBITaskRepositoryImpl_LoadAllTasks_MultipleTasks(t *testing.T) {
 		createTestMetaYAML(t, taskDir, taskID, "Task "+string(rune(i+'0')), i, i, nil)
 	}
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)
@@ -184,7 +184,7 @@ func TestSBITaskRepositoryImpl_LoadAllTasks_WithDependencies(t *testing.T) {
 
 	createTestMetaYAML(t, taskDir, "SBI-002", "Dependent Task", 2, 2, []string{"SBI-001"})
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)
@@ -230,7 +230,7 @@ role: developer
 		t.Fatalf("Failed to create meta.yaml: %v", err)
 	}
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)
@@ -278,7 +278,7 @@ func TestSBITaskRepositoryImpl_LoadAllTasks_InvalidYAML(t *testing.T) {
 		warnCalled = true
 	}
 
-	repo := NewSBITaskRepositoryImpl(warnLog, nil)
+	repo := NewSBITaskRepositoryImpl(warnLog, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)
@@ -312,7 +312,7 @@ func TestSBITaskRepositoryImpl_LoadAllTasks_NestedDirectories(t *testing.T) {
 
 	createTestMetaYAML(t, nestedDir, "SBI-001", "Nested Task", 1, 1, nil)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)
@@ -352,7 +352,7 @@ role: developer
 		t.Fatalf("Failed to create meta.yml: %v", err)
 	}
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)
@@ -380,7 +380,7 @@ func TestSBITaskRepositoryImpl_LoadAllTasks_ContextCancellation(t *testing.T) {
 	}
 	createTestMetaYAML(t, taskDir, "SBI-001", "Test Task", 1, 1, nil)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 
 	// Create cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -403,7 +403,7 @@ func TestSBITaskRepositoryImpl_GetCompletedTasks_EmptyJournal(t *testing.T) {
 
 	journalPath := filepath.Join(tmpDir, "journal.ndjson")
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	completed, err := repo.GetCompletedTasks(ctx, journalPath)
@@ -428,7 +428,7 @@ func TestSBITaskRepositoryImpl_GetCompletedTasks_OldFormatDone(t *testing.T) {
 `
 	createTestJournal(t, journalPath, journalContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	completed, err := repo.GetCompletedTasks(ctx, journalPath)
@@ -453,7 +453,7 @@ func TestSBITaskRepositoryImpl_GetCompletedTasks_NewFormatDone(t *testing.T) {
 `
 	createTestJournal(t, journalPath, journalContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	completed, err := repo.GetCompletedTasks(ctx, journalPath)
@@ -481,7 +481,7 @@ func TestSBITaskRepositoryImpl_GetCompletedTasks_MultipleEntries(t *testing.T) {
 `
 	createTestJournal(t, journalPath, journalContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	completed, err := repo.GetCompletedTasks(ctx, journalPath)
@@ -503,7 +503,7 @@ func TestSBITaskRepositoryImpl_GetCompletedTasks_MultipleEntries(t *testing.T) {
 }
 
 func TestSBITaskRepositoryImpl_GetCompletedTasks_DefaultPath(t *testing.T) {
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	// Test with empty path (should use default)
@@ -532,7 +532,7 @@ func TestSBITaskRepositoryImpl_GetCompletedTasks_CorruptedJSON(t *testing.T) {
 `
 	createTestJournal(t, journalPath, journalContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	completed, err := repo.GetCompletedTasks(ctx, journalPath)
@@ -563,7 +563,7 @@ func TestSBITaskRepositoryImpl_GetCompletedTasks_ContextCancellation(t *testing.
 	}
 	createTestJournal(t, journalPath, journalContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 
 	// Create cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -586,7 +586,7 @@ func TestSBITaskRepositoryImpl_GetLastJournalEntry_EmptyJournal(t *testing.T) {
 
 	journalPath := filepath.Join(tmpDir, "journal.ndjson")
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	entry, err := repo.GetLastJournalEntry(ctx, journalPath)
@@ -611,7 +611,7 @@ func TestSBITaskRepositoryImpl_GetLastJournalEntry_SingleEntry(t *testing.T) {
 `
 	createTestJournal(t, journalPath, journalContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	entry, err := repo.GetLastJournalEntry(ctx, journalPath)
@@ -642,7 +642,7 @@ func TestSBITaskRepositoryImpl_GetLastJournalEntry_MultipleEntries(t *testing.T)
 `
 	createTestJournal(t, journalPath, journalContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	entry, err := repo.GetLastJournalEntry(ctx, journalPath)
@@ -677,7 +677,7 @@ func TestSBITaskRepositoryImpl_GetLastJournalEntry_TrailingEmptyLines(t *testing
 `
 	createTestJournal(t, journalPath, journalContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	entry, err := repo.GetLastJournalEntry(ctx, journalPath)
@@ -695,7 +695,7 @@ func TestSBITaskRepositoryImpl_GetLastJournalEntry_TrailingEmptyLines(t *testing
 }
 
 func TestSBITaskRepositoryImpl_GetLastJournalEntry_DefaultPath(t *testing.T) {
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	// Test with empty path (should use default)
@@ -725,7 +725,7 @@ func TestSBITaskRepositoryImpl_GetLastJournalEntry_ContextCancellation(t *testin
 	}
 	createTestJournal(t, journalPath, journalContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 
 	// Create cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -748,7 +748,7 @@ func TestSBITaskRepositoryImpl_RecordPickInJournal_NewJournal(t *testing.T) {
 
 	journalPath := filepath.Join(tmpDir, "journal.ndjson")
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	task := &dto.SBITaskDTO{
@@ -789,7 +789,7 @@ func TestSBITaskRepositoryImpl_RecordPickInJournal_AppendToExisting(t *testing.T
 `
 	createTestJournal(t, journalPath, initialContent)
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	task := &dto.SBITaskDTO{
@@ -826,7 +826,7 @@ func TestSBITaskRepositoryImpl_RecordPickInJournal_NullPriorities(t *testing.T) 
 
 	journalPath := filepath.Join(tmpDir, "journal.ndjson")
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	task := &dto.SBITaskDTO{
@@ -856,7 +856,7 @@ func TestSBITaskRepositoryImpl_RecordPickInJournal_NullPriorities(t *testing.T) 
 }
 
 func TestSBITaskRepositoryImpl_RecordPickInJournal_DefaultPath(t *testing.T) {
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	task := &dto.SBITaskDTO{
@@ -906,7 +906,7 @@ role: 開発者
 		t.Fatalf("Failed to create meta.yaml: %v", err)
 	}
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)
@@ -940,7 +940,7 @@ func TestSBITaskRepositoryImpl_LoggingIntegration(t *testing.T) {
 		debugCalled = true
 	}
 
-	repo := NewSBITaskRepositoryImpl(warnLog, debugLog)
+	repo := NewSBITaskRepositoryImpl(warnLog, debugLog, nil)
 
 	// Create invalid task to trigger warning
 	taskDir := filepath.Join(tmpDir, "SBI-001")
@@ -1002,7 +1002,7 @@ role: backend-engineer
 		t.Fatalf("Failed to create meta.yaml: %v", err)
 	}
 
-	repo := NewSBITaskRepositoryImpl(nil, nil)
+	repo := NewSBITaskRepositoryImpl(nil, nil, nil)
 	ctx := context.Background()
 
 	tasks, err := repo.LoadAllTasks(ctx, tmpDir)

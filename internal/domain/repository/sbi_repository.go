@@ -29,6 +29,16 @@ type SBIRepository interface {
 
 	// ResetSBIState resets an SBI to a specific status (for testing/maintenance)
 	ResetSBIState(ctx context.Context, id SBIID, toStatus string) error
+
+	// GetDependencies retrieves the list of SBI IDs that the given SBI depends on
+	GetDependencies(ctx context.Context, sbiID SBIID) ([]string, error)
+
+	// GetDependents retrieves the list of SBI IDs that depend on the given SBI
+	GetDependents(ctx context.Context, sbiID SBIID) ([]string, error)
+
+	// SaveDependencies persists the dependencies for an SBI
+	// This replaces all existing dependencies with the provided list
+	SaveDependencies(ctx context.Context, sbiID SBIID, dependsOn []string) error
 }
 
 // SBIFilter defines criteria for filtering SBIs

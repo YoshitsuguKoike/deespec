@@ -25,6 +25,7 @@ type SBIMetadata struct {
 	Labels         []string
 	AssignedAgent  string   // e.g., "claude-code", "gemini-cli", "codex"
 	FilePaths      []string // Files to be modified/created
+	DependsOn      []string // IDs of SBIs that must be completed before this SBI
 }
 
 // ExecutionState tracks the execution state of an SBI
@@ -265,4 +266,24 @@ func (s *SBI) Priority() int {
 // SetPriority sets the priority level
 func (s *SBI) SetPriority(priority int) {
 	s.metadata.Priority = priority
+}
+
+// DependsOn returns the list of SBI IDs this SBI depends on
+func (s *SBI) DependsOn() []string {
+	return s.metadata.DependsOn
+}
+
+// SetDependsOn sets the list of SBI IDs this SBI depends on
+func (s *SBI) SetDependsOn(dependsOn []string) {
+	s.metadata.DependsOn = dependsOn
+}
+
+// AddDependency adds a single dependency to this SBI
+func (s *SBI) AddDependency(sbiID string) {
+	s.metadata.DependsOn = append(s.metadata.DependsOn, sbiID)
+}
+
+// HasDependencies checks if this SBI has any dependencies
+func (s *SBI) HasDependencies() bool {
+	return len(s.metadata.DependsOn) > 0
 }

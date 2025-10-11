@@ -6,19 +6,27 @@
 
 ### 追加 (Added)
 
-* **Amazon Linux デプロイメントスクリプト**: systemdによる常駐プロセス構成
-  - `scripts/systemd/deespec.service`: 並列実行モード（最大3タスク同時）のサービスファイル
-  - `scripts/setup-amazon-linux.sh`: 自動セットアップスクリプト（ワンライナーインストール対応）
-  - `scripts/ec2-userdata.sh`: EC2起動時の自動セットアップ用User Dataスクリプト
-  - `docs/deployment/amazon-linux-setup.md`: 完全なデプロイメントガイド
-  - 機能:
-    - インスタンス起動時の自動開始（systemd WantedBy=multi-user.target）
-    - クラッシュ時の自動再起動（Restart=always）
-    - リソース制限によるVSCodeとの共存（MemoryMax=2G, CPUQuota=60%）
-    - 1秒間隔でのタスクチェック（--interval 1s）
-    - 最大3タスクの並列実行（--parallel 3）
-    - グレースフルシャットダウン対応（SIGTERM）
-  - 対象: Amazon Linux 2 / Amazon Linux 2023
+* **Production デプロイメントガイド**: Amazon Linux/systemd環境での常駐プロセス運用
+  - `docs/deployment/amazon-linux-systemd.md`: 完全なデプロイメントガイド（60KB）
+  - **システム要件**: CPU/メモリ/ディスク/ネットワークの最小・推奨値
+  - **リソース制限の目安**:
+    - 並列実行数の計算式: `min(vCPU数 - 1, タスク数)`
+    - メモリ制限の計算式: `(総メモリ - システム予約 - 他アプリ) × 0.7`
+    - CPU制限の推奨値: VSCode併用時40-50%、単独実行時80-90%
+    - 実行間隔の推奨: 常駐向け1s、バランス型5s、バッチ処理型5m
+  - **インスタンスタイプ別推奨構成**: t2/t3/c5シリーズの詳細設定例
+    - t3.micro (1 vCPU, 1GB): 開発・テスト環境
+    - t3.medium (2 vCPU, 4GB): 標準環境（推奨）
+    - c5.xlarge (4 vCPU, 8GB): 高パフォーマンス環境
+  - **systemd設定詳細**: 全パラメータの説明と推奨値
+    - Type, Restart, KillMode, リソース制限の詳細解説
+    - セキュリティ強化オプション（NoNewPrivileges, PrivateTmp等）
+  - **セットアップ手順**: インストールからサービス起動までの完全ガイド
+  - **運用管理**: 基本操作、ログ管理、リソース監視、設定変更の手順
+  - **トラブルシューティング**: 5つの主要問題と対処法
+  - **ベストプラクティス**: 段階的調整、ログローテーション、バックアップ等
+  - **README更新**: systemdの基本使い方とリソース制限表を追加
+  - 対象: Amazon Linux 2 / Amazon Linux 2023（systemd 219+/252+）
   - 用途: Web版VSCodeと並行して常駐プロセスとして動作
 
 ### 修正 (Fixed)

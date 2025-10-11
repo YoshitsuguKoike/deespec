@@ -189,3 +189,23 @@ VALUES (3, 'Add label management system with integrity check');
 -- SBI順序管理フィールド追加
 INSERT OR IGNORE INTO schema_migrations (version, description)
 VALUES (4, 'Add sequence and registered_at fields to sbis table for correct ordering');
+
+-- SBI dependency table (Version 5)
+-- This table stores dependencies between SBIs (e.g., SBI-002 depends on SBI-001)
+CREATE TABLE IF NOT EXISTS sbi_dependencies (
+    sbi_id TEXT NOT NULL,              -- The SBI that has the dependency
+    depends_on_sbi_id TEXT NOT NULL,   -- The SBI that must be completed first
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (sbi_id, depends_on_sbi_id),
+    FOREIGN KEY (sbi_id) REFERENCES sbis(id) ON DELETE CASCADE,
+    FOREIGN KEY (depends_on_sbi_id) REFERENCES sbis(id) ON DELETE CASCADE
+);
+
+-- Index for efficient dependency lookups
+CREATE INDEX IF NOT EXISTS idx_sbi_deps_sbi_id ON sbi_dependencies(sbi_id);
+CREATE INDEX IF NOT EXISTS idx_sbi_deps_depends_on ON sbi_dependencies(depends_on_sbi_id);
+
+-- SBI dependency management version
+INSERT OR IGNORE INTO schema_migrations (version, description)
+VALUES (5, 'Add sbi_dependencies table for dependency management');

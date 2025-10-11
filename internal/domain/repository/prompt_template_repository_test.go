@@ -11,10 +11,12 @@ import (
 
 // MockPromptTemplateRepository is a mock implementation of PromptTemplateRepository for testing
 type MockPromptTemplateRepository struct {
-	mu        sync.RWMutex
-	templates map[string]string
-	labels    map[string]string
-	metaFiles map[string][]string
+	mu                      sync.RWMutex
+	templates               map[string]string
+	labels                  map[string]string
+	metaFiles               map[string][]string
+	pbiDecomposeTemplate    string
+	pbiDecomposeTemplateSet bool
 }
 
 // NewMockPromptTemplateRepository creates a new mock prompt template repository
@@ -77,6 +79,18 @@ func (m *MockPromptTemplateRepository) LoadMetaLabels(ctx context.Context, sbiID
 	return nil, errors.New("meta file not found for " + sbiID)
 }
 
+// LoadPBIDecomposeTemplate loads the PBI decomposition prompt template
+func (m *MockPromptTemplateRepository) LoadPBIDecomposeTemplate(ctx context.Context) (string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if !m.pbiDecomposeTemplateSet {
+		return "", errors.New("PBI decompose template not set")
+	}
+
+	return m.pbiDecomposeTemplate, nil
+}
+
 // Helper methods for setting up test data
 
 func (m *MockPromptTemplateRepository) SetTemplate(status, content string) {
@@ -95,6 +109,13 @@ func (m *MockPromptTemplateRepository) SetMetaLabels(sbiID string, labels []stri
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.metaFiles[sbiID] = labels
+}
+
+func (m *MockPromptTemplateRepository) SetPBIDecomposeTemplate(content string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.pbiDecomposeTemplate = content
+	m.pbiDecomposeTemplateSet = true
 }
 
 // Test Suite for PromptTemplateRepository

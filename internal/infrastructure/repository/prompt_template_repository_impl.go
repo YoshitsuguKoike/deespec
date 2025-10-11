@@ -108,3 +108,19 @@ func (r *PromptTemplateRepositoryImpl) LoadMetaLabels(ctx context.Context, sbiID
 
 	return labels, nil
 }
+
+// LoadPBIDecomposeTemplate loads the PBI decomposition prompt template
+func (r *PromptTemplateRepositoryImpl) LoadPBIDecomposeTemplate(ctx context.Context) (string, error) {
+	// Load from .deespec/prompts/PBI_DECOMPOSE.md
+	promptPath := filepath.Join(".deespec", "prompts", "PBI_DECOMPOSE.md")
+	template, err := os.ReadFile(promptPath)
+	if err != nil {
+		// Return descriptive error for file not found
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("PBI decompose template not found at %s: ensure 'deespec init' has been run", promptPath)
+		}
+		return "", fmt.Errorf("failed to read PBI decompose template: %w", err)
+	}
+
+	return string(template), nil
+}

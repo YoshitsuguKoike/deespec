@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -651,6 +652,126 @@ func TestLoadTemplate_EmptyFile(t *testing.T) {
 	}
 	if template != "" {
 		t.Errorf("Expected empty string, got '%s'", template)
+	}
+}
+
+// TestLoadPBIDecomposeTemplate_Success tests successful loading of PBI_DECOMPOSE.md
+func TestLoadPBIDecomposeTemplate_Success(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "prompt_template_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalDir, _ := os.Getwd()
+	err = os.Chdir(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	// Create .deespec/prompts directory
+	promptsDir := filepath.Join(".deespec", "prompts")
+	err = os.MkdirAll(promptsDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create prompts directory: %v", err)
+	}
+
+	// Create PBI_DECOMPOSE.md with template content
+	templateContent := `# PBI Decomposition Template
+PBI ID: {{.PBIID}}
+Title: {{.Title}}
+`
+	err = os.WriteFile(filepath.Join(promptsDir, "PBI_DECOMPOSE.md"), []byte(templateContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write PBI_DECOMPOSE.md: %v", err)
+	}
+
+	repo := NewPromptTemplateRepositoryImpl()
+	ctx := context.Background()
+
+	template, err := repo.LoadPBIDecomposeTemplate(ctx)
+	if err != nil {
+		t.Errorf("LoadPBIDecomposeTemplate failed: %v", err)
+	}
+	if template != templateContent {
+		t.Errorf("Expected template content, got: %s", template)
+	}
+}
+
+// TestLoadPBIDecomposeTemplate_FileNotFound tests error handling when PBI_DECOMPOSE.md doesn't exist
+func TestLoadPBIDecomposeTemplate_FileNotFound(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "prompt_template_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalDir, _ := os.Getwd()
+	err = os.Chdir(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	// Create directory but no PBI_DECOMPOSE.md file
+	err = os.MkdirAll(filepath.Join(".deespec", "prompts"), 0755)
+	if err != nil {
+		t.Fatalf("Failed to create prompts directory: %v", err)
+	}
+
+	repo := NewPromptTemplateRepositoryImpl()
+	ctx := context.Background()
+
+	_, err = repo.LoadPBIDecomposeTemplate(ctx)
+	if err == nil {
+		t.Error("LoadPBIDecomposeTemplate should return error when file doesn't exist")
+	}
+	if !strings.Contains(err.Error(), "PBI decompose template not found") {
+		t.Errorf("Expected 'PBI decompose template not found' error, got: %s", err.Error())
+	}
+	if !strings.Contains(err.Error(), "ensure 'deespec init' has been run") {
+		t.Errorf("Expected helpful error message mentioning 'deespec init', got: %s", err.Error())
+	}
+}
+
+// TestLoadPBIDecomposeTemplate_EmptyFile tests loading an empty PBI_DECOMPOSE.md
+func TestLoadPBIDecomposeTemplate_EmptyFile(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "prompt_template_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalDir, _ := os.Getwd()
+	err = os.Chdir(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	// Create .deespec/prompts directory
+	promptsDir := filepath.Join(".deespec", "prompts")
+	err = os.MkdirAll(promptsDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create prompts directory: %v", err)
+	}
+
+	// Create empty PBI_DECOMPOSE.md
+	err = os.WriteFile(filepath.Join(promptsDir, "PBI_DECOMPOSE.md"), []byte(""), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write empty PBI_DECOMPOSE.md: %v", err)
+	}
+
+	repo := NewPromptTemplateRepositoryImpl()
+	ctx := context.Background()
+
+	template, err := repo.LoadPBIDecomposeTemplate(ctx)
+	if err != nil {
+		t.Errorf("LoadPBIDecomposeTemplate should succeed with empty file: %v", err)
+	}
+	if template != "" {
+		t.Errorf("Expected empty string, got: %s", template)
 	}
 }
 

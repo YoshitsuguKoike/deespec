@@ -12,7 +12,7 @@ version:
 build:
 	@mkdir -p dist
 	@echo "Building $(BINARY) v$(VERSION)..."
-	CGO_ENABLED=0 go build $(LDFLAGS) -o $(OUT) ./cmd/deespec
+	go build $(LDFLAGS) -o $(OUT) ./cmd/deespec
 	@echo "✅ Built $(OUT)"
 
 clean:

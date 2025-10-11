@@ -162,6 +162,21 @@ func (m *mockSBIRepo) ResetSBIState(ctx context.Context, id repository.SBIID, to
 	return nil // Not implemented for tests
 }
 
+func (m *mockSBIRepo) GetDependencies(ctx context.Context, sbiID repository.SBIID) ([]string, error) {
+	// Return empty dependencies for tests (no dependencies by default)
+	return []string{}, nil
+}
+
+func (m *mockSBIRepo) GetDependents(ctx context.Context, sbiID repository.SBIID) ([]string, error) {
+	// Not implemented for tests
+	return []string{}, nil
+}
+
+func (m *mockSBIRepo) SaveDependencies(ctx context.Context, sbiID repository.SBIID, dependsOn []string) error {
+	// Not implemented for tests
+	return nil
+}
+
 func TestSBIExecutionService_PickNextSBI_InProgress(t *testing.T) {
 	// Setup
 	repo := newMockSBIRepo()

@@ -15,4 +15,8 @@ type PromptTemplateRepository interface {
 	// LoadMetaLabels loads labels from a task's meta.yaml file
 	// Returns empty slice if meta file doesn't exist or has no labels
 	LoadMetaLabels(ctx context.Context, sbiID string) ([]string, error)
+
+	// LoadPBIDecomposeTemplate loads the PBI decomposition prompt template
+	// Returns the template content or error if not found
+	LoadPBIDecomposeTemplate(ctx context.Context) (string, error)
 }

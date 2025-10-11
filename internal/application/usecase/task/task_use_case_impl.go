@@ -120,6 +120,7 @@ func (uc *TaskUseCaseImpl) CreateSBI(ctx context.Context, req dto.CreateSBIReque
 			Labels:         req.Labels,
 			AssignedAgent:  req.AssignedAgent,
 			FilePaths:      req.FilePaths,
+			DependsOn:      req.DependsOn,
 		},
 	)
 	if err != nil {
@@ -146,6 +147,14 @@ func (uc *TaskUseCaseImpl) CreateSBI(ctx context.Context, req dto.CreateSBIReque
 
 		if err := uc.sbiRepo.Save(txCtx, sbiTask); err != nil {
 			return err
+		}
+
+		// Save dependencies if provided
+		if len(req.DependsOn) > 0 {
+			sbiID := repository.SBIID(sbiTask.ID().String())
+			if err := uc.sbiRepo.SaveDependencies(txCtx, sbiID, req.DependsOn); err != nil {
+				return fmt.Errorf("failed to save dependencies: %w", err)
+			}
 		}
 
 		// TODO: PBI-SBI relationship management will be implemented when PBI system is fully integrated

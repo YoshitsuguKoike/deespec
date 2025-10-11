@@ -349,6 +349,26 @@ Examples:
   deespec run --auto-fb                 # Enable automatic FB-SBI registration
   deespec run --parallel 5 --interval 30s  # 5 concurrent tasks, 30s intervals`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Check if deespec is initialized
+			deespecDir := ".deespec"
+			settingPath := filepath.Join(deespecDir, "setting.json")
+
+			// Check if .deespec directory exists
+			if _, err := os.Stat(deespecDir); os.IsNotExist(err) {
+				return fmt.Errorf("❌ DeeSpec is not initialized\n\n" +
+					"Please run the following command to initialize:\n" +
+					"  deespec init\n\n" +
+					"This will create the .deespec directory and required files.")
+			}
+
+			// Check if setting.json exists
+			if _, err := os.Stat(settingPath); os.IsNotExist(err) {
+				return fmt.Errorf("❌ Configuration file not found: %s\n\n"+
+					"Please run the following command to initialize:\n"+
+					"  deespec init\n\n"+
+					"This will create the required configuration files.", settingPath)
+			}
+
 			// Parse interval
 			interval, err := ParseInterval(intervalStr)
 			if err != nil {

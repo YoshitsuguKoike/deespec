@@ -1,0 +1,117 @@
+あなたはアジャイル開発のエキスパートです。以下のPBI（Product Backlog Item）を、実装可能な小さなSBI（Small Backlog Item）に分解してください。
+
+## PBI情報
+
+**ID**: {{.PBIID}}
+**Title**: {{.Title}}
+**Story Points**: {{.StoryPoints}}
+**Priority**: {{.Priority}}
+
+**PBI内容**:
+```
+{{.PBIBody}}
+```
+
+## 分解の要件
+
+1. **SBI数**: {{.MinSBIs}}〜{{.MaxSBIs}}個に分解してください
+2. **粒度**: 各SBIは2〜4時間で実装可能なサイズにしてください
+3. **独立性**: 可能な限り独立して実装できるようにしてください
+4. **依存関係**: 必要な依存関係は明示してください
+5. **テスト**: 各SBIにはテスト実装も含めてください
+
+## 出力フォーマット
+
+以下のコマンドを実行して、SBI仕様書ファイルを生成してください：
+
+```bash
+# 各SBIに対して以下のようなMarkdownファイルを作成
+cat > {{.PBIDir}}/sbi_1.md <<'EOF'
+# [SBIタイトル]
+
+## 概要
+[1-2文でタスクの概要]
+
+## 背景
+[このタスクが必要な理由]
+
+## タスク詳細
+[具体的な実装内容]
+- 実装するファイル: [ファイルパス]
+- 変更箇所: [詳細]
+
+## 受け入れ基準
+- [ ] 基準1
+- [ ] 基準2
+
+## 技術的制約
+[制約事項]
+
+## 推定工数
+[X]時間
+
+## 依存関係
+- 前提タスク: なし
+- ブロックするタスク: なし
+
+---
+Parent PBI: {{.PBIID}}
+Sequence: 1
+EOF
+
+# 次のSBIも同様に作成...
+```
+
+## 登録コマンド
+
+ファイル作成後、以下のコマンドで各SBIを登録してください：
+
+```bash
+deespec sbi register -f {{.PBIDir}}/sbi_1.md --parent-pbi {{.PBIID}} --sequence 1
+deespec sbi register -f {{.PBIDir}}/sbi_2.md --parent-pbi {{.PBIID}} --sequence 2
+# ... 以降も同様
+```
+
+## 完了確認
+
+全てのSBIを登録したら、以下のコマンドで確認してください：
+
+```bash
+deespec sbi list --parent-pbi {{.PBIID}}
+```
+
+全て登録されていることを確認したら、レポートファイルを作成してください：
+
+```bash
+cat > {{.PBIDir}}/report.md <<'EOF'
+# PBI Decomposition Report
+
+**PBI ID**: {{.PBIID}}
+**PBI Title**: {{.Title}}
+**Decomposed At**: $(date -u +"%Y-%m-%d %H:%M:%S %z")
+**Total SBIs Created**: [N]
+
+## 分解されたSBI一覧
+
+| Sequence | SBI ID | Title | Status | Estimated Hours |
+|----------|--------|-------|--------|-----------------|
+| 1 | [SBI-XXX] | [タイトル] | registered | [X]h |
+| ... | ... | ... | ... | ... |
+
+**Total Estimated Time**: [X]h
+
+## 分解戦略
+
+[採用した分解戦略の説明]
+
+## 備考
+
+[特記事項]
+EOF
+```
+
+## 制約事項
+
+- .deespec ディレクトリの構造は変更しないでください
+- 既存のファイルは上書きしないでください
+- エラーが発生した場合は、詳細なエラーメッセージを出力してください

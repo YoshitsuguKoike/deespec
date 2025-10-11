@@ -29,7 +29,7 @@ func NewSBIExecutionService(sbiRepo repository.SBIRepository, lockService LockSe
 // Priority:
 // 1. SBIs in PICKED or IMPLEMENTING status (continue implementation)
 // 2. SBIs in REVIEWING status (continue review process)
-// 3. SBIs in PENDING status (start new execution)
+// 3. SBIs in PENDING status (start new execution) - only if dependencies are met
 func (s *SBIExecutionService) PickNextSBI(ctx context.Context) (*sbi.SBI, error) {
 	// First, try to find SBIs that are already in progress (PICKED, IMPLEMENTING, or REVIEWING)
 	// These should be prioritized to continue existing work
@@ -48,14 +48,21 @@ func (s *SBIExecutionService) PickNextSBI(ctx context.Context) (*sbi.SBI, error)
 	}
 
 	if len(inProgressSBIs) > 0 {
-		// Found an in-progress SBI, return it
+		// Found an in-progress SBI, return it (already started, dependencies were checked earlier)
 		return inProgressSBIs[0], nil
 	}
 
-	// No in-progress SBIs found, look for pending SBIs to start new work
+	// No in-progress SBIs found, look for pending SBIs with met dependencies
+	// Get completed SBI IDs first to check dependencies
+	completedSet, err := s.getCompletedSBIIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get completed SBIs: %w", err)
+	}
+
+	// Fetch all pending SBIs (not just 1) to filter by dependencies
 	pendingFilter := repository.SBIFilter{
 		Statuses: []model.Status{model.StatusPending},
-		Limit:    1,
+		Limit:    100, // Get more to filter by dependencies
 	}
 
 	pendingSBIs, err := s.sbiRepo.List(ctx, pendingFilter)
@@ -63,13 +70,57 @@ func (s *SBIExecutionService) PickNextSBI(ctx context.Context) (*sbi.SBI, error)
 		return nil, fmt.Errorf("failed to list pending SBIs: %w", err)
 	}
 
-	if len(pendingSBIs) > 0 {
-		// Found a pending SBI, return it
-		return pendingSBIs[0], nil
+	// Filter pending SBIs to only those with met dependencies
+	for _, candidate := range pendingSBIs {
+		if s.areDependenciesMet(ctx, candidate, completedSet) {
+			// Found a pending SBI with met dependencies, return it
+			return candidate, nil
+		}
 	}
 
 	// No tasks available to execute
 	return nil, nil
+}
+
+// getCompletedSBIIDs returns a set of completed SBI IDs
+func (s *SBIExecutionService) getCompletedSBIIDs(ctx context.Context) (map[string]bool, error) {
+	completedFilter := repository.SBIFilter{
+		Statuses: []model.Status{model.StatusDone},
+		Limit:    1000, // Get all completed SBIs
+	}
+
+	completedSBIs, err := s.sbiRepo.List(ctx, completedFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	completedSet := make(map[string]bool)
+	for _, sbi := range completedSBIs {
+		completedSet[sbi.ID().String()] = true
+	}
+
+	return completedSet, nil
+}
+
+// areDependenciesMet checks if all dependencies of an SBI are completed
+func (s *SBIExecutionService) areDependenciesMet(ctx context.Context, candidate *sbi.SBI, completedSet map[string]bool) bool {
+	// Get dependencies from database
+	deps, err := s.sbiRepo.GetDependencies(ctx, repository.SBIID(candidate.ID().String()))
+	if err != nil {
+		// Log error but continue (assume no dependencies if we can't load them)
+		return true
+	}
+
+	// Check if all dependencies are in completed set
+	for _, depID := range deps {
+		if !completedSet[depID] {
+			// Dependency not completed
+			return false
+		}
+	}
+
+	// All dependencies met
+	return true
 }
 
 // GetSBIByID retrieves an SBI by its ID

@@ -501,3 +501,93 @@ func (r *SBIRepositoryImpl) ResetSBIState(ctx context.Context, id repository.SBI
 
 	return nil
 }
+
+// GetDependencies retrieves the list of SBI IDs that the given SBI depends on
+func (r *SBIRepositoryImpl) GetDependencies(ctx context.Context, sbiID repository.SBIID) ([]string, error) {
+	query := `
+		SELECT depends_on_sbi_id
+		FROM sbi_dependencies
+		WHERE sbi_id = ?
+		ORDER BY created_at ASC
+	`
+
+	db := r.getDB(ctx)
+	rows, err := db.QueryContext(ctx, query, string(sbiID))
+	if err != nil {
+		return nil, fmt.Errorf("get dependencies failed: %w", err)
+	}
+	defer rows.Close()
+
+	var dependencies []string
+	for rows.Next() {
+		var dependsOnID string
+		if err := rows.Scan(&dependsOnID); err != nil {
+			return nil, fmt.Errorf("scan dependency failed: %w", err)
+		}
+		dependencies = append(dependencies, dependsOnID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate dependencies failed: %w", err)
+	}
+
+	return dependencies, nil
+}
+
+// GetDependents retrieves the list of SBI IDs that depend on the given SBI
+func (r *SBIRepositoryImpl) GetDependents(ctx context.Context, sbiID repository.SBIID) ([]string, error) {
+	query := `
+		SELECT sbi_id
+		FROM sbi_dependencies
+		WHERE depends_on_sbi_id = ?
+		ORDER BY created_at ASC
+	`
+
+	db := r.getDB(ctx)
+	rows, err := db.QueryContext(ctx, query, string(sbiID))
+	if err != nil {
+		return nil, fmt.Errorf("get dependents failed: %w", err)
+	}
+	defer rows.Close()
+
+	var dependents []string
+	for rows.Next() {
+		var sbiIDStr string
+		if err := rows.Scan(&sbiIDStr); err != nil {
+			return nil, fmt.Errorf("scan dependent failed: %w", err)
+		}
+		dependents = append(dependents, sbiIDStr)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate dependents failed: %w", err)
+	}
+
+	return dependents, nil
+}
+
+// SaveDependencies persists the dependencies for an SBI
+// This replaces all existing dependencies with the provided list
+func (r *SBIRepositoryImpl) SaveDependencies(ctx context.Context, sbiID repository.SBIID, dependsOn []string) error {
+	db := r.getDB(ctx)
+
+	// Delete existing dependencies first
+	deleteQuery := `DELETE FROM sbi_dependencies WHERE sbi_id = ?`
+	_, err := db.ExecContext(ctx, deleteQuery, string(sbiID))
+	if err != nil {
+		return fmt.Errorf("delete existing dependencies failed: %w", err)
+	}
+
+	// Insert new dependencies
+	if len(dependsOn) > 0 {
+		insertQuery := `INSERT INTO sbi_dependencies (sbi_id, depends_on_sbi_id) VALUES (?, ?)`
+		for _, dependsOnID := range dependsOn {
+			_, err := db.ExecContext(ctx, insertQuery, string(sbiID), dependsOnID)
+			if err != nil {
+				return fmt.Errorf("insert dependency failed: %w", err)
+			}
+		}
+	}
+
+	return nil
+}

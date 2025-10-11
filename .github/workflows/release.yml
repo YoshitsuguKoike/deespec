@@ -12,11 +12,30 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [linux, darwin, windows]
-        goarch: [amd64, arm64]
+        include:
+          # Linux amd64 on Ubuntu (native)
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          # Linux arm64 on Ubuntu (cross-compile with CGO)
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          # macOS arm64 on macOS M1/M2 (native)
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+          # macOS amd64 on Intel Mac (native)
+          - os: macos-13
+            goos: darwin
+            goarch: amd64
+          # Windows amd64 on Windows (native)
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -24,14 +43,29 @@ jobs:
 
       - name: Read VERSION file
         id: version
+        shell: bash
         run: echo "VERSION=v$(cat VERSION)" >> $GITHUB_OUTPUT
 
+      - name: Install cross-compiler for linux/arm64
+        if: matrix.goos == 'linux' && matrix.goarch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
       - name: Build
+        shell: bash
         run: |
           mkdir -p dist
           EXT=""
           if [ "${{ matrix.goos }}" = "windows" ]; then EXT=".exe"; fi
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+
+          # Set cross-compiler for linux/arm64
+          if [ "${{ matrix.goos }}" = "linux" ] && [ "${{ matrix.goarch }}" = "arm64" ]; then
+            export CC=aarch64-linux-gnu-gcc
+          fi
+
+          # Native or cross-compile build with CGO enabled for SQLite support
+          CGO_ENABLED=1 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
           go build -ldflags "-X github.com/YoshitsuguKoike/deespec/internal/buildinfo.Version=${{ steps.version.outputs.VERSION }}" \
             -o dist/deespec_${{ matrix.goos }}_${{ matrix.goarch }}$EXT ./cmd/deespec
 

@@ -90,6 +90,7 @@ type CreateSBIRequest struct {
 	Labels         []string `json:"labels"`
 	AssignedAgent  string   `json:"assigned_agent"`
 	FilePaths      []string `json:"file_paths"`
+	DependsOn      []string `json:"depends_on,omitempty"` // SBI IDs that must be completed before this SBI
 	MaxTurns       *int     `json:"max_turns,omitempty"`
 	MaxAttempts    *int     `json:"max_attempts,omitempty"`
 }

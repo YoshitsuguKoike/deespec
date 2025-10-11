@@ -19,6 +19,9 @@ func NewPBICommand() *cobra.Command {
 	cmd.AddCommand(NewUpdateCommand())
 	cmd.AddCommand(NewEditCommand())
 	cmd.AddCommand(NewDeleteCommand())
+	cmd.AddCommand(NewDecomposeCommand())
+	cmd.AddCommand(NewSBICommand())
+	cmd.AddCommand(NewRegisterSBIsCommand())
 
 	return cmd
 }

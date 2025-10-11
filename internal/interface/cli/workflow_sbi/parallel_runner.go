@@ -301,12 +301,19 @@ func (r *ParallelSBIWorkflowRunner) fetchExecutableSBIs(
 	return sbis, nil
 }
 
-// Alternative implementation using repository directly
+// Alternative implementation using repository directly with dependency checking
 func (r *ParallelSBIWorkflowRunner) fetchExecutableSBIsAlt(
 	ctx context.Context,
 	sbiRepo repository.SBIRepository,
 	limit int,
 ) ([]*sbi.SBI, error) {
+	// Get completed SBI IDs first to check dependencies
+	completedSet, err := r.getCompletedSBIIDs(ctx, sbiRepo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get completed SBIs: %w", err)
+	}
+
+	// Fetch all executable SBIs (more than limit to account for dependency filtering)
 	filter := repository.SBIFilter{
 		Statuses: []model.Status{
 			model.StatusPending,
@@ -314,9 +321,84 @@ func (r *ParallelSBIWorkflowRunner) fetchExecutableSBIsAlt(
 			model.StatusImplementing,
 			model.StatusReviewing,
 		},
-		Limit:  limit,
+		Limit:  limit * 3, // Fetch more to account for dependency filtering
 		Offset: 0,
 	}
 
-	return sbiRepo.List(ctx, filter)
+	allSBIs, err := sbiRepo.List(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter SBIs by dependencies
+	var result []*sbi.SBI
+	for _, candidate := range allSBIs {
+		// In-progress SBIs (PICKED, IMPLEMENTING, REVIEWING) are always included
+		// They already passed dependency checks when they were picked
+		if candidate.Status() != model.StatusPending {
+			result = append(result, candidate)
+			if len(result) >= limit {
+				break
+			}
+			continue
+		}
+
+		// For PENDING SBIs, check dependencies
+		if r.areDependenciesMet(ctx, candidate, completedSet, sbiRepo) {
+			result = append(result, candidate)
+			if len(result) >= limit {
+				break
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// getCompletedSBIIDs returns a set of completed SBI IDs
+func (r *ParallelSBIWorkflowRunner) getCompletedSBIIDs(ctx context.Context, sbiRepo repository.SBIRepository) (map[string]bool, error) {
+	completedFilter := repository.SBIFilter{
+		Statuses: []model.Status{model.StatusDone},
+		Limit:    1000, // Get all completed SBIs
+	}
+
+	completedSBIs, err := sbiRepo.List(ctx, completedFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	completedSet := make(map[string]bool)
+	for _, sbiItem := range completedSBIs {
+		completedSet[sbiItem.ID().String()] = true
+	}
+
+	return completedSet, nil
+}
+
+// areDependenciesMet checks if all dependencies of an SBI are completed
+func (r *ParallelSBIWorkflowRunner) areDependenciesMet(ctx context.Context, candidate *sbi.SBI, completedSet map[string]bool, sbiRepo repository.SBIRepository) bool {
+	// Get dependencies from database
+	deps, err := sbiRepo.GetDependencies(ctx, repository.SBIID(candidate.ID().String()))
+	if err != nil {
+		// Log error but continue (assume no dependencies if we can't load them)
+		log.Printf("⚠️  [Parallel] Failed to load dependencies for SBI %s: %v", truncateID(candidate.ID().String(), 8), err)
+		return true
+	}
+
+	// No dependencies - ready to execute
+	if len(deps) == 0 {
+		return true
+	}
+
+	// Check if all dependencies are in completed set
+	for _, depID := range deps {
+		if !completedSet[depID] {
+			// Dependency not completed - log for debugging
+			log.Printf("⏸️  [Parallel] SBI %s waiting on dependency: %s", truncateID(candidate.ID().String(), 8), truncateID(depID, 8))
+			return false
+		}
+	}
+
+	// All dependencies met
+	return true
 }

@@ -18,12 +18,15 @@ type SBITaskRepositoryImpl struct {
 	// Logging functions (injected from CLI layer)
 	warnLog  func(format string, args ...interface{})
 	debugLog func(format string, args ...interface{})
+	// Database repository for loading dependencies
+	sbiRepo repository.SBIRepository
 }
 
 // NewSBITaskRepositoryImpl creates a new file-based SBI task repository
 func NewSBITaskRepositoryImpl(
 	warnLog func(format string, args ...interface{}),
 	debugLog func(format string, args ...interface{}),
+	sbiRepo repository.SBIRepository,
 ) repository.SBITaskRepository {
 	// Provide no-op functions if not provided
 	if warnLog == nil {
@@ -36,6 +39,7 @@ func NewSBITaskRepositoryImpl(
 	return &SBITaskRepositoryImpl{
 		warnLog:  warnLog,
 		debugLog: debugLog,
+		sbiRepo:  sbiRepo,
 	}
 }
 
@@ -77,7 +81,28 @@ func (r *SBITaskRepositoryImpl) LoadAllTasks(ctx context.Context, specsDir strin
 		return nil
 	})
 
-	return tasks, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Enrich tasks with database-based dependencies if sbiRepo is available
+	if r.sbiRepo != nil {
+		for _, task := range tasks {
+			deps, err := r.sbiRepo.GetDependencies(ctx, repository.SBIID(task.ID))
+			if err != nil {
+				r.warnLog("failed to load dependencies for %s from database: %v", task.ID, err)
+				// Continue with file-based dependencies
+				continue
+			}
+			// Override with database dependencies if available
+			if len(deps) > 0 {
+				task.DependsOn = deps
+				r.debugLog("loaded %d dependencies for %s from database", len(deps), task.ID)
+			}
+		}
+	}
+
+	return tasks, nil
 }
 
 // loadTaskFromMetaFile loads a task from a meta.yaml file

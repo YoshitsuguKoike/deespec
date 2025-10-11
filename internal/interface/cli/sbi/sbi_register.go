@@ -23,6 +23,7 @@ type sbiRegisterFlags struct {
 	body       string
 	labels     string   // Comma-separated labels
 	labelArray []string // Multiple --label flags
+	dependsOn  []string // SBI IDs that this SBI depends on
 	jsonOut    bool
 	dryRun     bool
 	quiet      bool
@@ -59,6 +60,7 @@ Examples:
 	cmd.Flags().StringVar(&flags.body, "body", "", "Body content of the specification (reads from stdin if not provided)")
 	cmd.Flags().StringVar(&flags.labels, "labels", "", "Comma-separated list of labels")
 	cmd.Flags().StringSliceVar(&flags.labelArray, "label", []string{}, "Label for the specification (can be specified multiple times)")
+	cmd.Flags().StringSliceVar(&flags.dependsOn, "depends-on", []string{}, "SBI IDs that must be completed before this SBI (can be specified multiple times)")
 	cmd.Flags().BoolVar(&flags.jsonOut, "json", false, "Output result in JSON format")
 	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Simulate registration without creating files")
 	cmd.Flags().BoolVar(&flags.quiet, "quiet", false, "Suppress non-error output")
@@ -173,6 +175,7 @@ func runSBIRegister(ctx context.Context, flags *sbiRegisterFlags) error {
 		Title:       flags.title,
 		Description: body,
 		Labels:      labels,
+		DependsOn:   flags.dependsOn,
 	}
 
 	// Execute the use case

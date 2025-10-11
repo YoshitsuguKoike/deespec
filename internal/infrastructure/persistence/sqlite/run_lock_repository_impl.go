@@ -54,7 +54,7 @@ func (r *RunLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockID,
 		result, _ := db.ExecContext(ctx,
 			`DELETE FROM run_locks WHERE lock_id = ? AND (expires_at < ? OR pid = ?)`,
 			lockID.String(),
-			now.Format(time.RFC3339),
+			now.Format(time.RFC3339Nano),
 			existing.PID(),
 		)
 
@@ -95,9 +95,9 @@ func (r *RunLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockID,
 		runLock.LockID().String(),
 		runLock.PID(),
 		runLock.Hostname(),
-		runLock.AcquiredAt().Format(time.RFC3339),
-		runLock.ExpiresAt().Format(time.RFC3339),
-		runLock.HeartbeatAt().Format(time.RFC3339),
+		runLock.AcquiredAt().Format(time.RFC3339Nano),
+		runLock.ExpiresAt().Format(time.RFC3339Nano),
+		runLock.HeartbeatAt().Format(time.RFC3339Nano),
 		string(metadataJSON),
 	)
 
@@ -164,18 +164,27 @@ func (r *RunLockRepositoryImpl) Find(ctx context.Context, lockID lock.LockID) (*
 		return nil, fmt.Errorf("scan run lock: %w", err)
 	}
 
-	// Parse timestamps
-	acquiredAtTime, err := time.Parse(time.RFC3339, acquiredAt)
+	// Parse timestamps - try RFC3339Nano first, fall back to RFC3339 for backward compatibility
+	acquiredAtTime, err := time.Parse(time.RFC3339Nano, acquiredAt)
 	if err != nil {
-		return nil, fmt.Errorf("parse acquired_at: %w", err)
+		acquiredAtTime, err = time.Parse(time.RFC3339, acquiredAt)
+		if err != nil {
+			return nil, fmt.Errorf("parse acquired_at: %w", err)
+		}
 	}
-	expiresAtTime, err := time.Parse(time.RFC3339, expiresAt)
+	expiresAtTime, err := time.Parse(time.RFC3339Nano, expiresAt)
 	if err != nil {
-		return nil, fmt.Errorf("parse expires_at: %w", err)
+		expiresAtTime, err = time.Parse(time.RFC3339, expiresAt)
+		if err != nil {
+			return nil, fmt.Errorf("parse expires_at: %w", err)
+		}
 	}
-	heartbeatAtTime, err := time.Parse(time.RFC3339, heartbeatAt)
+	heartbeatAtTime, err := time.Parse(time.RFC3339Nano, heartbeatAt)
 	if err != nil {
-		return nil, fmt.Errorf("parse heartbeat_at: %w", err)
+		heartbeatAtTime, err = time.Parse(time.RFC3339, heartbeatAt)
+		if err != nil {
+			return nil, fmt.Errorf("parse heartbeat_at: %w", err)
+		}
 	}
 
 	// Unmarshal metadata
@@ -200,7 +209,7 @@ func (r *RunLockRepositoryImpl) UpdateHeartbeat(ctx context.Context, lockID lock
 	query := `UPDATE run_locks SET heartbeat_at = ? WHERE lock_id = ?`
 
 	db := r.getDB(ctx)
-	result, err := db.ExecContext(ctx, query, time.Now().Format(time.RFC3339), lockID.String())
+	result, err := db.ExecContext(ctx, query, time.Now().UTC().Format(time.RFC3339Nano), lockID.String())
 	if err != nil {
 		return fmt.Errorf("update heartbeat: %w", err)
 	}
@@ -231,7 +240,7 @@ func (r *RunLockRepositoryImpl) Extend(ctx context.Context, lockID lock.LockID, 
 	query := `UPDATE run_locks SET expires_at = ? WHERE lock_id = ?`
 
 	db := r.getDB(ctx)
-	_, err = db.ExecContext(ctx, query, newExpiresAt.Format(time.RFC3339), lockID.String())
+	_, err = db.ExecContext(ctx, query, newExpiresAt.Format(time.RFC3339Nano), lockID.String())
 	if err != nil {
 		return fmt.Errorf("extend lock: %w", err)
 	}
@@ -244,7 +253,7 @@ func (r *RunLockRepositoryImpl) CleanupExpired(ctx context.Context) (int, error)
 	query := `DELETE FROM run_locks WHERE expires_at < ?`
 
 	db := r.getDB(ctx)
-	result, err := db.ExecContext(ctx, query, time.Now().UTC().Format(time.RFC3339))
+	result, err := db.ExecContext(ctx, query, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		return 0, fmt.Errorf("cleanup expired locks: %w", err)
 	}
@@ -288,10 +297,19 @@ func (r *RunLockRepositoryImpl) List(ctx context.Context) ([]*lock.RunLock, erro
 			return nil, fmt.Errorf("scan run lock: %w", err)
 		}
 
-		// Parse timestamps
-		acquiredAtTime, _ := time.Parse(time.RFC3339, acquiredAt)
-		expiresAtTime, _ := time.Parse(time.RFC3339, expiresAt)
-		heartbeatAtTime, _ := time.Parse(time.RFC3339, heartbeatAt)
+		// Parse timestamps - try RFC3339Nano first, fall back to RFC3339 for backward compatibility
+		acquiredAtTime, err := time.Parse(time.RFC3339Nano, acquiredAt)
+		if err != nil {
+			acquiredAtTime, _ = time.Parse(time.RFC3339, acquiredAt)
+		}
+		expiresAtTime, err := time.Parse(time.RFC3339Nano, expiresAt)
+		if err != nil {
+			expiresAtTime, _ = time.Parse(time.RFC3339, expiresAt)
+		}
+		heartbeatAtTime, err := time.Parse(time.RFC3339Nano, heartbeatAt)
+		if err != nil {
+			heartbeatAtTime, _ = time.Parse(time.RFC3339, heartbeatAt)
+		}
 
 		// Unmarshal metadata
 		var metadata map[string]string

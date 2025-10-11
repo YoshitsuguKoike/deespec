@@ -53,7 +53,7 @@ func (r *StateLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockI
 		result, _ := db.ExecContext(ctx,
 			`DELETE FROM state_locks WHERE lock_id = ? AND (expires_at < ? OR pid = ?)`,
 			lockID.String(),
-			now.Format(time.RFC3339),
+			now.Format(time.RFC3339Nano),
 			existing.PID(),
 		)
 
@@ -87,9 +87,9 @@ func (r *StateLockRepositoryImpl) Acquire(ctx context.Context, lockID lock.LockI
 		stateLock.LockID().String(),
 		stateLock.PID(),
 		stateLock.Hostname(),
-		stateLock.AcquiredAt().Format(time.RFC3339),
-		stateLock.ExpiresAt().Format(time.RFC3339),
-		stateLock.HeartbeatAt().Format(time.RFC3339),
+		stateLock.AcquiredAt().Format(time.RFC3339Nano),
+		stateLock.ExpiresAt().Format(time.RFC3339Nano),
+		stateLock.HeartbeatAt().Format(time.RFC3339Nano),
 		string(stateLock.LockType()),
 	)
 
@@ -156,18 +156,27 @@ func (r *StateLockRepositoryImpl) Find(ctx context.Context, lockID lock.LockID) 
 		return nil, fmt.Errorf("scan state lock: %w", err)
 	}
 
-	// Parse timestamps
-	acquiredAtTime, err := time.Parse(time.RFC3339, acquiredAt)
+	// Parse timestamps - try RFC3339Nano first, fall back to RFC3339 for backward compatibility
+	acquiredAtTime, err := time.Parse(time.RFC3339Nano, acquiredAt)
 	if err != nil {
-		return nil, fmt.Errorf("parse acquired_at: %w", err)
+		acquiredAtTime, err = time.Parse(time.RFC3339, acquiredAt)
+		if err != nil {
+			return nil, fmt.Errorf("parse acquired_at: %w", err)
+		}
 	}
-	expiresAtTime, err := time.Parse(time.RFC3339, expiresAt)
+	expiresAtTime, err := time.Parse(time.RFC3339Nano, expiresAt)
 	if err != nil {
-		return nil, fmt.Errorf("parse expires_at: %w", err)
+		expiresAtTime, err = time.Parse(time.RFC3339, expiresAt)
+		if err != nil {
+			return nil, fmt.Errorf("parse expires_at: %w", err)
+		}
 	}
-	heartbeatAtTime, err := time.Parse(time.RFC3339, heartbeatAt)
+	heartbeatAtTime, err := time.Parse(time.RFC3339Nano, heartbeatAt)
 	if err != nil {
-		return nil, fmt.Errorf("parse heartbeat_at: %w", err)
+		heartbeatAtTime, err = time.Parse(time.RFC3339, heartbeatAt)
+		if err != nil {
+			return nil, fmt.Errorf("parse heartbeat_at: %w", err)
+		}
 	}
 
 	// Reconstruct lock ID
@@ -184,7 +193,7 @@ func (r *StateLockRepositoryImpl) UpdateHeartbeat(ctx context.Context, lockID lo
 	query := `UPDATE state_locks SET heartbeat_at = ? WHERE lock_id = ?`
 
 	db := r.getDB(ctx)
-	result, err := db.ExecContext(ctx, query, time.Now().Format(time.RFC3339), lockID.String())
+	result, err := db.ExecContext(ctx, query, time.Now().UTC().Format(time.RFC3339Nano), lockID.String())
 	if err != nil {
 		return fmt.Errorf("update heartbeat: %w", err)
 	}
@@ -215,7 +224,7 @@ func (r *StateLockRepositoryImpl) Extend(ctx context.Context, lockID lock.LockID
 	query := `UPDATE state_locks SET expires_at = ? WHERE lock_id = ?`
 
 	db := r.getDB(ctx)
-	_, err = db.ExecContext(ctx, query, newExpiresAt.Format(time.RFC3339), lockID.String())
+	_, err = db.ExecContext(ctx, query, newExpiresAt.Format(time.RFC3339Nano), lockID.String())
 	if err != nil {
 		return fmt.Errorf("extend lock: %w", err)
 	}
@@ -228,7 +237,7 @@ func (r *StateLockRepositoryImpl) CleanupExpired(ctx context.Context) (int, erro
 	query := `DELETE FROM state_locks WHERE expires_at < ?`
 
 	db := r.getDB(ctx)
-	result, err := db.ExecContext(ctx, query, time.Now().UTC().Format(time.RFC3339))
+	result, err := db.ExecContext(ctx, query, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		return 0, fmt.Errorf("cleanup expired locks: %w", err)
 	}
@@ -272,10 +281,19 @@ func (r *StateLockRepositoryImpl) List(ctx context.Context) ([]*lock.StateLock, 
 			return nil, fmt.Errorf("scan state lock: %w", err)
 		}
 
-		// Parse timestamps
-		acquiredAtTime, _ := time.Parse(time.RFC3339, acquiredAt)
-		expiresAtTime, _ := time.Parse(time.RFC3339, expiresAt)
-		heartbeatAtTime, _ := time.Parse(time.RFC3339, heartbeatAt)
+		// Parse timestamps - try RFC3339Nano first, fall back to RFC3339 for backward compatibility
+		acquiredAtTime, err := time.Parse(time.RFC3339Nano, acquiredAt)
+		if err != nil {
+			acquiredAtTime, _ = time.Parse(time.RFC3339, acquiredAt)
+		}
+		expiresAtTime, err := time.Parse(time.RFC3339Nano, expiresAt)
+		if err != nil {
+			expiresAtTime, _ = time.Parse(time.RFC3339, expiresAt)
+		}
+		heartbeatAtTime, err := time.Parse(time.RFC3339Nano, heartbeatAt)
+		if err != nil {
+			heartbeatAtTime, _ = time.Parse(time.RFC3339, heartbeatAt)
+		}
 
 		// Reconstruct lock ID
 		lid, _ := lock.NewLockID(lockIDStr)

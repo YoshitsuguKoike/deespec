@@ -3,6 +3,7 @@ package execution
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -164,18 +165,40 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 	// Update turn in execution state
 	currentSBI.IncrementTurn()
 
-	// Generate done.md if transitioning to DONE status
-	var doneArtifactPath string
-	if nextStatus == model.StatusDone {
-		doneArtifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/done.md", currentSBI.ID().String())
-		doneStepOutput, err := uc.executeStepForSBI(ctx, currentSBI, currentTurn, currentAttempt)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to generate done.md\n")
-			fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
-		} else if doneStepOutput.Success {
-			doneArtifactPath = doneStepOutput.ArtifactPath
-		}
-	}
+	// NOTE: done.md generation is commented out due to performance concerns
+	//
+	// BACKGROUND: Generating done.md takes 2-5 minutes per task, blocking the next task from starting.
+	// This significantly slows down workflow throughput, especially in parallel execution mode.
+	//
+	// OPTIONS TO CONSIDER (when you read this comment):
+	// 1. 動作効率を犠牲にしてまでdoneを出すか？
+	//    - Uncomment the code below to restore done.md generation
+	//    - Accept 2-5 minute delay per task completion
+	//    - Benefit: Comprehensive completion report for each task
+	//
+	// 2. 安定性を犠牲にして非同期でdoneを出すか？
+	//    - Implement goroutine-based async generation
+	//    - Complexity: Error handling, goroutine lifecycle management, potential race conditions
+	//    - Benefit: No blocking, but errors may go unnoticed
+	//
+	// 3. このままコメントアウトし続けるか？
+	//    - Current state: Maximum throughput
+	//    - Loss: No done.md summary (review.md still contains final decision)
+	//
+	// DECISION DATE: 2025-10-12
+	//
+	// var doneArtifactPath string
+	// if nextStatus == model.StatusDone {
+	// 	doneArtifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/done.md", currentSBI.ID().String())
+	// 	doneStepOutput, err := uc.executeStepForSBI(ctx, currentSBI, currentTurn, currentAttempt)
+	// 	if err != nil {
+	// 		fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to generate done.md\n")
+	// 		fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+	// 	} else if doneStepOutput.Success {
+	// 		doneArtifactPath = doneStepOutput.ArtifactPath
+	// 	}
+	// }
+	var doneArtifactPath string // Keep variable for journal compatibility
 
 	// Save SBI to DB
 	if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
@@ -365,19 +388,41 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 	currentSBI.IncrementTurn()
 	// TODO: Add method to update attempt if needed
 
-	// 7.5. Generate done.md if transitioning to DONE status
-	var doneArtifactPath string
-	if nextStatus == model.StatusDone {
-		doneArtifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/done.md", currentSBI.ID().String())
-		doneStepOutput, err := uc.executeStepForSBI(ctx, currentSBI, currentTurn, currentAttempt)
-		if err != nil {
-			// Log warning but don't fail - done.md is optional
-			fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to generate done.md\n")
-			fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
-		} else if doneStepOutput.Success {
-			doneArtifactPath = doneStepOutput.ArtifactPath
-		}
-	}
+	// NOTE: done.md generation is commented out due to performance concerns
+	//
+	// BACKGROUND: Generating done.md takes 2-5 minutes per task, blocking the next task from starting.
+	// This significantly slows down workflow throughput, especially in parallel execution mode.
+	//
+	// OPTIONS TO CONSIDER (when you read this comment):
+	// 1. 動作効率を犠牲にしてまでdoneを出すか？
+	//    - Uncomment the code below to restore done.md generation
+	//    - Accept 2-5 minute delay per task completion
+	//    - Benefit: Comprehensive completion report for each task
+	//
+	// 2. 安定性を犠牲にして非同期でdoneを出すか？
+	//    - Implement goroutine-based async generation
+	//    - Complexity: Error handling, goroutine lifecycle management, potential race conditions
+	//    - Benefit: No blocking, but errors may go unnoticed
+	//
+	// 3. このままコメントアウトし続けるか？
+	//    - Current state: Maximum throughput
+	//    - Loss: No done.md summary (review.md still contains final decision)
+	//
+	// DECISION DATE: 2025-10-12
+	//
+	// var doneArtifactPath string
+	// if nextStatus == model.StatusDone {
+	// 	doneArtifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/done.md", currentSBI.ID().String())
+	// 	doneStepOutput, err := uc.executeStepForSBI(ctx, currentSBI, currentTurn, currentAttempt)
+	// 	if err != nil {
+	// 		// Log warning but don't fail - done.md is optional
+	// 		fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to generate done.md\n")
+	// 		fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+	// 	} else if doneStepOutput.Success {
+	// 		doneArtifactPath = doneStepOutput.ArtifactPath
+	// 	}
+	// }
+	var doneArtifactPath string // Keep variable for journal compatibility
 
 	// 8. Save SBI to DB
 	if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
@@ -477,7 +522,7 @@ func (uc *RunTurnUseCase) executeStepForSBI(ctx context.Context, sbiEntity *sbi.
 	// Extract decision for review steps
 	decision := "PENDING"
 	if currentStatus == "REVIEW" || currentStatus == "REVIEW&WIP" {
-		decision = uc.extractDecision(agentResult.Output)
+		decision, _ = uc.extractDecisionWithLogging(artifactPath, agentResult.Output, sbiID)
 	}
 
 	// Check if artifact file was created by Claude
@@ -858,6 +903,117 @@ func (uc *RunTurnUseCase) extractDecision(output string) string {
 
 	// Default to NEEDS_CHANGES for real agents without explicit decision
 	return "NEEDS_CHANGES"
+}
+
+// extractDecisionWithLogging extracts decision from artifact file with metadata validation and logging
+// Returns decision string and source indicator for debugging
+func (uc *RunTurnUseCase) extractDecisionWithLogging(artifactPath string, agentOutput string, sbiID string) (decision string, source string) {
+	// Try to read artifact file
+	content, err := os.ReadFile(artifactPath)
+	if err != nil {
+		// Artifact doesn't exist yet, use agent output
+		decision = uc.extractDecision(agentOutput)
+		fmt.Fprintf(os.Stderr, "[decision] SBI=%s, Source=agent_output (file not found), Decision=%s\n", sbiID, decision)
+		return decision, "agent_output"
+	}
+
+	fileContent := string(content)
+
+	// Extract decision from head (first 20 lines, ## Summary section)
+	headDecision := uc.extractDecisionFromHead(fileContent)
+
+	// Extract decision from tail JSON (last 5 lines)
+	tailDecision := uc.extractDecisionFromTailJSON(fileContent)
+
+	// Check if both metadata and JSON match
+	if headDecision != "" && tailDecision != "" && headDecision == tailDecision {
+		// Both sources agree - high confidence
+		fmt.Fprintf(os.Stderr, "[decision] SBI=%s, Source=metadata_match, HeadDecision=%s, TailDecision=%s, FinalDecision=%s\n",
+			sbiID, headDecision, tailDecision, headDecision)
+		return headDecision, "metadata_match"
+	}
+
+	// Metadata doesn't match or is missing - use agent output as fallback
+	decision = uc.extractDecision(agentOutput)
+	fmt.Fprintf(os.Stderr, "[decision] SBI=%s, Source=agent_output (mismatch), HeadDecision=%s, TailDecision=%s, AgentDecision=%s\n",
+		sbiID, headDecision, tailDecision, decision)
+	return decision, "agent_output"
+}
+
+// extractDecisionFromHead extracts DECISION from first 20 lines in ## Summary section
+func (uc *RunTurnUseCase) extractDecisionFromHead(content string) string {
+	lines := strings.Split(content, "\n")
+	maxLines := 20
+	if len(lines) < maxLines {
+		maxLines = len(lines)
+	}
+
+	// Look for ## Summary section in first 20 lines
+	inSummary := false
+	for i := 0; i < maxLines; i++ {
+		line := strings.TrimSpace(lines[i])
+
+		// Check if we're entering Summary section
+		if strings.HasPrefix(line, "## Summary") {
+			inSummary = true
+			continue
+		}
+
+		// Check if we're leaving Summary section (new ## header)
+		if inSummary && strings.HasPrefix(line, "## ") && !strings.HasPrefix(line, "## Summary") {
+			break
+		}
+
+		// Look for DECISION in Summary section
+		if inSummary {
+			if contains(line, "DECISION: SUCCEEDED") {
+				return "SUCCEEDED"
+			}
+			if contains(line, "DECISION: FAILED") {
+				return "FAILED"
+			}
+			if contains(line, "DECISION: NEEDS_CHANGES") {
+				return "NEEDS_CHANGES"
+			}
+		}
+	}
+
+	return "" // Not found
+}
+
+// extractDecisionFromTailJSON extracts decision from JSON in last 5 lines
+func (uc *RunTurnUseCase) extractDecisionFromTailJSON(content string) string {
+	lines := strings.Split(content, "\n")
+
+	// Check last 5 lines for JSON
+	startIdx := len(lines) - 5
+	if startIdx < 0 {
+		startIdx = 0
+	}
+
+	for i := len(lines) - 1; i >= startIdx; i-- {
+		line := strings.TrimSpace(lines[i])
+
+		// Skip empty lines
+		if line == "" {
+			continue
+		}
+
+		// Look for JSON with decision field
+		if strings.HasPrefix(line, "{") && strings.Contains(line, "decision") {
+			// Try to parse as JSON
+			var result map[string]interface{}
+			if err := json.Unmarshal([]byte(line), &result); err == nil {
+				if decisionVal, ok := result["decision"]; ok {
+					if decisionStr, ok := decisionVal.(string); ok {
+						return strings.ToUpper(decisionStr)
+					}
+				}
+			}
+		}
+	}
+
+	return "" // Not found
 }
 
 // Helper function for case-insensitive string contains

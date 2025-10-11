@@ -217,14 +217,37 @@ make coverage-html
 3. 【\[必須] 5分自走（運用導線）の入口】
    launchd/systemd の設定先リンク or 簡易手順を README に1ブロックだけ置く。
 
+   **macOS (launchd) - 定期実行**
    ```bash
-   # macOS (launchd) の例: 5分間隔で1ターン実行
+   # 5分間隔で1ターン実行
    # ~/Library/LaunchAgents/com.deespec.runner.plist を作成後に:
    launchctl load  ~/Library/LaunchAgents/com.deespec.runner.plist
    launchctl start com.deespec.runner
    # 直近状態
    cat health.json | jq .
    ```
+
+   **Amazon Linux / Linux (systemd) - 常駐プロセス**
+   ```bash
+   # 常駐プロセスとして起動（1秒間隔でタスクチェック）
+   sudo systemctl enable deespec.service
+   sudo systemctl start deespec.service
+
+   # 状態確認
+   sudo systemctl status deespec.service
+   sudo journalctl -u deespec.service -f
+   ```
+
+   **リソース制限の目安**
+
+   | 環境 | 並列数 | メモリ | CPU | 用途 |
+   |------|--------|--------|-----|------|
+   | 開発 (t3.micro) | 1 | 500M | 30% | テスト環境 |
+   | 小規模 (t3.small) | 1 | 1G | 50% | 個人プロジェクト |
+   | 標準 (t3.medium) | 1-2 | 2G | 50% | **推奨構成** |
+   | 大規模 (t3.large+) | 2-3 | 4G | 60% | 複数ユーザー |
+
+   詳細な systemd 設定は [deployment guide](./docs/deployment/amazon-linux-systemd.md) を参照。
 
 4. 【\[必須] 環境変数の例（.env.example への導線）】
    とくに macOS の launchd は PATH が狭いので、**絶対パス**記載の注意書きを。

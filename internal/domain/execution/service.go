@@ -61,17 +61,10 @@ func (s *ExecutionService) ProgressExecution(executionID ExecutionID, decision D
 	}
 
 	// Transition to next step
+	// Note: NextStep() already handles force termination logic correctly
+	// (see entity.go:123-128 where StepThirdReview returns StepReviewerForceImplement)
 	if err := execution.TransitionTo(nextStep); err != nil {
 		return nil, fmt.Errorf("failed to transition: %w", err)
-	}
-
-	// Check for force termination
-	if execution.ShouldForceTerminate() && nextStep != StepDone {
-		// Force transition to termination path
-		nextStep = StepReviewerForceImplement
-		if err := execution.TransitionTo(nextStep); err != nil {
-			return nil, fmt.Errorf("failed to force terminate: %w", err)
-		}
 	}
 
 	// Update in repository

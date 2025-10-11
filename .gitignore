@@ -54,6 +54,9 @@ state.lock
 .deespec/
 deespec
 
+# Internal documentation
+.docs/
+
 # >>> deespec v1
 /.deespec/var/
 /.deespec/var/*

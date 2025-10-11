@@ -972,22 +972,57 @@ func TestProgressExecution_ForceTerminationPath(t *testing.T) {
 	}
 
 	// Progress with failure decision - this will trigger NextStep to go to ForceImplement
-	// and then the force termination check will apply additional logic
+	// The bug fix prevents double transition to the same step
 	progressed, err := service.ProgressExecution(exec.ID, DecisionNeedsChanges)
 	if err != nil {
-		// The force termination logic has a bug - it tries to transition twice to the same step
-		// This test verifies we hit that code path (even though it errors)
-		expectedMsg := "failed to force terminate"
-		if !contains(err.Error(), expectedMsg) {
-			t.Errorf("Expected error message to contain %q, got: %s", expectedMsg, err.Error())
-		}
-		// Test passes because we covered the force termination code path (lines 69-75)
-		return
+		t.Fatalf("Expected no error after bug fix, got: %v", err)
 	}
 
-	// If no error, verify we're on the force termination path
+	// Verify we're on the force termination path
 	if progressed.Step != StepReviewerForceImplement {
 		t.Errorf("Expected step to be %s, got %s", StepReviewerForceImplement, progressed.Step)
+	}
+
+	// Verify force termination flag is set
+	if !progressed.ShouldForceTerminate() {
+		t.Error("Expected ShouldForceTerminate to be true")
+	}
+}
+
+// TestProgressExecution_ForceTerminationAlreadyAtStep verifies no double transition
+func TestProgressExecution_ForceTerminationAlreadyAtStep(t *testing.T) {
+	repo := NewMockRepository()
+	service := NewExecutionService(repo)
+
+	// Create execution that is already at force termination step
+	// and still has force termination condition active
+	exec := NewSBIExecution("SBI-FORCE-AT-STEP")
+	exec.TransitionTo(StepImplementTry)
+	exec.TransitionTo(StepFirstReview)
+	exec.Decision = DecisionNeedsChanges
+	exec.TransitionTo(StepImplementSecondTry)
+	exec.TransitionTo(StepSecondReview)
+	exec.Decision = DecisionNeedsChanges
+	exec.TransitionTo(StepImplementThirdTry)
+	exec.TransitionTo(StepThirdReview)
+	exec.Decision = DecisionNeedsChanges
+	exec.TransitionTo(StepReviewerForceImplement)
+	repo.Save(exec)
+
+	// Verify we're already at force implementation step
+	if exec.Step != StepReviewerForceImplement {
+		t.Fatalf("Expected step to be %s, got %s", StepReviewerForceImplement, exec.Step)
+	}
+
+	// Progress from force implementation - should not try to transition again
+	progressed, err := service.ProgressExecution(exec.ID, DecisionPending)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	// Should have progressed to next step (implementer review)
+	if progressed.Step != StepImplementerReview {
+		t.Errorf("Expected step to be %s, got %s", StepImplementerReview, progressed.Step)
 	}
 }
 

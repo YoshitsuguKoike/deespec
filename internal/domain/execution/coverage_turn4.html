@@ -72,8 +72,17 @@
 			<div id="legend">
 				<span>not tracked</span>
 			
-				<span class="cov0">not covered</span>
-				<span class="cov8">covered</span>
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
 			
 			</div>
 		</div>
@@ -94,91 +103,91 @@ const (
 )
 
 // String returns the string representation of the decision
-func (d Decision) String() string <span class="cov8" title="1">{
+func (d Decision) String() string <span class="cov5" title="5">{
         return string(d)
 }</span>
 
 // IsValid returns true if the decision is valid
-func (d Decision) IsValid() bool <span class="cov8" title="1">{
+func (d Decision) IsValid() bool <span class="cov9" title="26">{
         switch d </span>{
-        case DecisionPending, DecisionNeedsChanges, DecisionSucceeded, DecisionFailed:<span class="cov8" title="1">
+        case DecisionPending, DecisionNeedsChanges, DecisionSucceeded, DecisionFailed:<span class="cov8" title="22">
                 return true</span>
-        default:<span class="cov8" title="1">
+        default:<span class="cov4" title="4">
                 return false</span>
         }
 }
 
 // IsFinal returns true if this is a final decision (succeeded/failed)
-func (d Decision) IsFinal() bool <span class="cov8" title="1">{
+func (d Decision) IsFinal() bool <span class="cov9" title="25">{
         return d == DecisionSucceeded || d == DecisionFailed
 }</span>
 
 // IsApproved returns true if the decision is approved (SUCCEEDED)
-func (d Decision) IsApproved() bool <span class="cov8" title="1">{
+func (d Decision) IsApproved() bool <span class="cov5" title="5">{
         return d == DecisionSucceeded
 }</span>
 
 // RequiresRetry returns true if the decision requires retry
-func (d Decision) RequiresRetry() bool <span class="cov8" title="1">{
+func (d Decision) RequiresRetry() bool <span class="cov5" title="5">{
         return d == DecisionNeedsChanges
 }</span>
 
 // IsPending returns true if the decision is pending
-func (d Decision) IsPending() bool <span class="cov8" title="1">{
+func (d Decision) IsPending() bool <span class="cov6" title="9">{
         return d == DecisionPending
 }</span>
 
 // ParseDecision parses a string into a Decision
-func ParseDecision(s string) Decision <span class="cov8" title="1">{
+func ParseDecision(s string) Decision <span class="cov10" title="34">{
         normalized := strings.ToUpper(strings.TrimSpace(s))
 
         switch normalized </span>{
-        case "OK", "APPROVED", "PASS", "PASSED", "SUCCEEDED", "SUCCESS":<span class="cov8" title="1">
+        case "OK", "APPROVED", "PASS", "PASSED", "SUCCEEDED", "SUCCESS":<span class="cov7" title="15">
                 return DecisionSucceeded</span>
-        case "NEEDS_CHANGES", "NEEDS CHANGES", "FAIL", "REJECT", "REJECTED":<span class="cov8" title="1">
+        case "NEEDS_CHANGES", "NEEDS CHANGES", "FAIL", "REJECT", "REJECTED":<span class="cov5" title="7">
                 return DecisionNeedsChanges</span>
-        case "FAILED", "FAILURE":<span class="cov8" title="1">
+        case "FAILED", "FAILURE":<span class="cov4" title="4">
                 return DecisionFailed</span>
-        case "PENDING", "":<span class="cov8" title="1">
+        case "PENDING", "":<span class="cov4" title="4">
                 return DecisionPending</span>
-        default:<span class="cov8" title="1">
+        default:<span class="cov4" title="4">
                 // Default to needs changes for unknown values
                 return DecisionNeedsChanges</span>
         }
 }
 
 // ToJournalDecision converts to the journal format decision
-func (d Decision) ToJournalDecision() string <span class="cov8" title="1">{
+func (d Decision) ToJournalDecision() string <span class="cov5" title="6">{
         switch d </span>{
-        case DecisionSucceeded:<span class="cov8" title="1">
+        case DecisionSucceeded:<span class="cov2" title="2">
                 return "OK"</span>
-        case DecisionNeedsChanges, DecisionFailed:<span class="cov8" title="1">
+        case DecisionNeedsChanges, DecisionFailed:<span class="cov2" title="2">
                 return "NEEDS_CHANGES"</span>
-        case DecisionPending:<span class="cov8" title="1">
+        case DecisionPending:<span class="cov1" title="1">
                 return "PENDING"</span>
-        default:<span class="cov8" title="1">
+        default:<span class="cov1" title="1">
                 return ""</span>
         }
 }
 
 // CanTransitionTo checks if transition to another decision is allowed
-func (d Decision) CanTransitionTo(next Decision) bool <span class="cov8" title="1">{
+func (d Decision) CanTransitionTo(next Decision) bool <span class="cov8" title="21">{
         // From pending, can go to other decisions
-        if d == DecisionPending </span><span class="cov8" title="1">{
+        if d == DecisionPending </span><span class="cov5" title="5">{
                 return next == DecisionNeedsChanges || next == DecisionSucceeded || next == DecisionFailed
         }</span>
 
         // From needs changes, can go to succeeded or failed
-        <span class="cov8" title="1">if d == DecisionNeedsChanges </span><span class="cov8" title="1">{
+        <span class="cov8" title="16">if d == DecisionNeedsChanges </span><span class="cov5" title="5">{
                 return next == DecisionSucceeded || next == DecisionFailed || next == DecisionPending
         }</span>
 
         // Final decisions cannot transition
-        <span class="cov8" title="1">if d.IsFinal() </span><span class="cov8" title="1">{
+        <span class="cov7" title="11">if d.IsFinal() </span><span class="cov6" title="9">{
                 return false
         }</span>
 
-        <span class="cov8" title="1">return false</span>
+        <span class="cov2" title="2">return false</span>
 }
 </pre>
 		
@@ -206,12 +215,12 @@ type SBIExecution struct {
 type ExecutionID string
 
 // NewExecutionID creates a new ExecutionID
-func NewExecutionID(sbiID string, startedAt time.Time) ExecutionID <span class="cov8" title="1">{
+func NewExecutionID(sbiID string, startedAt time.Time) ExecutionID <span class="cov9" title="98">{
         return ExecutionID(fmt.Sprintf("%s_%d", sbiID, startedAt.Unix()))
 }</span>
 
 // NewSBIExecution creates a new SBI execution
-func NewSBIExecution(sbiID string) *SBIExecution <span class="cov8" title="1">{
+func NewSBIExecution(sbiID string) *SBIExecution <span class="cov9" title="92">{
         now := time.Now()
         return &amp;SBIExecution{
                 ID:        NewExecutionID(sbiID, now),
@@ -226,122 +235,122 @@ func NewSBIExecution(sbiID string) *SBIExecution <span class="cov8" title="1">{
 }</span>
 
 // TransitionTo transitions the execution to the next step based on current state and decision
-func (e *SBIExecution) TransitionTo(nextStep ExecutionStep) error <span class="cov8" title="1">{
+func (e *SBIExecution) TransitionTo(nextStep ExecutionStep) error <span class="cov9" title="111">{
         // Validate transition
-        if !e.Step.CanTransitionTo(nextStep) </span><span class="cov8" title="1">{
+        if !e.Step.CanTransitionTo(nextStep) </span><span class="cov5" title="10">{
                 return fmt.Errorf("invalid transition from %s to %s", e.Step, nextStep)
         }</span>
 
         // Handle attempt counter for implementation steps (before updating step)
-        <span class="cov8" title="1">if nextStep.IsImplementation() </span><span class="cov8" title="1">{
+        <span class="cov9" title="101">if nextStep.IsImplementation() </span><span class="cov7" title="50">{
                 e.Attempt++
         }</span>
 
         // Update step and related fields
-        <span class="cov8" title="1">e.Step = nextStep
+        <span class="cov9" title="101">e.Step = nextStep
         e.Status = nextStep.ToStatus()
         e.UpdatedAt = time.Now()
 
         // Mark as completed if done
-        if nextStep == StepDone </span><span class="cov8" title="1">{
+        if nextStep == StepDone </span><span class="cov6" title="17">{
                 now := time.Now()
                 e.CompletedAt = &amp;now
         }</span>
 
-        <span class="cov8" title="1">return nil</span>
+        <span class="cov9" title="101">return nil</span>
 }
 
 // ApplyDecision applies a review decision to the execution
-func (e *SBIExecution) ApplyDecision(decision Decision) error <span class="cov8" title="1">{
-        if !e.Status.IsReview() </span><span class="cov8" title="1">{
+func (e *SBIExecution) ApplyDecision(decision Decision) error <span class="cov6" title="17">{
+        if !e.Status.IsReview() </span><span class="cov2" title="2">{
                 return fmt.Errorf("can only apply decision in review status, current: %s", e.Status)
         }</span>
 
-        <span class="cov8" title="1">if !decision.IsValid() </span><span class="cov8" title="1">{
+        <span class="cov5" title="15">if !decision.IsValid() </span><span class="cov1" title="1">{
                 return fmt.Errorf("invalid decision: %s", decision)
         }</span>
 
-        <span class="cov8" title="1">e.Decision = decision
+        <span class="cov5" title="14">e.Decision = decision
         e.UpdatedAt = time.Now()
         return nil</span>
 }
 
 // IsCompleted returns true if the execution is completed
-func (e *SBIExecution) IsCompleted() bool <span class="cov8" title="1">{
+func (e *SBIExecution) IsCompleted() bool <span class="cov10" title="158">{
         return e.Step == StepDone
 }</span>
 
 // ShouldForceTerminate returns true if the execution should be forcefully terminated
-func (e *SBIExecution) ShouldForceTerminate() bool <span class="cov8" title="1">{
+func (e *SBIExecution) ShouldForceTerminate() bool <span class="cov6" title="18">{
         // Force terminate after 3 failed attempts
         return e.Attempt &gt;= 3 &amp;&amp; e.Decision == DecisionNeedsChanges
 }</span>
 
 // NextStep determines the next step based on current state and decision
-func (e *SBIExecution) NextStep() (ExecutionStep, error) <span class="cov8" title="1">{
+func (e *SBIExecution) NextStep() (ExecutionStep, error) <span class="cov6" title="24">{
         switch e.Step </span>{
-        case StepReady:<span class="cov8" title="1">
+        case StepReady:<span class="cov3" title="5">
                 return StepImplementTry, nil</span>
 
-        case StepImplementTry:<span class="cov8" title="1">
+        case StepImplementTry:<span class="cov2" title="3">
                 return StepFirstReview, nil</span>
 
-        case StepFirstReview:<span class="cov8" title="1">
-                if e.Decision == DecisionSucceeded </span><span class="cov8" title="1">{
+        case StepFirstReview:<span class="cov3" title="5">
+                if e.Decision == DecisionSucceeded </span><span class="cov2" title="3">{
                         return StepDone, nil
                 }</span>
-                <span class="cov8" title="1">return StepImplementSecondTry, nil</span>
+                <span class="cov2" title="2">return StepImplementSecondTry, nil</span>
 
-        case StepImplementSecondTry:<span class="cov8" title="1">
+        case StepImplementSecondTry:<span class="cov1" title="1">
                 return StepSecondReview, nil</span>
 
-        case StepSecondReview:<span class="cov8" title="1">
-                if e.Decision == DecisionSucceeded </span><span class="cov8" title="1">{
+        case StepSecondReview:<span class="cov2" title="2">
+                if e.Decision == DecisionSucceeded </span><span class="cov1" title="1">{
                         return StepDone, nil
                 }</span>
-                <span class="cov8" title="1">return StepImplementThirdTry, nil</span>
+                <span class="cov1" title="1">return StepImplementThirdTry, nil</span>
 
         case StepImplementThirdTry:<span class="cov0" title="0">
                 return StepThirdReview, nil</span>
 
-        case StepThirdReview:<span class="cov8" title="1">
-                if e.Decision == DecisionSucceeded </span><span class="cov8" title="1">{
+        case StepThirdReview:<span class="cov2" title="3">
+                if e.Decision == DecisionSucceeded </span><span class="cov1" title="1">{
                         return StepDone, nil
                 }</span>
                 // Force termination path
-                <span class="cov8" title="1">return StepReviewerForceImplement, nil</span>
+                <span class="cov2" title="2">return StepReviewerForceImplement, nil</span>
 
-        case StepReviewerForceImplement:<span class="cov8" title="1">
+        case StepReviewerForceImplement:<span class="cov1" title="1">
                 return StepImplementerReview, nil</span>
 
-        case StepImplementerReview:<span class="cov8" title="1">
+        case StepImplementerReview:<span class="cov1" title="1">
                 return StepDone, nil</span>
 
-        case StepDone:<span class="cov8" title="1">
+        case StepDone:<span class="cov1" title="1">
                 return StepDone, nil</span> // No transition from done
 
-        default:<span class="cov8" title="1">
+        default:<span class="cov2" title="2">
                 return "", fmt.Errorf("unknown step: %s", e.Step)</span>
         }
 }
 
 // GetFinalDecision returns the final decision for completed executions
-func (e *SBIExecution) GetFinalDecision() Decision <span class="cov8" title="1">{
-        if !e.IsCompleted() </span><span class="cov8" title="1">{
+func (e *SBIExecution) GetFinalDecision() Decision <span class="cov5" title="11">{
+        if !e.IsCompleted() </span><span class="cov2" title="2">{
                 return DecisionPending
         }</span>
 
         // Return the actual decision if it's final
-        <span class="cov8" title="1">if e.Decision.IsFinal() </span><span class="cov8" title="1">{
+        <span class="cov4" title="9">if e.Decision.IsFinal() </span><span class="cov4" title="6">{
                 return e.Decision
         }</span>
 
         // If went through force termination, it's failed
-        <span class="cov8" title="1">if e.Step == StepDone &amp;&amp; e.Attempt &gt;= 3 </span><span class="cov8" title="1">{
+        <span class="cov2" title="3">if e.Step == StepDone &amp;&amp; e.Attempt &gt;= 3 </span><span class="cov2" title="2">{
                 return DecisionFailed
         }</span>
 
-        <span class="cov8" title="1">return e.Decision</span>
+        <span class="cov1" title="1">return e.Decision</span>
 }
 </pre>
 		
@@ -357,7 +366,7 @@ type ExecutionError struct {
 }
 
 // Error implements the error interface
-func (e ExecutionError) Error() string <span class="cov8" title="1">{
+func (e ExecutionError) Error() string <span class="cov9" title="13">{
         return fmt.Sprintf("[%s] %s", e.Code, e.Message)
 }</span>
 
@@ -407,7 +416,7 @@ var (
 )
 
 // NewExecutionError creates a new execution error with details
-func NewExecutionError(code, message string, details map[string]interface{}) ExecutionError <span class="cov8" title="1">{
+func NewExecutionError(code, message string, details map[string]interface{}) ExecutionError <span class="cov6" title="5">{
         return ExecutionError{
                 Code:    code,
                 Message: message,
@@ -416,49 +425,49 @@ func NewExecutionError(code, message string, details map[string]interface{}) Exe
 }</span>
 
 // WithDetails adds details to an existing error
-func (e ExecutionError) WithDetails(details map[string]interface{}) ExecutionError <span class="cov8" title="1">{
+func (e ExecutionError) WithDetails(details map[string]interface{}) ExecutionError <span class="cov10" title="14">{
         e.Details = details
         return e
 }</span>
 
 // IsNotFound checks if the error is a not found error
-func IsNotFound(err error) bool <span class="cov8" title="1">{
+func IsNotFound(err error) bool <span class="cov7" title="7">{
         execErr, ok := err.(ExecutionError)
         return ok &amp;&amp; execErr.Code == ErrExecutionNotFound.Code
 }</span>
 
 // IsAlreadyExists checks if the error is an already exists error
-func IsAlreadyExists(err error) bool <span class="cov8" title="1">{
+func IsAlreadyExists(err error) bool <span class="cov7" title="6">{
         execErr, ok := err.(ExecutionError)
         return ok &amp;&amp; execErr.Code == ErrExecutionAlreadyExists.Code
 }</span>
 
 // IsCompleted checks if the error is a completed execution error
-func IsCompleted(err error) bool <span class="cov8" title="1">{
+func IsCompleted(err error) bool <span class="cov7" title="6">{
         execErr, ok := err.(ExecutionError)
         return ok &amp;&amp; execErr.Code == ErrExecutionCompleted.Code
 }</span>
 
 // IsMaxAttempts checks if the error is a max attempts error
-func IsMaxAttempts(err error) bool <span class="cov8" title="1">{
+func IsMaxAttempts(err error) bool <span class="cov7" title="6">{
         execErr, ok := err.(ExecutionError)
         return ok &amp;&amp; execErr.Code == ErrMaxAttemptsReached.Code
 }</span>
 
 // IsInvalidTransition checks if the error is an invalid transition error
-func IsInvalidTransition(err error) bool <span class="cov8" title="1">{
+func IsInvalidTransition(err error) bool <span class="cov7" title="6">{
         execErr, ok := err.(ExecutionError)
         return ok &amp;&amp; execErr.Code == ErrInvalidTransition.Code
 }</span>
 
 // IsInvalidDecision checks if the error is an invalid decision error
-func IsInvalidDecision(err error) bool <span class="cov8" title="1">{
+func IsInvalidDecision(err error) bool <span class="cov7" title="6">{
         execErr, ok := err.(ExecutionError)
         return ok &amp;&amp; execErr.Code == ErrInvalidDecision.Code
 }</span>
 
 // IsExecutionStuck checks if the error is an execution stuck error
-func IsExecutionStuck(err error) bool <span class="cov8" title="1">{
+func IsExecutionStuck(err error) bool <span class="cov7" title="6">{
         execErr, ok := err.(ExecutionError)
         return ok &amp;&amp; execErr.Code == ErrExecutionStuck.Code
 }</span>
@@ -479,47 +488,47 @@ const (
 )
 
 // String returns the string representation of the status
-func (s ExecutionStatus) String() string <span class="cov8" title="1">{
+func (s ExecutionStatus) String() string <span class="cov5" title="8">{
         return string(s)
 }</span>
 
 // IsActive returns true if the execution is still active (not done)
-func (s ExecutionStatus) IsActive() bool <span class="cov8" title="1">{
+func (s ExecutionStatus) IsActive() bool <span class="cov4" title="6">{
         return s != StatusDone &amp;&amp; s != StatusUnknown
 }</span>
 
 // IsWIP returns true if the status indicates work in progress
-func (s ExecutionStatus) IsWIP() bool <span class="cov8" title="1">{
+func (s ExecutionStatus) IsWIP() bool <span class="cov5" title="10">{
         return s == StatusWIP || s == StatusReviewAndWIP
 }</span>
 
 // IsReview returns true if the status indicates review phase
-func (s ExecutionStatus) IsReview() bool <span class="cov8" title="1">{
+func (s ExecutionStatus) IsReview() bool <span class="cov8" title="40">{
         return s == StatusReview || s == StatusReviewAndWIP
 }</span>
 
 // IsReady returns true if the status is ready
-func (s ExecutionStatus) IsReady() bool <span class="cov8" title="1">{
+func (s ExecutionStatus) IsReady() bool <span class="cov3" title="4">{
         return s == StatusReady
 }</span>
 
 // IsDone returns true if the status is done
-func (s ExecutionStatus) IsDone() bool <span class="cov8" title="1">{
+func (s ExecutionStatus) IsDone() bool <span class="cov4" title="5">{
         return s == StatusDone
 }</span>
 
 // IsValid returns true if the status is valid
-func (s ExecutionStatus) IsValid() bool <span class="cov8" title="1">{
+func (s ExecutionStatus) IsValid() bool <span class="cov5" title="8">{
         switch s </span>{
-        case StatusReady, StatusWIP, StatusReview, StatusReviewAndWIP, StatusDone:<span class="cov8" title="1">
+        case StatusReady, StatusWIP, StatusReview, StatusReviewAndWIP, StatusDone:<span class="cov4" title="5">
                 return true</span>
-        default:<span class="cov8" title="1">
+        default:<span class="cov3" title="3">
                 return false</span>
         }
 }
 
 // CanTransitionTo checks if transition to another status is allowed
-func (s ExecutionStatus) CanTransitionTo(next ExecutionStatus) bool <span class="cov8" title="1">{
+func (s ExecutionStatus) CanTransitionTo(next ExecutionStatus) bool <span class="cov10" title="70">{
         validTransitions := map[ExecutionStatus][]ExecutionStatus{
                 StatusReady:        {StatusWIP},
                 StatusWIP:          {StatusReview},
@@ -529,33 +538,33 @@ func (s ExecutionStatus) CanTransitionTo(next ExecutionStatus) bool <span class=
         }
 
         allowed, exists := validTransitions[s]
-        if !exists </span><span class="cov8" title="1">{
+        if !exists </span><span class="cov6" title="13">{
                 return false
         }</span>
 
-        <span class="cov8" title="1">for _, validNext := range allowed </span><span class="cov8" title="1">{
-                if validNext == next </span><span class="cov8" title="1">{
+        <span class="cov9" title="57">for _, validNext := range allowed </span><span class="cov9" title="59">{
+                if validNext == next </span><span class="cov7" title="19">{
                         return true
                 }</span>
         }
 
-        <span class="cov8" title="1">return false</span>
+        <span class="cov8" title="38">return false</span>
 }
 
 // Priority returns the priority of the status for sorting
-func (s ExecutionStatus) Priority() int <span class="cov8" title="1">{
+func (s ExecutionStatus) Priority() int <span class="cov6" title="16">{
         switch s </span>{
-        case StatusReviewAndWIP:<span class="cov8" title="1">
+        case StatusReviewAndWIP:<span class="cov2" title="2">
                 return 1</span> // Highest priority - critical state
-        case StatusReview:<span class="cov8" title="1">
+        case StatusReview:<span class="cov3" title="3">
                 return 2</span>
-        case StatusWIP:<span class="cov8" title="1">
+        case StatusWIP:<span class="cov3" title="3">
                 return 3</span>
-        case StatusReady:<span class="cov8" title="1">
+        case StatusReady:<span class="cov3" title="3">
                 return 4</span>
-        case StatusDone:<span class="cov8" title="1">
+        case StatusDone:<span class="cov2" title="2">
                 return 5</span>
-        default:<span class="cov8" title="1">
+        default:<span class="cov3" title="3">
                 return 99</span>
         }
 }
@@ -580,58 +589,58 @@ const (
 )
 
 // String returns the string representation of the step
-func (s ExecutionStep) String() string <span class="cov8" title="1">{
+func (s ExecutionStep) String() string <span class="cov7" title="32">{
         return string(s)
 }</span>
 
 // ToNumber returns the numeric representation of the step (1-10)
-func (s ExecutionStep) ToNumber() int <span class="cov8" title="1">{
+func (s ExecutionStep) ToNumber() int <span class="cov8" title="85">{
         switch s </span>{
-        case StepReady:<span class="cov8" title="1">
+        case StepReady:<span class="cov2" title="3">
                 return 1</span>
-        case StepImplementTry:<span class="cov8" title="1">
+        case StepImplementTry:<span class="cov4" title="9">
                 return 2</span>
-        case StepFirstReview:<span class="cov8" title="1">
+        case StepFirstReview:<span class="cov2" title="3">
                 return 3</span>
-        case StepImplementSecondTry:<span class="cov8" title="1">
+        case StepImplementSecondTry:<span class="cov5" title="15">
                 return 4</span>
-        case StepSecondReview:<span class="cov8" title="1">
+        case StepSecondReview:<span class="cov2" title="3">
                 return 5</span>
-        case StepImplementThirdTry:<span class="cov8" title="1">
+        case StepImplementThirdTry:<span class="cov4" title="9">
                 return 6</span>
-        case StepThirdReview:<span class="cov8" title="1">
+        case StepThirdReview:<span class="cov2" title="3">
                 return 7</span>
-        case StepReviewerForceImplement:<span class="cov8" title="1">
+        case StepReviewerForceImplement:<span class="cov4" title="9">
                 return 8</span>
-        case StepImplementerReview:<span class="cov8" title="1">
+        case StepImplementerReview:<span class="cov2" title="3">
                 return 9</span>
-        case StepDone:<span class="cov8" title="1">
+        case StepDone:<span class="cov6" title="27">
                 return 10</span>
-        default:<span class="cov8" title="1">
+        default:<span class="cov1" title="1">
                 return 0</span>
         }
 }
 
 // ToStatus converts the step to its corresponding status
-func (s ExecutionStep) ToStatus() ExecutionStatus <span class="cov8" title="1">{
+func (s ExecutionStep) ToStatus() ExecutionStatus <span class="cov9" title="128">{
         switch s </span>{
-        case StepReady:<span class="cov8" title="1">
+        case StepReady:<span class="cov3" title="5">
                 return StatusReady</span>
-        case StepImplementTry, StepImplementSecondTry, StepImplementThirdTry:<span class="cov8" title="1">
+        case StepImplementTry, StepImplementSecondTry, StepImplementThirdTry:<span class="cov8" title="55">
                 return StatusWIP</span>
-        case StepFirstReview, StepSecondReview, StepThirdReview, StepImplementerReview:<span class="cov8" title="1">
+        case StepFirstReview, StepSecondReview, StepThirdReview, StepImplementerReview:<span class="cov7" title="44">
                 return StatusReview</span>
-        case StepReviewerForceImplement:<span class="cov8" title="1">
+        case StepReviewerForceImplement:<span class="cov3" title="4">
                 return StatusReviewAndWIP</span> // Special status for dual role
-        case StepDone:<span class="cov8" title="1">
+        case StepDone:<span class="cov6" title="19">
                 return StatusDone</span>
-        default:<span class="cov8" title="1">
+        default:<span class="cov1" title="1">
                 return StatusUnknown</span>
         }
 }
 
 // IsImplementation returns true if this is an implementation step
-func (s ExecutionStep) IsImplementation() bool <span class="cov8" title="1">{
+func (s ExecutionStep) IsImplementation() bool <span class="cov9" title="112">{
         return s == StepImplementTry ||
                 s == StepImplementSecondTry ||
                 s == StepImplementThirdTry ||
@@ -639,7 +648,7 @@ func (s ExecutionStep) IsImplementation() bool <span class="cov8" title="1">{
 }</span>
 
 // IsReview returns true if this is a review step
-func (s ExecutionStep) IsReview() bool <span class="cov8" title="1">{
+func (s ExecutionStep) IsReview() bool <span class="cov5" title="11">{
         return s == StepFirstReview ||
                 s == StepSecondReview ||
                 s == StepThirdReview ||
@@ -648,7 +657,7 @@ func (s ExecutionStep) IsReview() bool <span class="cov8" title="1">{
 }</span>
 
 // CanTransitionTo validates if transition to the next step is allowed
-func (s ExecutionStep) CanTransitionTo(next ExecutionStep) bool <span class="cov8" title="1">{
+func (s ExecutionStep) CanTransitionTo(next ExecutionStep) bool <span class="cov9" title="143">{
         validTransitions := map[ExecutionStep][]ExecutionStep{
                 StepReady:                  {StepImplementTry},
                 StepImplementTry:           {StepFirstReview},
@@ -663,45 +672,45 @@ func (s ExecutionStep) CanTransitionTo(next ExecutionStep) bool <span class="cov
         }
 
         allowed, exists := validTransitions[s]
-        if !exists </span><span class="cov8" title="1">{
+        if !exists </span><span class="cov2" title="2">{
                 return false
         }</span>
 
-        <span class="cov8" title="1">for _, validNext := range allowed </span><span class="cov8" title="1">{
-                if validNext == next </span><span class="cov8" title="1">{
+        <span class="cov9" title="141">for _, validNext := range allowed </span><span class="cov10" title="163">{
+                if validNext == next </span><span class="cov9" title="125">{
                         return true
                 }</span>
         }
 
-        <span class="cov8" title="1">return false</span>
+        <span class="cov5" title="16">return false</span>
 }
 
 // GetAttemptNumber returns the attempt number for implementation steps
-func (s ExecutionStep) GetAttemptNumber() int <span class="cov8" title="1">{
+func (s ExecutionStep) GetAttemptNumber() int <span class="cov4" title="7">{
         switch s </span>{
-        case StepImplementTry:<span class="cov8" title="1">
+        case StepImplementTry:<span class="cov1" title="1">
                 return 1</span>
-        case StepImplementSecondTry:<span class="cov8" title="1">
+        case StepImplementSecondTry:<span class="cov1" title="1">
                 return 2</span>
-        case StepImplementThirdTry:<span class="cov8" title="1">
+        case StepImplementThirdTry:<span class="cov1" title="1">
                 return 3</span>
-        case StepReviewerForceImplement:<span class="cov8" title="1">
+        case StepReviewerForceImplement:<span class="cov1" title="1">
                 return 4</span> // Special forced implementation
-        default:<span class="cov8" title="1">
+        default:<span class="cov2" title="3">
                 return 0</span>
         }
 }
 
 // IsValid returns true if the step is a valid execution step
-func (s ExecutionStep) IsValid() bool <span class="cov8" title="1">{
+func (s ExecutionStep) IsValid() bool <span class="cov5" title="12">{
         switch s </span>{
         case StepReady, StepImplementTry, StepFirstReview,
                 StepImplementSecondTry, StepSecondReview,
                 StepImplementThirdTry, StepThirdReview,
                 StepReviewerForceImplement, StepImplementerReview,
-                StepDone:<span class="cov8" title="1">
+                StepDone:<span class="cov5" title="10">
                 return true</span>
-        default:<span class="cov8" title="1">
+        default:<span class="cov2" title="2">
                 return false</span>
         }
 }
@@ -719,87 +728,87 @@ type ExecutionService struct {
 }
 
 // NewExecutionService creates a new execution service
-func NewExecutionService(repo SBIExecutionRepository) *ExecutionService <span class="cov8" title="1">{
+func NewExecutionService(repo SBIExecutionRepository) *ExecutionService <span class="cov10" title="38">{
         return &amp;ExecutionService{
                 repository: repo,
         }
 }</span>
 
 // StartExecution starts a new SBI execution
-func (s *ExecutionService) StartExecution(sbiID string) (*SBIExecution, error) <span class="cov8" title="1">{
+func (s *ExecutionService) StartExecution(sbiID string) (*SBIExecution, error) <span class="cov6" title="8">{
         // Check if there's already an active execution for this SBI
         existing, err := s.repository.FindBySBIID(sbiID)
-        if err == nil &amp;&amp; existing != nil &amp;&amp; !existing.IsCompleted() </span><span class="cov8" title="1">{
+        if err == nil &amp;&amp; existing != nil &amp;&amp; !existing.IsCompleted() </span><span class="cov1" title="1">{
                 return nil, fmt.Errorf("SBI %s already has an active execution", sbiID)
         }</span>
 
         // Create new execution
-        <span class="cov8" title="1">execution := NewSBIExecution(sbiID)
+        <span class="cov5" title="7">execution := NewSBIExecution(sbiID)
 
         // Save to repository
-        if err := s.repository.Save(execution); err != nil </span><span class="cov8" title="1">{
+        if err := s.repository.Save(execution); err != nil </span><span class="cov1" title="1">{
                 return nil, fmt.Errorf("failed to save execution: %w", err)
         }</span>
 
-        <span class="cov8" title="1">return execution, nil</span>
+        <span class="cov5" title="6">return execution, nil</span>
 }
 
 // ProgressExecution progresses the execution to the next step
-func (s *ExecutionService) ProgressExecution(executionID ExecutionID, decision Decision) (*SBIExecution, error) <span class="cov8" title="1">{
+func (s *ExecutionService) ProgressExecution(executionID ExecutionID, decision Decision) (*SBIExecution, error) <span class="cov7" title="16">{
         // Load execution
         execution, err := s.repository.FindByID(executionID)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov1" title="1">{
                 return nil, fmt.Errorf("execution not found: %w", err)
         }</span>
 
-        <span class="cov8" title="1">if execution.IsCompleted() </span><span class="cov8" title="1">{
+        <span class="cov7" title="15">if execution.IsCompleted() </span><span class="cov2" title="2">{
                 return execution, fmt.Errorf("execution is already completed")
         }</span>
 
         // Apply decision if in review status
-        <span class="cov8" title="1">if execution.Status.IsReview() &amp;&amp; decision.IsValid() &amp;&amp; !decision.IsPending() </span><span class="cov8" title="1">{
+        <span class="cov7" title="13">if execution.Status.IsReview() &amp;&amp; decision.IsValid() &amp;&amp; !decision.IsPending() </span><span class="cov4" title="4">{
                 if err := execution.ApplyDecision(decision); err != nil </span><span class="cov0" title="0">{
                         return nil, fmt.Errorf("failed to apply decision: %w", err)
                 }</span>
         }
 
         // Determine next step
-        <span class="cov8" title="1">nextStep, err := execution.NextStep()
-        if err != nil </span><span class="cov8" title="1">{
+        <span class="cov7" title="13">nextStep, err := execution.NextStep()
+        if err != nil </span><span class="cov1" title="1">{
                 return nil, fmt.Errorf("failed to determine next step: %w", err)
         }</span>
 
         // Transition to next step
-        <span class="cov8" title="1">if err := execution.TransitionTo(nextStep); err != nil </span><span class="cov0" title="0">{
+        <span class="cov7" title="12">if err := execution.TransitionTo(nextStep); err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("failed to transition: %w", err)
         }</span>
 
         // Check for force termination
-        <span class="cov8" title="1">if execution.ShouldForceTerminate() &amp;&amp; nextStep != StepDone </span><span class="cov8" title="1">{
+        <span class="cov7" title="12">if execution.ShouldForceTerminate() &amp;&amp; nextStep != StepDone </span><span class="cov1" title="1">{
                 // Force transition to termination path
                 nextStep = StepReviewerForceImplement
-                if err := execution.TransitionTo(nextStep); err != nil </span><span class="cov8" title="1">{
+                if err := execution.TransitionTo(nextStep); err != nil </span><span class="cov1" title="1">{
                         return nil, fmt.Errorf("failed to force terminate: %w", err)
                 }</span>
         }
 
         // Update in repository
-        <span class="cov8" title="1">if err := s.repository.Update(execution); err != nil </span><span class="cov8" title="1">{
+        <span class="cov6" title="11">if err := s.repository.Update(execution); err != nil </span><span class="cov1" title="1">{
                 return nil, fmt.Errorf("failed to update execution: %w", err)
         }</span>
 
-        <span class="cov8" title="1">return execution, nil</span>
+        <span class="cov6" title="10">return execution, nil</span>
 }
 
 // GetExecutionPath returns the execution path for an SBI
-func (s *ExecutionService) GetExecutionPath(executionID ExecutionID) ([]ExecutionStep, error) <span class="cov8" title="1">{
+func (s *ExecutionService) GetExecutionPath(executionID ExecutionID) ([]ExecutionStep, error) <span class="cov6" title="10">{
         execution, err := s.repository.FindByID(executionID)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov1" title="1">{
                 return nil, fmt.Errorf("execution not found: %w", err)
         }</span>
 
         // Build the path based on the current step and decision history
-        <span class="cov8" title="1">path := []ExecutionStep{StepReady}
+        <span class="cov6" title="9">path := []ExecutionStep{StepReady}
 
         // Always includes first implementation and review
         path = append(path, StepImplementTry, StepFirstReview)
@@ -812,87 +821,87 @@ func (s *ExecutionService) GetExecutionPath(executionID ExecutionID) ([]Executio
         }</span>
 
         // Second attempt
-        <span class="cov8" title="1">if execution.Step.ToNumber() &gt;= 4 </span><span class="cov8" title="1">{
+        <span class="cov6" title="9">if execution.Step.ToNumber() &gt;= 4 </span><span class="cov6" title="8">{
                 path = append(path, StepImplementSecondTry, StepSecondReview)
         }</span>
 
-        <span class="cov8" title="1">if execution.Step.ToNumber() &lt;= 5 &amp;&amp; execution.Step == StepDone </span><span class="cov0" title="0">{
+        <span class="cov6" title="9">if execution.Step.ToNumber() &lt;= 5 &amp;&amp; execution.Step == StepDone </span><span class="cov0" title="0">{
                 // Second attempt success
                 path = append(path, StepDone)
                 return path, nil
         }</span>
 
         // Third attempt
-        <span class="cov8" title="1">if execution.Step.ToNumber() &gt;= 6 </span><span class="cov8" title="1">{
+        <span class="cov6" title="9">if execution.Step.ToNumber() &gt;= 6 </span><span class="cov5" title="6">{
                 path = append(path, StepImplementThirdTry, StepThirdReview)
         }</span>
 
-        <span class="cov8" title="1">if execution.Step.ToNumber() &lt;= 7 &amp;&amp; execution.Step == StepDone </span><span class="cov0" title="0">{
+        <span class="cov6" title="9">if execution.Step.ToNumber() &lt;= 7 &amp;&amp; execution.Step == StepDone </span><span class="cov0" title="0">{
                 // Third attempt success
                 path = append(path, StepDone)
                 return path, nil
         }</span>
 
         // Force termination path
-        <span class="cov8" title="1">if execution.Step.ToNumber() &gt;= 8 </span><span class="cov8" title="1">{
+        <span class="cov6" title="9">if execution.Step.ToNumber() &gt;= 8 </span><span class="cov4" title="5">{
                 path = append(path, StepReviewerForceImplement, StepImplementerReview, StepDone)
         }</span>
 
-        <span class="cov8" title="1">return path, nil</span>
+        <span class="cov6" title="9">return path, nil</span>
 }
 
 // CompleteExecution marks an execution as completed
-func (s *ExecutionService) CompleteExecution(executionID ExecutionID, finalDecision Decision) error <span class="cov8" title="1">{
+func (s *ExecutionService) CompleteExecution(executionID ExecutionID, finalDecision Decision) error <span class="cov4" title="5">{
         execution, err := s.repository.FindByID(executionID)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov1" title="1">{
                 return fmt.Errorf("execution not found: %w", err)
         }</span>
 
-        <span class="cov8" title="1">if execution.IsCompleted() </span><span class="cov8" title="1">{
+        <span class="cov4" title="4">if execution.IsCompleted() </span><span class="cov1" title="1">{
                 return fmt.Errorf("execution is already completed")
         }</span>
 
         // Apply final decision
-        <span class="cov8" title="1">execution.Decision = finalDecision
+        <span class="cov3" title="3">execution.Decision = finalDecision
 
         // Transition to done
-        if err := execution.TransitionTo(StepDone); err != nil </span><span class="cov8" title="1">{
+        if err := execution.TransitionTo(StepDone); err != nil </span><span class="cov1" title="1">{
                 return fmt.Errorf("failed to complete execution: %w", err)
         }</span>
 
         // Update in repository
-        <span class="cov8" title="1">if err := s.repository.Update(execution); err != nil </span><span class="cov8" title="1">{
+        <span class="cov2" title="2">if err := s.repository.Update(execution); err != nil </span><span class="cov1" title="1">{
                 return fmt.Errorf("failed to update execution: %w", err)
         }</span>
 
-        <span class="cov8" title="1">return nil</span>
+        <span class="cov1" title="1">return nil</span>
 }
 
 // GetActiveExecutions returns all active executions
-func (s *ExecutionService) GetActiveExecutions() ([]*SBIExecution, error) <span class="cov8" title="1">{
+func (s *ExecutionService) GetActiveExecutions() ([]*SBIExecution, error) <span class="cov3" title="3">{
         return s.repository.FindActive()
 }</span>
 
 // IsExecutionStuck checks if an execution is stuck and needs intervention
-func (s *ExecutionService) IsExecutionStuck(executionID ExecutionID) (bool, string) <span class="cov8" title="1">{
+func (s *ExecutionService) IsExecutionStuck(executionID ExecutionID) (bool, string) <span class="cov4" title="5">{
         execution, err := s.repository.FindByID(executionID)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov1" title="1">{
                 return false, ""
         }</span>
 
         // Check if stuck in review with multiple failures
-        <span class="cov8" title="1">if execution.Status == StatusReview &amp;&amp;
+        <span class="cov4" title="4">if execution.Status == StatusReview &amp;&amp;
                 execution.Decision == DecisionNeedsChanges &amp;&amp;
-                execution.Attempt &gt;= 3 </span><span class="cov8" title="1">{
+                execution.Attempt &gt;= 3 </span><span class="cov2" title="2">{
                 return true, "Multiple review failures, consider force termination"
         }</span>
 
         // Check if stuck in implementation for too long
-        <span class="cov8" title="1">if execution.Status == StatusWIP &amp;&amp; execution.Attempt &gt; 3 </span><span class="cov8" title="1">{
+        <span class="cov2" title="2">if execution.Status == StatusWIP &amp;&amp; execution.Attempt &gt; 3 </span><span class="cov1" title="1">{
                 return true, "Too many implementation attempts"
         }</span>
 
-        <span class="cov8" title="1">return false, ""</span>
+        <span class="cov1" title="1">return false, ""</span>
 }
 </pre>
 		

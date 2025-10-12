@@ -13,6 +13,7 @@ func NewPBICommand() *cobra.Command {
 	}
 
 	// Add subcommands
+	cmd.AddCommand(NewPlanCommand())
 	cmd.AddCommand(NewRegisterCommand())
 	cmd.AddCommand(NewShowCommand())
 	cmd.AddCommand(NewListCommand())
@@ -21,7 +22,6 @@ func NewPBICommand() *cobra.Command {
 	cmd.AddCommand(NewDeleteCommand())
 	cmd.AddCommand(NewDecomposeCommand())
 	cmd.AddCommand(NewSBICommand())
-	cmd.AddCommand(NewRegisterSBIsCommand())
 
 	return cmd
 }

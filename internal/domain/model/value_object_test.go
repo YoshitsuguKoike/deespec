@@ -20,9 +20,9 @@ func TestNewTaskID(t *testing.T) {
 		t.Error("Different TaskIDs should have different values")
 	}
 
-	// UUID format check (basic)
-	if len(id1.String()) != 36 {
-		t.Errorf("TaskID should be 36 characters (UUID format), got %d", len(id1.String()))
+	// ULID format check (basic)
+	if len(id1.String()) != 26 {
+		t.Errorf("TaskID should be 26 characters (ULID format), got %d", len(id1.String()))
 	}
 }
 

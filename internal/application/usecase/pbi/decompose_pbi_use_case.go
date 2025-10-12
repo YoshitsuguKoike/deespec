@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
+	"github.com/YoshitsuguKoike/deespec/internal/application/port/output"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/pbi"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
 )
@@ -37,6 +40,7 @@ type DecomposePBIUseCase struct {
 	promptRepo   repository.PromptTemplateRepository
 	approvalRepo repository.SBIApprovalRepository
 	labelRepo    repository.LabelRepository // Label repository for loading label instructions
+	agentGateway output.AgentGateway        // Agent gateway for AI execution (optional, can be nil for testing)
 	workingDir   string                     // Base working directory (default: ".")
 }
 
@@ -46,12 +50,14 @@ func NewDecomposePBIUseCase(
 	promptRepo repository.PromptTemplateRepository,
 	approvalRepo repository.SBIApprovalRepository,
 	labelRepo repository.LabelRepository,
+	agentGateway output.AgentGateway,
 ) *DecomposePBIUseCase {
 	return &DecomposePBIUseCase{
 		pbiRepo:      pbiRepo,
 		promptRepo:   promptRepo,
 		approvalRepo: approvalRepo,
 		labelRepo:    labelRepo,
+		agentGateway: agentGateway,
 		workingDir:   ".", // Default to current directory
 	}
 }
@@ -89,37 +95,110 @@ func (u *DecomposePBIUseCase) Execute(
 		return nil, fmt.Errorf("failed to build decompose prompt: %w", err)
 	}
 
-	// 5. Handle dry-run mode
-	if opts.DryRun {
-		return &DecomposeResult{
-			PBIID:          pbiID,
-			SBICount:       0,
-			SBIFiles:       []string{},
-			PromptFilePath: "",
-			Message:        "Dry-run mode: prompt generated successfully (no SBIs created)",
-			Prompt:         prompt,
-		}, nil
-	}
-
-	// 6. Write prompt to file
+	// 5. Write prompt to file (always write, even in dry-run mode)
 	promptFilePath, err := u.writePromptFile(pbiID, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write prompt file: %w", err)
 	}
 
-	// TODO(SBI-10): Execute AI agent with prompt and list generated SBIs
-	// For now, we return success after writing the prompt file
-	// Phase 4 will add:
-	// - AI agent execution
-	// - SBI file listing with listGeneratedSBIs()
-	// - approval.yaml creation with createApprovalManifest()
+	// 6. Handle dry-run mode (return after writing prompt)
+	if opts.DryRun {
+		return &DecomposeResult{
+			PBIID:          pbiID,
+			SBICount:       0,
+			SBIFiles:       []string{},
+			PromptFilePath: promptFilePath,
+			Message:        fmt.Sprintf("Prompt-only mode: prompt saved at %s", promptFilePath),
+			Prompt:         prompt, // Also return prompt for display
+		}, nil
+	}
 
+	// 7. Execute AI agent with prompt (if gateway is available)
+	if u.agentGateway == nil {
+		// No agent gateway available (e.g., in tests) - return prompt-only result
+		log.Printf("Agent gateway not available (test mode)")
+		return &DecomposeResult{
+			PBIID:          pbiID,
+			SBICount:       0,
+			SBIFiles:       []string{},
+			PromptFilePath: promptFilePath,
+			Message:        fmt.Sprintf("Agent gateway not available. Prompt saved at: %s", promptFilePath),
+			Prompt:         "",
+		}, nil
+	}
+
+	// Health check - if Claude CLI is not available, return prompt-only result
+	if err := u.agentGateway.(interface{ HealthCheck(context.Context) error }).HealthCheck(ctx); err != nil {
+		log.Printf("Claude CLI not available: %v", err)
+		return &DecomposeResult{
+			PBIID:          pbiID,
+			SBICount:       0,
+			SBIFiles:       []string{},
+			PromptFilePath: promptFilePath,
+			Message:        fmt.Sprintf("Claude CLI not available. Prompt saved at: %s", promptFilePath),
+			Prompt:         "",
+		}, nil
+	}
+
+	// Execute AI agent
+	agentReq := output.AgentRequest{
+		Prompt:  prompt,
+		Timeout: 10 * time.Minute,
+	}
+
+	_, err = u.agentGateway.Execute(ctx, agentReq)
+	if err != nil {
+		// AI execution failed, but prompt was saved - return partial success
+		log.Printf("AI execution failed: %v", err)
+		return &DecomposeResult{
+			PBIID:          pbiID,
+			SBICount:       0,
+			SBIFiles:       []string{},
+			PromptFilePath: promptFilePath,
+			Message:        fmt.Sprintf("AI execution failed. Prompt saved at: %s", promptFilePath),
+			Prompt:         "",
+		}, nil
+	}
+
+	// 8. List generated SBI files
+	sbiFiles, err := u.listGeneratedSBIs(pbiID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list generated SBIs: %w", err)
+	}
+
+	if len(sbiFiles) == 0 {
+		return &DecomposeResult{
+			PBIID:          pbiID,
+			SBICount:       0,
+			SBIFiles:       []string{},
+			PromptFilePath: promptFilePath,
+			Message:        "AI executed but no SBI files were generated",
+			Prompt:         "",
+		}, nil
+	}
+
+	// 9. Create approval.yaml manifest
+	if err := u.createApprovalManifest(ctx, pbiID, sbiFiles); err != nil {
+		return nil, fmt.Errorf("failed to create approval manifest: %w", err)
+	}
+
+	// 10. Update PBI status to planning
+	if err := pbiEntity.UpdateStatus(pbi.StatusPlanning); err != nil {
+		return nil, fmt.Errorf("failed to update PBI status: %w", err)
+	}
+
+	// 11. Save updated PBI (with existing body)
+	if err := u.pbiRepo.Save(pbiEntity, pbiBody); err != nil {
+		return nil, fmt.Errorf("failed to save PBI: %w", err)
+	}
+
+	// 12. Return success result
 	return &DecomposeResult{
 		PBIID:          pbiID,
-		SBICount:       0,
-		SBIFiles:       []string{},
+		SBICount:       len(sbiFiles),
+		SBIFiles:       sbiFiles,
 		PromptFilePath: promptFilePath,
-		Message:        fmt.Sprintf("Prompt file created at: %s", promptFilePath),
+		Message:        fmt.Sprintf("Successfully generated %d SBI files", len(sbiFiles)),
 		Prompt:         "",
 	}, nil
 }
@@ -159,7 +238,8 @@ func (u *DecomposePBIUseCase) buildDecomposePrompt(
 	labelInstructions, err := u.loadLabelInstructions(ctx)
 	if err != nil {
 		// Log error but don't fail - labels are optional
-		labelInstructions = "No labels available"
+		fmt.Fprintf(os.Stderr, "Warning: Failed to load labels: %v\n", err)
+		labelInstructions = ""
 	}
 
 	// 4. Prepare template data
@@ -220,16 +300,44 @@ func (u *DecomposePBIUseCase) loadLabelInstructions(ctx context.Context) (string
 		if lbl.Description() != "" {
 			buf.WriteString(fmt.Sprintf("- **Description**: %s\n", lbl.Description()))
 		}
-		if lbl.Color() != "" {
-			buf.WriteString(fmt.Sprintf("- **Color**: %s\n", lbl.Color()))
-		}
 		buf.WriteString(fmt.Sprintf("- **Priority**: %d\n", lbl.Priority()))
+
+		// 4. Load and include first 10 lines from label template files
+		templatePaths := lbl.TemplatePaths()
+		if len(templatePaths) > 0 {
+			buf.WriteString("- **Content Preview** (first 10 lines):\n")
+			for _, templatePath := range templatePaths {
+				// Read the template file
+				content, err := os.ReadFile(templatePath)
+				if err != nil {
+					// Skip if file cannot be read, but log the error
+					fmt.Fprintf(os.Stderr, "Warning: Failed to read template file %s: %v\n", templatePath, err)
+					continue
+				}
+
+				// Extract first 10 lines
+				lines := strings.Split(string(content), "\n")
+				previewLines := lines
+				if len(lines) > 10 {
+					previewLines = lines[:10]
+				}
+
+				buf.WriteString("```\n")
+				buf.WriteString(strings.Join(previewLines, "\n"))
+				if len(lines) > 10 {
+					buf.WriteString(fmt.Sprintf("\n... (truncated, %d more lines)\n", len(lines)-10))
+				}
+				buf.WriteString("\n```\n")
+			}
+		}
+
 		buf.WriteString("\n")
 	}
 
 	buf.WriteString("\n**Instructions for AI Agent:**\n")
 	buf.WriteString("- **MUST**: Each SBI file must include a `Labels:` line in the metadata section at the end\n")
 	buf.WriteString("- Analyze each task and assign appropriate labels from the list above\n")
+	buf.WriteString("- Review the content preview to understand what each label represents\n")
 	buf.WriteString("- Each SBI can have multiple labels (comma-separated)\n")
 	buf.WriteString("- Use label names exactly as shown above (case-sensitive)\n")
 	buf.WriteString("- If no labels apply, write `Labels: none`\n")

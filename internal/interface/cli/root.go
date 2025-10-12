@@ -55,7 +55,7 @@ func NewRoot() *cobra.Command {
 					},
 				}
 				cfg = config.NewAppConfig(
-					".deespec", "claude", 60,
+					".deespec", "claude", 60, "vim", // Add default editor
 					"", "", "", "",
 					false, false, false,
 					3, 8, // max_attempts=3, max_turns=8

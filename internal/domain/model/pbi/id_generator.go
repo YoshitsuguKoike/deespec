@@ -1,35 +1,16 @@
 package pbi
 
 import (
-	"fmt"
-	"regexp"
-	"strconv"
+	"crypto/rand"
+	"time"
+
+	"github.com/oklog/ulid/v2"
 )
 
-// GenerateID generates the next PBI ID based on existing PBIs
-// Format: PBI-001, PBI-002, etc.
+// GenerateID generates a new PBI ID using ULID
+// Format: ULID (e.g., 01JB6X8Y2K9FQR4T3VWHGP5M2C)
 func GenerateID(repo Repository) (string, error) {
-	pbis, err := repo.FindAll()
-	if err != nil {
-		return "", fmt.Errorf("failed to find all PBIs: %w", err)
-	}
-
-	maxNum := 0
-	re := regexp.MustCompile(`PBI-(\d+)`)
-
-	for _, p := range pbis {
-		matches := re.FindStringSubmatch(p.ID)
-		if len(matches) == 2 {
-			num, err := strconv.Atoi(matches[1])
-			if err != nil {
-				continue
-			}
-			if num > maxNum {
-				maxNum = num
-			}
-		}
-	}
-
-	nextNum := maxNum + 1
-	return fmt.Sprintf("PBI-%03d", nextNum), nil
+	entropy := ulid.Monotonic(rand.Reader, 0)
+	id := ulid.MustNew(ulid.Timestamp(time.Now()), entropy)
+	return id.String(), nil
 }

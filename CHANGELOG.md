@@ -4,6 +4,27 @@
 
 ## \[Unreleased]
 
+### 修正 (Fixed)
+
+* **PBI Decompose テストの高速化**: テスト実行時間を30秒から0.2秒に短縮（140倍高速化）
+  - 問題: `decompose_pbi_use_case_test.go` のテストが実際のAIエージェントを呼び出していた
+  - 原因: Use Case内部でAgentGatewayをハードコーディングしていた
+  - 修正: Dependency Injection パターンを実装
+    - `DecomposePBIUseCase` に `agentGateway output.AgentGateway` フィールドを追加
+    - コンストラクタで AgentGateway を注入するように変更
+    - テストでは `nil` を渡してAI実行をスキップ
+    - 本番では `agent.NewClaudeCodeCLIGateway()` を注入
+  - 効果: テスト実行時間が 30+ 秒 → 0.213 秒に改善
+  - ファイル:
+    - `internal/application/usecase/pbi/decompose_pbi_use_case.go`
+    - `internal/application/usecase/pbi/decompose_pbi_use_case_test.go`
+    - `internal/interface/cli/pbi/decompose.go`
+
+* **TaskID テストの修正**: ULID実装とテスト期待値の不一致を解消
+  - 問題: `TestNewTaskID` が UUID形式（36文字）を期待していたが、実装はULID（26文字）を使用
+  - 修正: テストの期待値を ULID 形式に修正
+  - ファイル: `internal/domain/model/value_object_test.go`
+
 ---
 
 ## \[v0.2.2] - 2025-10-13

@@ -36,6 +36,7 @@ type Config interface {
 	AgentBin() string       // Agent binary path (DEE_AGENT_BIN)
 	TimeoutSec() int        // Execution timeout in seconds (DEE_TIMEOUT_SEC)
 	Timeout() time.Duration // Execution timeout as Duration
+	Editor() string         // Default editor for interactive input
 
 	// Workflow variables
 	ProjectName() string // Project name (DEE_PROJECT_NAME)
@@ -86,6 +87,7 @@ type AppConfig struct {
 	home       string
 	agentBin   string
 	timeoutSec int
+	editor     string
 
 	projectName string
 	language    string
@@ -137,6 +139,11 @@ func (c *AppConfig) TimeoutSec() int {
 // Timeout returns the timeout as a Duration
 func (c *AppConfig) Timeout() time.Duration {
 	return time.Duration(c.timeoutSec) * time.Second
+}
+
+// Editor returns the default editor
+func (c *AppConfig) Editor() string {
+	return c.editor
 }
 
 // ProjectName returns the project name
@@ -252,7 +259,7 @@ func (c *AppConfig) SettingPath() string {
 // NewAppConfig creates a new AppConfig with the given values.
 // This is typically called by the infrastructure layer after loading and merging configurations.
 func NewAppConfig(
-	home, agentBin string, timeoutSec int,
+	home, agentBin string, timeoutSec int, editor string,
 	projectName, language, turn, taskID string,
 	validate, autoFB, strictFsync bool,
 	maxAttempts, maxTurns int,
@@ -268,6 +275,7 @@ func NewAppConfig(
 		home:                   home,
 		agentBin:               agentBin,
 		timeoutSec:             timeoutSec,
+		editor:                 editor,
 		projectName:            projectName,
 		language:               language,
 		turn:                   turn,

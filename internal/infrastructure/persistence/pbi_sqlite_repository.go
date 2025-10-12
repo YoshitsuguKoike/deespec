@@ -33,33 +33,29 @@ func (r *PBISQLiteRepository) Save(p *pbi.PBI, body string) error {
 	}
 	defer tx.Rollback()
 
-	// 1. Calculate markdown path
-	markdownPath := filepath.Join(".deespec", "specs", "pbi", p.ID, "pbi.md")
-
-	// 2. Save metadata to database
+	// 1. Save metadata to database
 	_, err = tx.Exec(`
 		INSERT INTO pbis (
-			id, title, markdown_path, status, estimated_story_points, priority,
-			parent_epic_id, created_at, updated_at
+			id, title, status, story_points, priority,
+			parent_epic_id, current_step, created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
-			markdown_path = excluded.markdown_path,
 			status = excluded.status,
-			estimated_story_points = excluded.estimated_story_points,
+			story_points = excluded.story_points,
 			priority = excluded.priority,
 			parent_epic_id = excluded.parent_epic_id,
 			updated_at = excluded.updated_at
 	`,
-		p.ID, p.Title, markdownPath, string(p.Status), p.EstimatedStoryPoints,
-		p.Priority, nullString(p.ParentEpicID),
+		p.ID, p.Title, string(p.Status), p.EstimatedStoryPoints,
+		p.Priority, nullString(p.ParentEpicID), "planning",
 		p.CreatedAt.Format(time.RFC3339), p.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save PBI metadata: %w", err)
 	}
 
-	// 3. Save Markdown file
+	// 2. Save Markdown file
 	pbiDir := filepath.Join(r.rootPath, ".deespec", "specs", "pbi", p.ID)
 	if err := os.MkdirAll(pbiDir, 0755); err != nil {
 		return fmt.Errorf("failed to create PBI directory: %w", err)
@@ -82,7 +78,7 @@ func (r *PBISQLiteRepository) FindByID(id string) (*pbi.PBI, error) {
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRow(`
-		SELECT id, title, status, estimated_story_points, priority,
+		SELECT id, title, status, story_points, priority,
 		       parent_epic_id, created_at, updated_at
 		FROM pbis
 		WHERE id = ?
@@ -135,7 +131,7 @@ func (r *PBISQLiteRepository) GetBody(id string) (string, error) {
 // FindAll retrieves all PBIs (metadata only)
 func (r *PBISQLiteRepository) FindAll() ([]*pbi.PBI, error) {
 	rows, err := r.db.Query(`
-		SELECT id, title, status, estimated_story_points, priority,
+		SELECT id, title, status, story_points, priority,
 		       parent_epic_id, created_at, updated_at
 		FROM pbis
 		ORDER BY created_at DESC
@@ -151,7 +147,7 @@ func (r *PBISQLiteRepository) FindAll() ([]*pbi.PBI, error) {
 // FindByStatus retrieves PBIs by status (metadata only)
 func (r *PBISQLiteRepository) FindByStatus(status pbi.Status) ([]*pbi.PBI, error) {
 	rows, err := r.db.Query(`
-		SELECT id, title, status, estimated_story_points, priority,
+		SELECT id, title, status, story_points, priority,
 		       parent_epic_id, created_at, updated_at
 		FROM pbis
 		WHERE status = ?

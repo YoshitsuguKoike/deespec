@@ -17,6 +17,7 @@ type RawSettings struct {
 	Home       *string `json:"home"`
 	AgentBin   *string `json:"agent_bin"`
 	TimeoutSec *int    `json:"timeout_sec"`
+	Editor     *string `json:"editor"`
 
 	// Workflow variables
 	ProjectName *string `json:"project_name"`
@@ -129,6 +130,17 @@ func applyDefaults(settings *RawSettings) {
 	if settings.TimeoutSec == nil {
 		v := 900 // 15 minutes for complex tasks
 		settings.TimeoutSec = &v
+	}
+	if settings.Editor == nil {
+		// Priority: setting.json > $EDITOR > $VISUAL > vim
+		v := os.Getenv("EDITOR")
+		if v == "" {
+			v = os.Getenv("VISUAL")
+		}
+		if v == "" {
+			v = "vim"
+		}
+		settings.Editor = &v
 	}
 
 	// Workflow variables (default to empty)
@@ -296,6 +308,7 @@ func buildAppConfig(settings *RawSettings, configSource, settingPath string) *co
 		*settings.Home,
 		*settings.AgentBin,
 		*settings.TimeoutSec,
+		*settings.Editor,
 		*settings.ProjectName,
 		*settings.Language,
 		*settings.Turn,

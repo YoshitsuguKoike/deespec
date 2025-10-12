@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/YoshitsuguKoike/deespec/internal/adapter/gateway/agent"
 	appconfig "github.com/YoshitsuguKoike/deespec/internal/app/config"
 	pbiusecase "github.com/YoshitsuguKoike/deespec/internal/application/usecase/pbi"
 	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence"
-	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/migration"
+	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/sqlite"
 	sqliterepo "github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/sqlite"
 	infrarepo "github.com/YoshitsuguKoike/deespec/internal/infrastructure/repository"
 	"github.com/spf13/cobra"
@@ -17,9 +18,9 @@ import (
 
 // decomposeFlags holds flags for the decompose command
 type decomposeFlags struct {
-	dryRun  bool
-	minSBIs int
-	maxSBIs int
+	promptOnly bool // Generate prompt file only, without AI execution
+	minSBIs    int
+	maxSBIs    int
 }
 
 // NewDecomposeCommand creates a new decompose command
@@ -28,18 +29,22 @@ func NewDecomposeCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "decompose <pbi-id>",
-		Short: "Decompose a PBI into multiple SBIs",
+		Short: "Decompose a PBI into multiple SBIs using AI",
 		Long: `Decompose a Product Backlog Item (PBI) into multiple Small Backlog Items (SBIs).
 
-This command generates a decomposition prompt for AI agents to create SBI specifications.
-The command validates the PBI status and generates a prompt file in the PBI directory.
+By default, this command:
+1. Generates a decomposition prompt with PBI details and label instructions
+2. Executes AI agent to create SBI specification files
+3. Creates approval.yaml for SBI review
+
+Use --prompt-only to generate the prompt file without AI execution (for manual review).
 
 Only PBIs in "pending" or "planning" status can be decomposed.`,
-		Example: `  # Decompose a PBI (generates prompt file)
+		Example: `  # Decompose a PBI with AI agent execution (default)
   deespec pbi decompose PBI-001
 
-  # Dry-run mode (only build prompt, no file output)
-  deespec pbi decompose PBI-001 --dry-run
+  # Generate prompt file only (for manual review)
+  deespec pbi decompose PBI-001 --prompt-only
 
   # Specify min/max SBI count
   deespec pbi decompose PBI-001 --min-sbis 3 --max-sbis 7`,
@@ -51,7 +56,7 @@ Only PBIs in "pending" or "planning" status can be decomposed.`,
 	}
 
 	// Define flags
-	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "プロンプト構築のみ（ファイル出力なし）")
+	cmd.Flags().BoolVar(&flags.promptOnly, "prompt-only", false, "Generate prompt file only without AI execution")
 	cmd.Flags().IntVar(&flags.minSBIs, "min-sbis", 2, "最小SBI数（デフォルト: 2）")
 	cmd.Flags().IntVar(&flags.maxSBIs, "max-sbis", 10, "最大SBI数（デフォルト: 10）")
 
@@ -74,14 +79,14 @@ func runDecompose(pbiID string, flags *decomposeFlags) error {
 	}
 
 	// Open database
-	db, err := sql.Open("sqlite3", ".deespec/var/deespec.db")
+	db, err := sql.Open("sqlite3", ".deespec/deespec.db")
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer db.Close()
 
 	// Run migrations first
-	migrator := migration.NewMigrator(db)
+	migrator := sqlite.NewMigrator(db)
 	if err := migrator.Migrate(); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
@@ -110,8 +115,11 @@ func runDecompose(pbiID string, flags *decomposeFlags) error {
 	}
 	labelRepo := sqliterepo.NewLabelRepository(db, labelConfig)
 
+	// Create agent gateway
+	agentGateway := agent.NewClaudeCodeCLIGateway()
+
 	// Create use case
-	useCase := pbiusecase.NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, labelRepo)
+	useCase := pbiusecase.NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, labelRepo, agentGateway)
 
 	// Display progress: retrieving PBI
 	fmt.Println("🔄 PBIを取得中...")
@@ -120,7 +128,7 @@ func runDecompose(pbiID string, flags *decomposeFlags) error {
 	opts := pbiusecase.DecomposeOptions{
 		MinSBIs:    flags.minSBIs,
 		MaxSBIs:    flags.maxSBIs,
-		DryRun:     flags.dryRun,
+		DryRun:     flags.promptOnly, // PromptOnly mode = DryRun (no AI execution)
 		OutputOnly: false,
 	}
 
@@ -133,49 +141,71 @@ func runDecompose(pbiID string, flags *decomposeFlags) error {
 		return fmt.Errorf("PBIの分解に失敗しました: %w", err)
 	}
 
-	// Display progress: writing prompt file (if not dry-run)
-	if !flags.dryRun {
+	// Display progress: writing prompt file (if not prompt-only)
+	if !flags.promptOnly {
 		fmt.Println("💾 プロンプトファイルを出力中...")
+		fmt.Println("🤖 AIエージェントを実行中...")
 	}
 
 	// Display results
 	fmt.Println("✅ 完了")
 	fmt.Println()
 
-	if flags.dryRun {
-		// Dry-run mode: display prompt to stdout
+	if flags.promptOnly {
+		// Prompt-only mode: display file path and preview
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-		fmt.Println("📄 Dry-run mode: プロンプトが正常に生成されました（ファイル出力なし）")
-		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-		fmt.Println()
-		fmt.Printf("生成されたプロンプト（%d文字）:\n", len(result.Prompt))
-		fmt.Println("────────────────────────────────────────────────────────")
-		// Display first 500 characters of the prompt
-		if len(result.Prompt) > 500 {
-			fmt.Println(result.Prompt[:500])
-			fmt.Printf("\n... (残り %d 文字)\n", len(result.Prompt)-500)
-		} else {
-			fmt.Println(result.Prompt)
-		}
-		fmt.Println("────────────────────────────────────────────────────────")
-	} else {
-		// Normal mode: display file path and next steps
-		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-		fmt.Println("📄 プロンプトファイルが生成されました")
+		fmt.Println("📄 Prompt-only mode: プロンプトが正常に生成されました（AI実行なし）")
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		fmt.Println()
 		fmt.Printf("📁 ファイルパス: %s\n", result.PromptFilePath)
+		fmt.Printf("📊 プロンプトサイズ: %d 文字\n", len(result.Prompt))
 		fmt.Println()
 		fmt.Println("💡 次のステップ:")
 		fmt.Println("   1. プロンプトファイルを確認してください")
 		fmt.Printf("      $ cat %s\n", result.PromptFilePath)
 		fmt.Println()
-		fmt.Println("   2. 将来的には以下のコマンドでAIエージェントを実行できます:")
-		fmt.Printf("      $ deespec pbi ai-decompose %s  # (未実装)\n", pbiID)
+		fmt.Println("   2. 手動でClaude Code CLIを実行してください:")
+		fmt.Printf("      $ claude -p --dangerously-skip-permissions \"$(cat %s)\"\n", result.PromptFilePath)
+	} else if result.SBICount > 0 {
+		// Success: SBI files were generated
+		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		fmt.Println("📄 SBIファイルが生成されました")
+		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		fmt.Println()
-		fmt.Println("   3. AIが生成したSBIファイルをレビューして承認してください:")
+		fmt.Printf("📁 生成されたSBIファイル:\n")
+		for _, sbiFile := range result.SBIFiles {
+			fmt.Printf("   - %s\n", sbiFile)
+		}
+		fmt.Println()
+		fmt.Println("📋 approval.yaml作成済み")
+		fmt.Println()
+		fmt.Println("💡 次のステップ:")
+		fmt.Println("   1. 生成されたSBIをレビューしてください")
 		fmt.Printf("      $ deespec pbi sbi list %s\n", pbiID)
+		fmt.Println()
+		fmt.Println("   2. 承認してください")
 		fmt.Printf("      $ deespec pbi sbi approve %s <sbi-file>\n", pbiID)
+		fmt.Println()
+		fmt.Println("   3. 登録してください")
+		fmt.Printf("      $ deespec pbi register %s\n", pbiID)
+	} else {
+		// Partial success: prompt created but AI execution failed or no SBIs generated
+		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		fmt.Println("⚠️  プロンプトファイルが生成されました")
+		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		fmt.Println()
+		fmt.Printf("📁 ファイルパス: %s\n", result.PromptFilePath)
+		fmt.Println()
+		fmt.Printf("ℹ️  %s\n", result.Message)
+		fmt.Println()
+		fmt.Println("💡 次のステップ:")
+		fmt.Println("   1. プロンプトファイルを確認してください")
+		fmt.Printf("      $ cat %s\n", result.PromptFilePath)
+		fmt.Println()
+		fmt.Println("   2. 手動でClaude Code CLIを実行してください:")
+		fmt.Printf("      $ claude -p --dangerously-skip-permissions \"$(cat %s)\"\n", result.PromptFilePath)
+		fmt.Println()
+		fmt.Println("   3. または、手動でSBIファイルを作成してください")
 	}
 	fmt.Println()
 

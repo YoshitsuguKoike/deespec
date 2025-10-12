@@ -1,11 +1,12 @@
 package model
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 )
 
 // TaskID represents a unique identifier for a task
@@ -13,9 +14,11 @@ type TaskID struct {
 	value string
 }
 
-// NewTaskID creates a new TaskID
+// NewTaskID creates a new TaskID using ULID
 func NewTaskID() TaskID {
-	return TaskID{value: uuid.New().String()}
+	entropy := ulid.Monotonic(rand.Reader, 0)
+	id := ulid.MustNew(ulid.Timestamp(time.Now()), entropy)
+	return TaskID{value: id.String()}
 }
 
 // NewTaskIDFromString creates a TaskID from an existing string

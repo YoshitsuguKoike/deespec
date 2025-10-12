@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence"
-	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/migration"
+	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/sqlite"
 	"github.com/spf13/cobra"
 )
 
@@ -30,14 +30,14 @@ func NewShowCommand() *cobra.Command {
 
 func runShow(pbiID string) error {
 	// Open database
-	db, err := sql.Open("sqlite3", ".deespec/var/deespec.db")
+	db, err := sql.Open("sqlite3", ".deespec/deespec.db")
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer db.Close()
 
 	// Run migrations first
-	migrator := migration.NewMigrator(db)
+	migrator := sqlite.NewMigrator(db)
 	if err := migrator.Migrate(); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}

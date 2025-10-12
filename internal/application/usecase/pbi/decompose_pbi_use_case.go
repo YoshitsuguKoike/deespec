@@ -36,7 +36,8 @@ type DecomposePBIUseCase struct {
 	pbiRepo      pbi.Repository
 	promptRepo   repository.PromptTemplateRepository
 	approvalRepo repository.SBIApprovalRepository
-	workingDir   string // Base working directory (default: ".")
+	labelRepo    repository.LabelRepository // Label repository for loading label instructions
+	workingDir   string                     // Base working directory (default: ".")
 }
 
 // NewDecomposePBIUseCase creates a new DecomposePBIUseCase instance
@@ -44,11 +45,13 @@ func NewDecomposePBIUseCase(
 	pbiRepo pbi.Repository,
 	promptRepo repository.PromptTemplateRepository,
 	approvalRepo repository.SBIApprovalRepository,
+	labelRepo repository.LabelRepository,
 ) *DecomposePBIUseCase {
 	return &DecomposePBIUseCase{
 		pbiRepo:      pbiRepo,
 		promptRepo:   promptRepo,
 		approvalRepo: approvalRepo,
+		labelRepo:    labelRepo,
 		workingDir:   ".", // Default to current directory
 	}
 }
@@ -152,20 +155,28 @@ func (u *DecomposePBIUseCase) buildDecomposePrompt(
 		return "", fmt.Errorf("failed to parse template: %w", err)
 	}
 
-	// 3. Prepare template data
-	pbiDir := filepath.Join(".deespec", "specs", "pbi", p.ID)
-	templateData := map[string]interface{}{
-		"PBIID":       p.ID,
-		"Title":       p.Title,
-		"StoryPoints": p.EstimatedStoryPoints,
-		"Priority":    u.formatPriority(p.Priority),
-		"PBIBody":     pbiBody,
-		"MinSBIs":     opts.MinSBIs,
-		"MaxSBIs":     opts.MaxSBIs,
-		"PBIDir":      pbiDir,
+	// 3. Load label instructions
+	labelInstructions, err := u.loadLabelInstructions(ctx)
+	if err != nil {
+		// Log error but don't fail - labels are optional
+		labelInstructions = "No labels available"
 	}
 
-	// 4. Execute template
+	// 4. Prepare template data
+	pbiDir := filepath.Join(".deespec", "specs", "pbi", p.ID)
+	templateData := map[string]interface{}{
+		"PBIID":             p.ID,
+		"Title":             p.Title,
+		"StoryPoints":       p.EstimatedStoryPoints,
+		"Priority":          u.formatPriority(p.Priority),
+		"PBIBody":           pbiBody,
+		"MinSBIs":           opts.MinSBIs,
+		"MaxSBIs":           opts.MaxSBIs,
+		"PBIDir":            pbiDir,
+		"LabelInstructions": labelInstructions,
+	}
+
+	// 5. Execute template
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, templateData); err != nil {
 		return "", fmt.Errorf("failed to execute template: %w", err)
@@ -178,6 +189,59 @@ func (u *DecomposePBIUseCase) buildDecomposePrompt(
 func (u *DecomposePBIUseCase) formatPriority(priority pbi.Priority) string {
 	// Use the String() method from pbi.Priority
 	return priority.String()
+}
+
+// loadLabelInstructions loads and formats label information for the prompt
+// Returns a formatted string containing label metadata for AI agent guidance
+func (u *DecomposePBIUseCase) loadLabelInstructions(ctx context.Context) (string, error) {
+	// Return empty if labelRepo is not available
+	if u.labelRepo == nil {
+		return "", fmt.Errorf("label repository not available")
+	}
+
+	// 1. Load active labels
+	labels, err := u.labelRepo.FindActive(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to load active labels: %w", err)
+	}
+
+	// 2. If no labels, return empty
+	if len(labels) == 0 {
+		return "", fmt.Errorf("no active labels found")
+	}
+
+	// 3. Format label information
+	var buf strings.Builder
+	buf.WriteString("## Available Labels\n\n")
+	buf.WriteString("The following labels are available for categorizing SBIs:\n\n")
+
+	for _, lbl := range labels {
+		buf.WriteString(fmt.Sprintf("### %s\n", lbl.Name()))
+		if lbl.Description() != "" {
+			buf.WriteString(fmt.Sprintf("- **Description**: %s\n", lbl.Description()))
+		}
+		if lbl.Color() != "" {
+			buf.WriteString(fmt.Sprintf("- **Color**: %s\n", lbl.Color()))
+		}
+		buf.WriteString(fmt.Sprintf("- **Priority**: %d\n", lbl.Priority()))
+		buf.WriteString("\n")
+	}
+
+	buf.WriteString("\n**Instructions for AI Agent:**\n")
+	buf.WriteString("- **MUST**: Each SBI file must include a `Labels:` line in the metadata section at the end\n")
+	buf.WriteString("- Analyze each task and assign appropriate labels from the list above\n")
+	buf.WriteString("- Each SBI can have multiple labels (comma-separated)\n")
+	buf.WriteString("- Use label names exactly as shown above (case-sensitive)\n")
+	buf.WriteString("- If no labels apply, write `Labels: none`\n")
+	buf.WriteString("\n**Example metadata section:**\n")
+	buf.WriteString("```\n")
+	buf.WriteString("---\n")
+	buf.WriteString("Parent PBI: PBI-001\n")
+	buf.WriteString("Sequence: 1\n")
+	buf.WriteString("Labels: security, backend\n")
+	buf.WriteString("```\n")
+
+	return buf.String(), nil
 }
 
 // writePromptFile writes the generated prompt to a file

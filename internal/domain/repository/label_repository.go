@@ -36,12 +36,6 @@ type LabelRepository interface {
 	Update(ctx context.Context, lbl *label.Label) error
 	Delete(ctx context.Context, id int) error
 
-	// Label-Task association
-	AttachToTask(ctx context.Context, taskID string, labelID int, position int) error
-	DetachFromTask(ctx context.Context, taskID string, labelID int) error
-	FindLabelsByTaskID(ctx context.Context, taskID string) ([]*label.Label, error)
-	FindTaskIDsByLabelID(ctx context.Context, labelID int) ([]string, error)
-
 	// Integrity validation (Phase 9.1 - new methods)
 	ValidateIntegrity(ctx context.Context, labelID int) (*ValidationResult, error)
 	ValidateAllLabels(ctx context.Context) ([]*ValidationResult, error)

@@ -6,6 +6,50 @@
 
 ### 追加 (Added)
 
+* **Label Helperユーティリティ**: Label CLI操作用の共通ヘルパー関数を実装
+  - `internal/interface/cli/label/label_helper.go`: 共通ロジックの抽出
+  - コード重複の削減とメンテナンス性向上
+
+### 変更 (Changed)
+
+* **Label System の簡素化**: Repository実装とテストの大幅なリファクタリング
+  - `label_repository_impl.go`: 実装の簡素化と最適化（95行削減）
+  - `label_repository_impl_test.go`: 重複テストの削除（943行削減）
+  - `label_repository.go`: 不要なインターフェースメソッドの削除（6メソッド削除）
+  - SQLiteスキーマの最適化: 不要なフィールドとインデックスの削除（14行削減）
+  - 効果: コードベースが約1,200行削減、保守性が大幅に向上
+
+* **PBI分解機能の改善**: Label統合とエラーハンドリングの強化
+  - `decompose_pbi_use_case.go`: Label Repository統合（86行追加/変更）
+  - `register_pbi_use_case.go`: Labelバリデーション追加（15行変更）
+  - `sbi_parser.go`: Label付きSBIパース機能の拡張（38行追加）
+  - `PBI_DECOMPOSE.md.tmpl`: プロンプトテンプレートへのLabel情報追加（3行追加）
+  - `decompose_pbi_use_case_test.go`: Label統合テストの追加（113行追加）
+
+* **CLI改善**: PBI分解とラベルコマンドのUX向上
+  - `pbi/decompose.go`: エラーメッセージとヘルプの改善（19行変更）
+  - `pbi/register.go`: バリデーションとフィードバックの強化（37行変更）
+  - `label/label_cmd.go`: コマンド構造の整理（302行変更）
+  - `label/label_import.go`: インポート機能の改善（67行変更）
+
+### 修正 (Fixed)
+
+* **ロッククリーンアップのタイムスタンプ精度修正**: ミリ秒精度TTLでの正確な期限切れ判定
+  - 問題: `time.RFC3339`フォーマットが秒単位に丸めるため、ミリ秒精度のTTLで期限判定が失敗
+  - 具体例: expires_at `22:04:46.276`とcurrent_time `22:04:46.377`が両方とも`22:04:46`に丸められ、比較が`false`に
+  - 修正: `time.RFC3339Nano`フォーマットに変更し、ナノ秒精度を保持
+  - 後方互換性: パース時にRFC3339Nanoを優先、失敗時はRFC3339にフォールバック
+  - 影響範囲: run_lock_repository_impl.go、state_lock_repository_impl.goの全タイムスタンプ操作
+  - テスト結果: 51個のロック関連テスト全てパス、TestContainer_LockServiceCleanup修正完了
+
+* **テストの絶対パス使用を修正**: プロジェクトの移植性向上
+  - decompose_pbi_use_case_test.go:1190 - `/nonexistent/file.md` → `nonexistent_file.md`
+  - sbi_parser_test.go:250 - `/nonexistent/file.md` → `nonexistent_file.md`
+  - 目的: Test_NoAbsolutePathsInTests静的解析テストをパス
+  - 効果: テストが環境依存せず、どの環境でも一貫した動作を保証
+
+### 追加 (Added)
+
 * **Production デプロイメントガイド**: Amazon Linux/systemd環境での常駐プロセス運用
   - `docs/deployment/amazon-linux-systemd.md`: 完全なデプロイメントガイド（60KB）
   - **システム要件**: CPU/メモリ/ディスク/ネットワークの最小・推奨値

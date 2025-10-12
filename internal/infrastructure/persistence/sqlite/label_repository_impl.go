@@ -204,87 +204,6 @@ func (r *LabelRepositoryImpl) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-// AttachToTask associates a label with a task
-func (r *LabelRepositoryImpl) AttachToTask(ctx context.Context, taskID string, labelID int, position int) error {
-	query := `
-		INSERT INTO task_labels (task_id, label_id, position)
-		VALUES (?, ?, ?)
-		ON CONFLICT(task_id, label_id) DO UPDATE SET position = excluded.position
-	`
-
-	db := r.getDB(ctx)
-	_, err := db.ExecContext(ctx, query, taskID, labelID, position)
-	if err != nil {
-		return fmt.Errorf("attach label to task failed: %w", err)
-	}
-
-	return nil
-}
-
-// DetachFromTask removes the association between a label and a task
-func (r *LabelRepositoryImpl) DetachFromTask(ctx context.Context, taskID string, labelID int) error {
-	query := `DELETE FROM task_labels WHERE task_id = ? AND label_id = ?`
-
-	db := r.getDB(ctx)
-	_, err := db.ExecContext(ctx, query, taskID, labelID)
-	if err != nil {
-		return fmt.Errorf("detach label from task failed: %w", err)
-	}
-
-	return nil
-}
-
-// FindLabelsByTaskID retrieves all labels associated with a task
-func (r *LabelRepositoryImpl) FindLabelsByTaskID(ctx context.Context, taskID string) ([]*label.Label, error) {
-	query := `
-		SELECT l.id, l.name, l.description, l.template_paths, l.content_hashes,
-		       l.parent_label_id, l.color, l.priority, l.is_active,
-		       l.line_count, l.last_synced_at, l.metadata,
-		       l.created_at, l.updated_at
-		FROM labels l
-		INNER JOIN task_labels tl ON l.id = tl.label_id
-		WHERE tl.task_id = ?
-		ORDER BY tl.position ASC, l.priority DESC
-	`
-
-	db := r.getDB(ctx)
-	rows, err := db.QueryContext(ctx, query, taskID)
-	if err != nil {
-		return nil, fmt.Errorf("query labels by task ID failed: %w", err)
-	}
-	defer rows.Close()
-
-	return r.scanLabels(rows)
-}
-
-// FindTaskIDsByLabelID retrieves all task IDs associated with a label
-func (r *LabelRepositoryImpl) FindTaskIDsByLabelID(ctx context.Context, labelID int) ([]string, error) {
-	query := `
-		SELECT task_id
-		FROM task_labels
-		WHERE label_id = ?
-		ORDER BY position ASC
-	`
-
-	db := r.getDB(ctx)
-	rows, err := db.QueryContext(ctx, query, labelID)
-	if err != nil {
-		return nil, fmt.Errorf("query task IDs by label ID failed: %w", err)
-	}
-	defer rows.Close()
-
-	var taskIDs []string
-	for rows.Next() {
-		var taskID string
-		if err := rows.Scan(&taskID); err != nil {
-			return nil, fmt.Errorf("scan task ID failed: %w", err)
-		}
-		taskIDs = append(taskIDs, taskID)
-	}
-
-	return taskIDs, nil
-}
-
 // FindChildren retrieves child labels of a parent label
 func (r *LabelRepositoryImpl) FindChildren(ctx context.Context, parentID int) ([]*label.Label, error) {
 	query := `
@@ -556,9 +475,19 @@ func (r *LabelRepositoryImpl) scanLabels(rows *sql.Rows) ([]*label.Label, error)
 	return labels, nil
 }
 
-// resolveTemplatePath resolves a relative template path to an absolute path
-// Uses the configured template directories in priority order
+// resolveTemplatePath resolves a template path to an absolute path
+// If the path is absolute, it uses it directly (after verification).
+// If the path is relative, it searches in the configured template directories in priority order.
 func (r *LabelRepositoryImpl) resolveTemplatePath(templatePath string) (string, error) {
+	// If the path is absolute, verify it exists and return it
+	if filepath.IsAbs(templatePath) {
+		if _, err := os.Stat(templatePath); err == nil {
+			return templatePath, nil
+		}
+		return "", fmt.Errorf("absolute template file not found: %s", templatePath)
+	}
+
+	// For relative paths, search in configured template directories
 	for _, dir := range r.labelConfig.TemplateDirs {
 		fullPath := filepath.Join(dir, templatePath)
 		if _, err := os.Stat(fullPath); err == nil {

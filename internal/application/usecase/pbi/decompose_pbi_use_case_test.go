@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/YoshitsuguKoike/deespec/internal/domain/model/label"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/pbi"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
 	"github.com/stretchr/testify/assert"
@@ -91,6 +92,62 @@ type mockSBIApprovalRepository struct {
 	deleteManifestFunc func(ctx context.Context, pbiID string) error
 }
 
+// mockLabelRepository implements repository.LabelRepository for testing
+type mockLabelRepository struct {
+	findActiveFunc func(ctx context.Context) ([]*label.Label, error)
+}
+
+func (m *mockLabelRepository) Save(ctx context.Context, lbl *label.Label) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) FindByID(ctx context.Context, id int) (*label.Label, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) FindByName(ctx context.Context, name string) (*label.Label, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) FindAll(ctx context.Context) ([]*label.Label, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) FindActive(ctx context.Context) ([]*label.Label, error) {
+	if m.findActiveFunc != nil {
+		return m.findActiveFunc(ctx)
+	}
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) Update(ctx context.Context, lbl *label.Label) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) Delete(ctx context.Context, id int) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) ValidateIntegrity(ctx context.Context, labelID int) (*repository.ValidationResult, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) ValidateAllLabels(ctx context.Context) ([]*repository.ValidationResult, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) SyncFromFile(ctx context.Context, labelID int) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) FindChildren(ctx context.Context, parentID int) ([]*label.Label, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockLabelRepository) FindByParentID(ctx context.Context, parentID *int) ([]*label.Label, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (m *mockSBIApprovalRepository) SaveManifest(ctx context.Context, manifest *pbi.SBIApprovalManifest) error {
 	if m.saveManifestFunc != nil {
 		return m.saveManifestFunc(ctx, manifest)
@@ -124,13 +181,15 @@ func TestNewDecomposePBIUseCase(t *testing.T) {
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
+	labelRepo := &mockLabelRepository{}
 
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, labelRepo)
 
 	require.NotNil(t, useCase)
 	assert.NotNil(t, useCase.pbiRepo)
 	assert.NotNil(t, useCase.promptRepo)
 	assert.NotNil(t, useCase.approvalRepo)
+	assert.NotNil(t, useCase.labelRepo)
 }
 
 // TestDecomposePBIUseCase_Execute_DryRun tests dry-run mode
@@ -168,7 +227,7 @@ Dir: {{.PBIDir}}`, nil
 	}
 
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	opts := DecomposeOptions{
 		MinSBIs: 2,
@@ -201,7 +260,7 @@ func TestDecomposePBIUseCase_Execute_PBINotFound(t *testing.T) {
 
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	opts := DecomposeOptions{
 		MinSBIs: 2,
@@ -243,7 +302,7 @@ func TestDecomposePBIUseCase_Execute_InvalidStatus(t *testing.T) {
 
 			promptRepo := &mockPromptTemplateRepository{}
 			approvalRepo := &mockSBIApprovalRepository{}
-			useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+			useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 			opts := DecomposeOptions{
 				MinSBIs: 2,
@@ -297,7 +356,7 @@ func TestDecomposePBIUseCase_Execute_ValidStatuses(t *testing.T) {
 			}
 
 			approvalRepo := &mockSBIApprovalRepository{}
-			useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+			useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 			opts := DecomposeOptions{
 				MinSBIs: 2,
@@ -340,7 +399,7 @@ Directory: {{.PBIDir}}`, nil
 	}
 
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	opts := DecomposeOptions{
 		MinSBIs: 3,
@@ -369,7 +428,7 @@ func TestDecomposePBIUseCase_formatPriority(t *testing.T) {
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	testCases := []struct {
 		priority pbi.Priority
@@ -393,7 +452,7 @@ func TestDecomposePBIUseCase_canDecompose(t *testing.T) {
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	testCases := []struct {
 		name      string
@@ -450,7 +509,7 @@ func TestDecomposePBIUseCase_Execute_TemplateLoadError(t *testing.T) {
 	}
 
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	opts := DecomposeOptions{
 		MinSBIs: 2,
@@ -484,7 +543,7 @@ func TestDecomposePBIUseCase_Execute_GetBodyError(t *testing.T) {
 
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	opts := DecomposeOptions{
 		MinSBIs: 2,
@@ -527,7 +586,7 @@ func TestDecomposePBIUseCase_Execute_NonDryRun(t *testing.T) {
 	}
 
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 	useCase.workingDir = testDir
 
 	opts := DecomposeOptions{
@@ -593,7 +652,7 @@ func TestDecomposePBIUseCase_buildDecomposePrompt_InvalidTemplate(t *testing.T) 
 	}
 
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	opts := DecomposeOptions{MinSBIs: 2, MaxSBIs: 5}
 
@@ -661,7 +720,7 @@ Create {{.MinSBIs}} to {{.MaxSBIs}} SBIs.
 	}
 
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	opts := DecomposeOptions{
 		MinSBIs: 3,
@@ -743,7 +802,7 @@ Output: {{.PBIDir}}`, nil
 	}
 
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	// Override working directory to use test directory
 	useCase.workingDir = testDir
@@ -798,7 +857,7 @@ func TestDecomposePBIUseCase_writePromptFile_DirectoryCreation(t *testing.T) {
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 	useCase.workingDir = testDir
 
 	promptContent := "Test prompt content"
@@ -831,7 +890,7 @@ func TestDecomposePBIUseCase_listGeneratedSBIs(t *testing.T) {
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 	useCase.workingDir = testDir
 
 	pbiID := "PBI-SBI-TEST-001"
@@ -872,7 +931,7 @@ func TestDecomposePBIUseCase_listGeneratedSBIs_NoFiles(t *testing.T) {
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 	useCase.workingDir = testDir
 
 	pbiID := "PBI-EMPTY-001"
@@ -902,7 +961,7 @@ func TestDecomposePBIUseCase_createApprovalManifest(t *testing.T) {
 		},
 	}
 
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	err := useCase.createApprovalManifest(context.Background(), pbiID, sbiFiles)
 
@@ -935,7 +994,7 @@ func TestDecomposePBIUseCase_createApprovalManifest_SaveError(t *testing.T) {
 		},
 	}
 
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	err := useCase.createApprovalManifest(context.Background(), pbiID, sbiFiles)
 
@@ -975,7 +1034,7 @@ Sequence: 1
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	err = useCase.ValidateSBIFile(tmpFile)
 
@@ -1078,7 +1137,7 @@ Sequence: 1
 			pbiRepo := &mockPBIRepository{}
 			promptRepo := &mockPromptTemplateRepository{}
 			approvalRepo := &mockSBIApprovalRepository{}
-			useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+			useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 			err = useCase.ValidateSBIFile(tmpFile)
 
@@ -1169,7 +1228,7 @@ Parent PBI: PBI-001
 			pbiRepo := &mockPBIRepository{}
 			promptRepo := &mockPromptTemplateRepository{}
 			approvalRepo := &mockSBIApprovalRepository{}
-			useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+			useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 			err = useCase.ValidateSBIFile(tmpFile)
 
@@ -1185,7 +1244,7 @@ func TestDecomposePBIUseCase_ValidateSBIFile_FileNotFound(t *testing.T) {
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 
 	err := useCase.ValidateSBIFile("nonexistent_file.md")
 
@@ -1230,7 +1289,7 @@ Sequence: 1
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 	useCase.workingDir = testDir
 
 	validFiles, err := useCase.ValidateGeneratedSBIs(pbiID)
@@ -1250,7 +1309,7 @@ func TestDecomposePBIUseCase_ValidateGeneratedSBIs_NoFiles(t *testing.T) {
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 	useCase.workingDir = testDir
 
 	validFiles, err := useCase.ValidateGeneratedSBIs(pbiID)
@@ -1303,7 +1362,7 @@ Sequence: 1
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 	useCase.workingDir = testDir
 
 	validFiles, err := useCase.ValidateGeneratedSBIs(pbiID)
@@ -1338,7 +1397,7 @@ func TestDecomposePBIUseCase_ValidateGeneratedSBIs_AllInvalid(t *testing.T) {
 	pbiRepo := &mockPBIRepository{}
 	promptRepo := &mockPromptTemplateRepository{}
 	approvalRepo := &mockSBIApprovalRepository{}
-	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, nil)
 	useCase.workingDir = testDir
 
 	validFiles, err := useCase.ValidateGeneratedSBIs(pbiID)

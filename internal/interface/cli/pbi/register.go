@@ -151,18 +151,15 @@ func loadFromFile(filePath, titleOverride string) (*pbidomain.PBI, string, error
 
 	body := string(data)
 
-	// Extract title from H1
-	title, err := parser.ExtractTitle(body)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to extract title: %w", err)
-	}
+	// Extract title from H1 (allow empty)
+	title, _ := parser.ExtractTitle(body)
 
 	// Override title if specified
 	if titleOverride != "" {
 		title = titleOverride
 	}
 
-	// Create PBI
+	// Create PBI (title can be empty, will be set to ID in use case)
 	p := pbidomain.NewPBI(title)
 
 	return p, body, nil
@@ -172,12 +169,10 @@ func runInteractive() (*pbidomain.PBI, string, error) {
 	fmt.Println("🎯 PBI Registration Wizard")
 	fmt.Println()
 
-	// Get title
-	fmt.Print("📝 Title: ")
+	// Get title (optional - will use PBI-ID if empty)
+	fmt.Print("📝 Title (optional, press Enter to use PBI-ID): ")
 	var title string
-	if _, err := fmt.Scanln(&title); err != nil {
-		return nil, "", fmt.Errorf("failed to read title: %w", err)
-	}
+	fmt.Scanln(&title) // Ignore error - empty input is valid
 
 	// Get description (body)
 	fmt.Println("📋 Description (press Ctrl+D when done):")
@@ -187,14 +182,20 @@ func runInteractive() (*pbidomain.PBI, string, error) {
 		description = string(data)
 	}
 
-	// Create PBI
+	// Create PBI (title can be empty, will be set to ID in use case)
 	p := pbidomain.NewPBI(title)
 
 	// Create Markdown body
-	body := fmt.Sprintf("# %s\n\n%s", title, description)
-
-	fmt.Println()
-	fmt.Printf("📦 Ready to register PBI with title: %s\n", title)
-
-	return p, body, nil
+	if title != "" {
+		body := fmt.Sprintf("# %s\n\n%s", title, description)
+		fmt.Println()
+		fmt.Printf("📦 Ready to register PBI with title: %s\n", title)
+		return p, body, nil
+	} else {
+		// Title will be set to PBI-ID in use case
+		body := description
+		fmt.Println()
+		fmt.Printf("📦 Ready to register PBI (title will be set to PBI-ID)\n")
+		return p, body, nil
+	}
 }

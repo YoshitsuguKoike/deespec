@@ -162,25 +162,11 @@ CREATE TABLE IF NOT EXISTS labels (
     FOREIGN KEY (parent_label_id) REFERENCES labels(id) ON DELETE SET NULL
 );
 
--- Task-Label 関連テーブル (多対多関係の管理)
-CREATE TABLE IF NOT EXISTS task_labels (
-    task_id TEXT NOT NULL,                  -- SBI-xxx, PBI-xxx, EPIC-xxx
-    label_id INTEGER NOT NULL,
-    position INTEGER NOT NULL DEFAULT 0,    -- ラベル表示順序
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (task_id, label_id),
-    FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
-);
-
 -- Labels パフォーマンス最適化用インデックス
 CREATE INDEX IF NOT EXISTS idx_labels_name ON labels(name);
 CREATE INDEX IF NOT EXISTS idx_labels_parent ON labels(parent_label_id);
 CREATE INDEX IF NOT EXISTS idx_labels_is_active ON labels(is_active);
 CREATE INDEX IF NOT EXISTS idx_labels_last_synced ON labels(last_synced_at);
-
--- Task-Label パフォーマンス最適化用インデックス
-CREATE INDEX IF NOT EXISTS idx_task_labels_task_id ON task_labels(task_id);
-CREATE INDEX IF NOT EXISTS idx_task_labels_label_id ON task_labels(label_id);
 
 -- Label systemバージョン記録
 INSERT OR IGNORE INTO schema_migrations (version, description)

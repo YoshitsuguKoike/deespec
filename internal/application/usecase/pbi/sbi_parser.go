@@ -15,6 +15,7 @@ type SBISpec struct {
 	EstimatedHours float64
 	ParentPBIID    string
 	Sequence       int
+	Labels         []string // Label names assigned to this SBI
 }
 
 // ParseSBIFile parses an SBI file and extracts all metadata
@@ -65,12 +66,16 @@ func ParseSBIFile(filePath string) (*SBISpec, error) {
 		return nil, fmt.Errorf("invalid sequence value '%s': %w", sequenceStr, err)
 	}
 
+	// Extract labels (optional)
+	labels := extractLabels(metadata)
+
 	return &SBISpec{
 		Title:          title,
 		Body:           body,
 		EstimatedHours: estimatedHours,
 		ParentPBIID:    parentPBIID,
 		Sequence:       sequence,
+		Labels:         labels,
 	}, nil
 }
 
@@ -152,6 +157,7 @@ func extractMetadata(content string) (map[string]string, error) {
 	// Regular expressions for metadata fields
 	parentPBIRegex := regexp.MustCompile(`(?m)^Parent PBI:\s*(.+)$`)
 	sequenceRegex := regexp.MustCompile(`(?m)^Sequence:\s*(\d+)$`)
+	labelsRegex := regexp.MustCompile(`(?m)^Labels:\s*(.+)$`)
 
 	// Extract Parent PBI
 	if matches := parentPBIRegex.FindStringSubmatch(metadataSection); len(matches) >= 2 {
@@ -161,6 +167,11 @@ func extractMetadata(content string) (map[string]string, error) {
 	// Extract Sequence
 	if matches := sequenceRegex.FindStringSubmatch(metadataSection); len(matches) >= 2 {
 		metadata["Sequence"] = strings.TrimSpace(matches[1])
+	}
+
+	// Extract Labels (optional)
+	if matches := labelsRegex.FindStringSubmatch(metadataSection); len(matches) >= 2 {
+		metadata["Labels"] = strings.TrimSpace(matches[1])
 	}
 
 	// Validate that required fields were found
@@ -173,4 +184,31 @@ func extractMetadata(content string) (map[string]string, error) {
 	}
 
 	return metadata, nil
+}
+
+// extractLabels parses the Labels metadata field and returns a slice of label names
+// Supports formats: "security, backend", "frontend", "none", or empty
+func extractLabels(metadata map[string]string) []string {
+	labelsStr, ok := metadata["Labels"]
+	if !ok || labelsStr == "" {
+		return []string{}
+	}
+
+	// Handle "none" or similar indicators
+	if strings.TrimSpace(strings.ToLower(labelsStr)) == "none" {
+		return []string{}
+	}
+
+	// Split by comma and clean up each label
+	labels := strings.Split(labelsStr, ",")
+	result := make([]string, 0, len(labels))
+
+	for _, label := range labels {
+		trimmed := strings.TrimSpace(label)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+
+	return result
 }

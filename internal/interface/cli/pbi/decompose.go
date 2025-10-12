@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 
+	appconfig "github.com/YoshitsuguKoike/deespec/internal/app/config"
 	pbiusecase "github.com/YoshitsuguKoike/deespec/internal/application/usecase/pbi"
 	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence"
 	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/migration"
+	sqliterepo "github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/sqlite"
 	infrarepo "github.com/YoshitsuguKoike/deespec/internal/infrastructure/repository"
 	"github.com/spf13/cobra"
 )
@@ -93,8 +95,23 @@ func runDecompose(pbiID string, flags *decomposeFlags) error {
 	promptRepo := infrarepo.NewPromptTemplateRepositoryImpl()
 	approvalRepo := infrarepo.NewSBIApprovalRepositoryImpl()
 
+	// Create label repository with default config
+	labelConfig := appconfig.LabelConfig{
+		TemplateDirs: []string{".claude", ".deespec/prompts/labels"},
+		Import: appconfig.LabelImportConfig{
+			AutoPrefixFromDir: true,
+			MaxLineCount:      1000,
+			ExcludePatterns:   []string{"*.secret.md", "settings.*.json", "tmp/**"},
+		},
+		Validation: appconfig.LabelValidationConfig{
+			AutoSyncOnMismatch: false,
+			WarnOnLargeFiles:   true,
+		},
+	}
+	labelRepo := sqliterepo.NewLabelRepository(db, labelConfig)
+
 	// Create use case
-	useCase := pbiusecase.NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo)
+	useCase := pbiusecase.NewDecomposePBIUseCase(pbiRepo, promptRepo, approvalRepo, labelRepo)
 
 	// Display progress: retrieving PBI
 	fmt.Println("🔄 PBIを取得中...")

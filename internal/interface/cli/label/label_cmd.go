@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"text/tabwriter"
 
@@ -34,9 +35,6 @@ Templates provide additional context to AI prompts, enabling more specialized im
   # Show label details
   deespec label show security
 
-  # Attach label to a task
-  deespec label attach SBI-xxx security
-
   # Import labels from directory
   deespec label import .claude --recursive
 
@@ -50,8 +48,6 @@ Templates provide additional context to AI prompts, enabling more specialized im
 	cmd.AddCommand(newLabelShowCmd())
 	cmd.AddCommand(newLabelUpdateCmd())
 	cmd.AddCommand(newLabelDeleteCmd())
-	cmd.AddCommand(newLabelAttachCmd())
-	cmd.AddCommand(newLabelDetachCmd())
 	cmd.AddCommand(newLabelTemplatesCmd())
 	cmd.AddCommand(newLabelImportCmd())
 	cmd.AddCommand(newLabelValidateCmd())
@@ -69,7 +65,31 @@ func newLabelRegisterCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "register <name>",
 		Short: "Register a new label",
-		Args:  cobra.ExactArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return fmt.Errorf("requires a label name")
+			}
+			if len(args) > 1 {
+				// Likely caused by shell glob expansion like '--template *.md'
+				return fmt.Errorf(`too many arguments: received %d arguments (%v)
+
+Did you use wildcards like '--template *.md'?
+This syntax is not supported because the shell expands '*.md' into multiple files,
+which become extra positional arguments.
+
+Use one of these methods instead:
+
+  1. Specify each file with separate --template flags:
+     deespec label register %s --template file1.md --template file2.md --template file3.md
+
+  2. Use printf with xargs for many files:
+     printf -- '--template %%s\n' *.md | xargs deespec label register %s --description "..."
+
+  3. Use 'label import' for bulk registration (creates one label per file):
+     deespec label import .claude --recursive`, len(args), args, args[0], args[0])
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 
@@ -89,8 +109,49 @@ func newLabelRegisterCmd() *cobra.Command {
 				return fmt.Errorf("label '%s' already exists (ID: %d)", name, existing.ID())
 			}
 
+			// Process template paths - check for external files and copy if needed
+			processedTemplates := make([]string, 0, len(templates))
+			var copyExternalFiles *bool // nil = not yet asked, true/false = user choice
+
+			for _, templatePath := range templates {
+				// Check if file is outside project
+				isExternal, err := isOutsideProject(templatePath)
+				if err != nil {
+					fmt.Printf("⚠ Warning: failed to check if file is external: %v\n", err)
+					isExternal = false
+				}
+
+				if isExternal {
+					// Ask user only once
+					if copyExternalFiles == nil {
+						shouldCopy, err := promptCopyExternal()
+						if err != nil {
+							fmt.Printf("⚠ Warning: failed to read user input: %v\n", err)
+							shouldCopy = false
+						}
+						copyExternalFiles = &shouldCopy
+					}
+
+					if *copyExternalFiles {
+						// Copy file to .deespec/labels/
+						copiedPath, err := copyExternalFile(templatePath)
+						if err != nil {
+							return fmt.Errorf("failed to copy external file %s: %w", templatePath, err)
+						}
+						fmt.Printf("  📁 Copied to: %s\n", copiedPath)
+						processedTemplates = append(processedTemplates, copiedPath)
+					} else {
+						// Use original path
+						processedTemplates = append(processedTemplates, templatePath)
+					}
+				} else {
+					// Use original path for project files
+					processedTemplates = append(processedTemplates, templatePath)
+				}
+			}
+
 			// Create new label
-			lbl := label.NewLabel(name, description, templates, priority)
+			lbl := label.NewLabel(name, description, processedTemplates, priority)
 			if color != "" {
 				lbl.SetColor(color)
 			}
@@ -101,8 +162,8 @@ func newLabelRegisterCmd() *cobra.Command {
 			}
 
 			fmt.Printf("✓ Label registered: %s (ID: %d)\n", name, lbl.ID())
-			if len(templates) > 0 {
-				fmt.Printf("  Templates: %v\n", templates)
+			if len(processedTemplates) > 0 {
+				fmt.Printf("  Templates: %v\n", processedTemplates)
 			}
 			return nil
 		},
@@ -322,14 +383,21 @@ func newLabelUpdateCmd() *cobra.Command {
 // newLabelDeleteCmd creates the label delete command
 func newLabelDeleteCmd() *cobra.Command {
 	var force bool
+	var deleteAll bool
 
 	cmd := &cobra.Command{
 		Use:   "delete <name-or-id>",
-		Short: "Delete a label",
-		Args:  cobra.ExactArgs(1),
+		Short: "Delete a label or all labels",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if deleteAll && len(args) > 0 {
+				return fmt.Errorf("cannot specify both --all and a label name/ID")
+			}
+			if !deleteAll && len(args) != 1 {
+				return fmt.Errorf("requires a label name or ID (or use --all to delete all labels)")
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nameOrID := args[0]
-
 			container, err := common.InitializeContainer()
 			if err != nil {
 				return fmt.Errorf("failed to initialize container: %w", err)
@@ -338,6 +406,71 @@ func newLabelDeleteCmd() *cobra.Command {
 
 			labelRepo := container.GetLabelRepository()
 			ctx := context.Background()
+
+			// Handle --all flag
+			if deleteAll {
+				// Get all labels
+				labels, err := labelRepo.FindAll(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to list labels: %w", err)
+				}
+
+				if len(labels) == 0 {
+					fmt.Println("No labels to delete")
+					return nil
+				}
+
+				// Confirm deletion
+				if !force {
+					fmt.Printf("Are you sure you want to delete ALL %d labels? [y/N]: ", len(labels))
+					var response string
+					fmt.Scanln(&response)
+					if response != "y" && response != "Y" {
+						fmt.Println("Deletion cancelled")
+						return nil
+					}
+				}
+
+				// Collect all template paths before deletion
+				allTemplatePaths := make([]string, 0)
+				for _, lbl := range labels {
+					allTemplatePaths = append(allTemplatePaths, lbl.TemplatePaths()...)
+				}
+
+				// Delete all labels
+				deleted := 0
+				failed := 0
+				for _, lbl := range labels {
+					if err := labelRepo.Delete(ctx, lbl.ID()); err != nil {
+						fmt.Printf("⚠ Failed to delete label '%s' (ID: %d): %v\n", lbl.Name(), lbl.ID(), err)
+						failed++
+					} else {
+						deleted++
+					}
+				}
+
+				// Clean up all internal copied files (since all labels are deleted, we can clean up the entire directory)
+				projectRoot, err := os.Getwd()
+				if err == nil {
+					labelsDir := filepath.Join(projectRoot, ".deespec", "labels")
+					if _, err := os.Stat(labelsDir); err == nil {
+						// Remove entire labels directory
+						if err := os.RemoveAll(labelsDir); err != nil {
+							fmt.Printf("⚠ Warning: failed to clean up labels directory: %v\n", err)
+						}
+					}
+				}
+
+				fmt.Printf("\n✓ Deleted %d labels", deleted)
+				if failed > 0 {
+					fmt.Printf(" (%d failed)", failed)
+				}
+				fmt.Println()
+				return nil
+			}
+
+			// Handle single label deletion
+			nameOrID := args[0]
 
 			// Find label
 			var lbl *label.Label
@@ -364,104 +497,57 @@ func newLabelDeleteCmd() *cobra.Command {
 				}
 			}
 
+			// Store template paths before deletion for cleanup
+			templatePaths := lbl.TemplatePaths()
+
 			// Delete label
 			if err := labelRepo.Delete(ctx, lbl.ID()); err != nil {
 				return fmt.Errorf("failed to delete label: %w", err)
 			}
 
+			// Clean up internal copied files
+			deletedFiles := 0
+			notFoundFiles := 0
+			for _, templatePath := range templatePaths {
+				result := deleteInternalCopiedFiles(templatePath, labelRepo)
+				switch result.Status {
+				case CleanupDeleted:
+					deletedFiles++
+				case CleanupNotFound:
+					notFoundFiles++
+					fmt.Printf("  ℹ File already deleted: %s\n", templatePath)
+				case CleanupError:
+					fmt.Printf("  ⚠ Warning: failed to clean up file %s: %v\n", templatePath, result.Error)
+				case CleanupStillInUse:
+					// Silent - file is still in use by other labels
+				case CleanupSkipped:
+					// Silent - not an internal copied file
+				}
+			}
+
 			fmt.Printf("✓ Label deleted: %s (ID: %d)\n", lbl.Name(), lbl.ID())
+			if deletedFiles > 0 || notFoundFiles > 0 {
+				fmt.Printf("  Cleanup: %d files deleted", deletedFiles)
+				if notFoundFiles > 0 {
+					fmt.Printf(", %d already deleted", notFoundFiles)
+				}
+				fmt.Println()
+			}
 			return nil
 		},
 	}
 
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation")
+	cmd.Flags().BoolVar(&deleteAll, "all", false, "Delete all labels")
 
 	return cmd
-}
-
-// newLabelAttachCmd creates the label attach command
-func newLabelAttachCmd() *cobra.Command {
-	var position int
-
-	cmd := &cobra.Command{
-		Use:   "attach <task-id> <label-name>",
-		Short: "Attach a label to a task",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			taskID := args[0]
-			labelName := args[1]
-
-			container, err := common.InitializeContainer()
-			if err != nil {
-				return fmt.Errorf("failed to initialize container: %w", err)
-			}
-			defer container.Close()
-
-			labelRepo := container.GetLabelRepository()
-			ctx := context.Background()
-
-			// Find label
-			lbl, err := labelRepo.FindByName(ctx, labelName)
-			if err != nil {
-				return fmt.Errorf("label not found: %s", labelName)
-			}
-
-			// Attach to task
-			if err := labelRepo.AttachToTask(ctx, taskID, lbl.ID(), position); err != nil {
-				return fmt.Errorf("failed to attach label: %w", err)
-			}
-
-			fmt.Printf("✓ Label '%s' attached to task %s\n", labelName, taskID)
-			return nil
-		},
-	}
-
-	cmd.Flags().IntVarP(&position, "position", "p", 0, "Display position")
-
-	return cmd
-}
-
-// newLabelDetachCmd creates the label detach command
-func newLabelDetachCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "detach <task-id> <label-name>",
-		Short: "Detach a label from a task",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			taskID := args[0]
-			labelName := args[1]
-
-			container, err := common.InitializeContainer()
-			if err != nil {
-				return fmt.Errorf("failed to initialize container: %w", err)
-			}
-			defer container.Close()
-
-			labelRepo := container.GetLabelRepository()
-			ctx := context.Background()
-
-			// Find label
-			lbl, err := labelRepo.FindByName(ctx, labelName)
-			if err != nil {
-				return fmt.Errorf("label not found: %s", labelName)
-			}
-
-			// Detach from task
-			if err := labelRepo.DetachFromTask(ctx, taskID, lbl.ID()); err != nil {
-				return fmt.Errorf("failed to detach label: %w", err)
-			}
-
-			fmt.Printf("✓ Label '%s' detached from task %s\n", labelName, taskID)
-			return nil
-		},
-	}
 }
 
 // newLabelTemplatesCmd creates the label templates command
 func newLabelTemplatesCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "templates <name-or-id>",
-		Short: "Show label template files",
+		Short: "Show label template files with preview",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nameOrID := args[0]
@@ -489,13 +575,14 @@ func newLabelTemplatesCmd() *cobra.Command {
 				}
 			}
 
-			// Display templates
+			// Display label header
 			fmt.Printf("Templates for label '%s' (ID: %d):\n", lbl.Name(), lbl.ID())
 			if len(lbl.TemplatePaths()) == 0 {
 				fmt.Println("  (no templates)")
 				return nil
 			}
 
+			// Display template info
 			for i, path := range lbl.TemplatePaths() {
 				hash, exists := lbl.GetContentHash(path)
 				if exists {
@@ -504,6 +591,37 @@ func newLabelTemplatesCmd() *cobra.Command {
 				} else {
 					fmt.Printf("  %d. %s (no hash)\n", i+1, path)
 				}
+			}
+
+			// For single template, show preview and offer full view
+			if len(lbl.TemplatePaths()) == 1 {
+				templatePath := lbl.TemplatePaths()[0]
+
+				// Display preview
+				totalLines, err := displayTemplatePreview(templatePath, 20)
+				if err != nil {
+					fmt.Printf("\n⚠ Warning: failed to display preview: %v\n", err)
+					return nil
+				}
+
+				// Show remaining lines info
+				if totalLines > 20 {
+					fmt.Printf("\n--- %d more lines (total: %d lines) ---\n", totalLines-20, totalLines)
+				} else {
+					fmt.Printf("\n--- End of file (total: %d lines) ---\n", totalLines)
+				}
+
+				// Prompt for full view (only if terminal and more lines exist)
+				if totalLines > 20 {
+					if promptViewFullContent() {
+						if err := viewFileWithPager(templatePath); err != nil {
+							fmt.Printf("⚠ Warning: failed to open pager: %v\n", err)
+						}
+					}
+				}
+			} else {
+				// Multiple templates - just show list
+				fmt.Printf("\nUse 'deespec label templates <id>' with a single-template label to view content preview.\n")
 			}
 
 			return nil

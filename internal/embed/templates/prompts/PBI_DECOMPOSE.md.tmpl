@@ -12,6 +12,8 @@
 {{.PBIBody}}
 ```
 
+{{.LabelInstructions}}
+
 ## 分解の要件
 
 1. **SBI数**: {{.MinSBIs}}〜{{.MaxSBIs}}個に分解してください
@@ -57,6 +59,7 @@ cat > {{.PBIDir}}/sbi_1.md <<'EOF'
 ---
 Parent PBI: {{.PBIID}}
 Sequence: 1
+Labels: [適切なラベルをカンマ区切りで記載]
 EOF
 
 # 次のSBIも同様に作成...

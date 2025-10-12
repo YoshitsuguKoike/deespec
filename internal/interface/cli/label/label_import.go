@@ -104,6 +104,7 @@ Template directories are configured in setting.json (label_config.template_dirs)
 
 			imported := 0
 			skipped := 0
+			var copyExternalFiles *bool // nil = not yet asked, true/false = user choice
 
 			for _, filePath := range files {
 				// Generate label name from file path
@@ -123,14 +124,54 @@ Template directories are configured in setting.json (label_config.template_dirs)
 					continue
 				}
 
-				// Make path relative to project root
-				relPath, err := filepath.Rel(".", filePath)
+				// Check if file is outside project and handle accordingly
+				isExternal, err := isOutsideProject(filePath)
 				if err != nil {
-					relPath = filePath
+					fmt.Printf("⚠ Warning: failed to check if file is external: %v\n", err)
+					isExternal = false
+				}
+
+				var templatePath string
+				if isExternal {
+					// Ask user only once
+					if copyExternalFiles == nil {
+						shouldCopy, err := promptCopyExternal()
+						if err != nil {
+							fmt.Printf("⚠ Warning: failed to read user input: %v\n", err)
+							shouldCopy = false
+						}
+						copyExternalFiles = &shouldCopy
+					}
+
+					if *copyExternalFiles {
+						// Copy file to .deespec/labels/
+						copiedPath, err := copyExternalFile(filePath)
+						if err != nil {
+							fmt.Printf("⚠ Failed to copy external file %s: %v\n", filePath, err)
+							skipped++
+							continue
+						}
+						fmt.Printf("  📁 Copied to: %s\n", copiedPath)
+						templatePath = copiedPath
+					} else {
+						// Use absolute path
+						absPath, err := filepath.Abs(filePath)
+						if err != nil {
+							absPath = filePath
+						}
+						templatePath = absPath
+					}
+				} else {
+					// Use absolute path for project files
+					absPath, err := filepath.Abs(filePath)
+					if err != nil {
+						absPath = filePath
+					}
+					templatePath = absPath
 				}
 
 				if dryRun {
-					fmt.Printf("  ✓ %s -> template: %s (%d lines)\n", labelName, relPath, lineCount)
+					fmt.Printf("  ✓ %s -> template: %s (%d lines)\n", labelName, templatePath, lineCount)
 					imported++
 					continue
 				}
@@ -146,15 +187,23 @@ Template directories are configured in setting.json (label_config.template_dirs)
 				// Create or update label
 				if existing != nil {
 					// Update existing label
-					existing.AddTemplatePath(relPath)
+					existing.AddTemplatePath(templatePath)
 					if err := labelRepo.Update(ctx, existing); err != nil {
 						fmt.Printf("⚠ Failed to update label %s: %v\n", labelName, err)
 						continue
 					}
-					fmt.Printf("  ↻ Updated: %s (added template: %s)\n", labelName, relPath)
+
+					// Sync from file to calculate hash and line count
+					if err := labelRepo.SyncFromFile(ctx, existing.ID()); err != nil {
+						fmt.Printf("⚠ Warning: failed to sync label %s: %v\n", labelName, err)
+					}
+
+					fmt.Printf("  ↻ Updated: %s (added template: %s)\n", labelName, templatePath)
 				} else {
-					// Create new label
-					lbl := label.NewLabel(labelName, fmt.Sprintf("Imported from %s", filePath), []string{relPath}, 0)
+					// Create new label with descriptive format: "filename.md imported from /original/path"
+					filename := filepath.Base(filePath)
+					description := fmt.Sprintf("%s imported from %s", filename, filePath)
+					lbl := label.NewLabel(labelName, description, []string{templatePath}, 0)
 
 					if err := labelRepo.Save(ctx, lbl); err != nil {
 						fmt.Printf("⚠ Failed to save label %s: %v\n", labelName, err)
@@ -166,7 +215,7 @@ Template directories are configured in setting.json (label_config.template_dirs)
 						fmt.Printf("⚠ Warning: failed to sync label %s: %v\n", labelName, err)
 					}
 
-					fmt.Printf("  ✓ Imported: %s (template: %s, %d lines)\n", labelName, relPath, lineCount)
+					fmt.Printf("  ✓ Imported: %s (template: %s, %d lines)\n", labelName, templatePath, lineCount)
 				}
 				imported++
 			}

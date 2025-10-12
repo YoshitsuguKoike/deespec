@@ -27,12 +27,23 @@ func (u *RegisterPBIUseCase) Execute(p *pbi.PBI, body string) (string, error) {
 	}
 	p.ID = id
 
-	// 2. Validate PBI
+	// 2. Use PBI-ID as title if title is empty, and update body with H1 header
+	if p.Title == "" {
+		p.Title = id
+		// Prepend H1 header to body if not present
+		if body != "" {
+			body = fmt.Sprintf("# %s\n\n%s", id, body)
+		} else {
+			body = fmt.Sprintf("# %s\n", id)
+		}
+	}
+
+	// 3. Validate PBI
 	if err := p.Validate(); err != nil {
 		return "", fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 3. Save PBI (metadata + Markdown body)
+	// 4. Save PBI (metadata + Markdown body)
 	if err := u.repo.Save(p, body); err != nil {
 		return "", fmt.Errorf("failed to save PBI: %w", err)
 	}

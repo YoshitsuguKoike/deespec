@@ -4,10 +4,43 @@
 
 ## \[Unreleased]
 
+---
+
+## \[v0.2.2] - 2025-10-13
+
 ### 追加 (Added)
 
+* **Label System 完全機能実装**: テンプレートプレビュー、外部ファイル管理、自動クリーンアップ
+  - **テンプレートプレビュー機能**:
+    - `label templates <name-or-id>`: 最初の20行を自動プレビュー表示
+    - インタラクティブな全文表示: `f` + Enter で `less` ページャー起動
+    - 短いファイル（20行以下）は全文表示のみ
+    - `q` キーで終了、行番号付き表示対応
+  - **外部ファイル自動コピー機能**:
+    - プロジェクト外ファイルを自動検出
+    - ユーザー確認プロンプト: "プロジェクト外のパスが渡されました。ファイルをコピーしますか？ [Y/n]:"
+    - デフォルト Y（Enter のみで承認）
+    - `.deespec/labels/` へディレクトリ構造を保持してコピー
+    - 環境依存パスの問題を解消し移植性向上
+  - **ファイル自動クリーンアップ機能**:
+    - `label delete` 時に内部コピーファイルを自動削除
+    - 参照カウント機能: 他ラベルが使用中の場合は削除しない
+    - 空ディレクトリの自動削除（`.deespec/labels/` まで再帰的）
+    - `delete --all` 時は `.deespec/labels/` ディレクトリ全体を削除
+    - ファイル既削除時の明示的なフィードバック（エラーにしない）
+  - **Description 形式の改善**:
+    - リスト表示: `filename.md imported from /original/path`
+    - 詳細表示: 完全パス表示で情報追跡性向上
+  - **CleanupResult 構造体**: 詳細なクリーンアップ状態管理
+    - `CleanupDeleted`: 正常削除
+    - `CleanupNotFound`: 既削除（ユーザーによる手動削除など）
+    - `CleanupStillInUse`: 他ラベルが参照中
+    - `CleanupSkipped`: 内部ファイルではない
+    - `CleanupError`: 削除エラー
+
 * **Label Helperユーティリティ**: Label CLI操作用の共通ヘルパー関数を実装
-  - `internal/interface/cli/label/label_helper.go`: 共通ロジックの抽出
+  - `internal/interface/cli/label/label_helper.go`: 377行の包括的ヘルパー
+  - ファイル検出、コピー、クリーンアップロジックの集約
   - コード重複の削減とメンテナンス性向上
 
 ### 変更 (Changed)

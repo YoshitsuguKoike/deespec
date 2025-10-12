@@ -28,6 +28,83 @@ The startup sequence is automatically handled by:
 2. Lock acquisition for exclusive operation
 3. Normal workflow execution
 
+## Database Migrations
+
+### Automatic Migration System
+
+DeeSpec automatically applies database schema migrations on startup. **No manual intervention required!**
+
+When you upgrade to a new version, the following happens automatically:
+
+1. **New version installed**: `deespec` binary is updated
+2. **First command execution**: Database migrations run automatically
+3. **Existing data preserved**: All your tasks, labels, and history are kept intact
+4. **New features available**: New schema fields and indexes are added seamlessly
+
+### Migration Safety
+
+All migrations are executed within transactions:
+- **Success**: Changes are committed atomically
+- **Failure**: All changes are rolled back, database remains unchanged
+- **Data preservation**: Existing data is backfilled with appropriate values
+
+**Example** (Migration 004 - SBI ordering fields):
+```sql
+-- Add new columns
+ALTER TABLE sbis ADD COLUMN sequence INTEGER;
+ALTER TABLE sbis ADD COLUMN registered_at DATETIME;
+
+-- Backfill existing data (preserves all existing SBIs)
+UPDATE sbis
+SET sequence = (SELECT COUNT(*) FROM sbis AS s2 WHERE s2.created_at <= sbis.created_at)
+WHERE sequence IS NULL;
+
+UPDATE sbis
+SET registered_at = created_at
+WHERE registered_at IS NULL;
+```
+
+### Check Migration Status
+
+View applied migrations:
+```bash
+# Check current schema version
+sqlite3 .deespec/data.db "SELECT version, applied_at, description FROM schema_migrations ORDER BY version;"
+
+# Expected output:
+# version|applied_at|description
+# 1|2025-10-13 10:00:00|Initial schema
+# 4|2025-10-13 10:00:01|Add sequence and registered_at fields to sbis table
+```
+
+### Backup Recommendation (Optional)
+
+For peace of mind before major upgrades:
+```bash
+# Create timestamped backup before upgrade
+cp .deespec/data.db .deespec/data.db.backup-$(date +%Y%m%d-%H%M%S)
+
+# Restore from backup if needed
+cp .deespec/data.db.backup-20251013-100000 .deespec/data.db
+```
+
+### Migration Execution Flow
+
+```
+User runs: deespec <any-command>
+    ↓
+DI Container initialization
+    ↓
+Migration check
+    ├─ Check schema_migrations table
+    ├─ Detect pending migrations
+    └─ Apply new migrations in transaction
+    ↓
+Command execution
+```
+
+Every command automatically ensures your database schema is up-to-date before executing!
+
 ## Configuration
 
 ### Configuration Priority

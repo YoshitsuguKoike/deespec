@@ -117,11 +117,11 @@ func outputTableList(tasks []dto.TaskDTO, total, offset int) error {
 
 	// Print header
 	fmt.Fprintf(w, "ID\tTITLE\tSTATUS\tSTEP\tCREATED\n")
-	fmt.Fprintf(w, "--\t-----\t------\t----\t-------\n")
+	fmt.Fprintf(w, "---\t-----\t------\t----\t-------\n")
 
 	// Print rows
 	for _, task := range tasks {
-		id := truncateID(task.ID, 8)
+		id := task.ID // Show full ULID for sbi show command compatibility
 		title := truncateString(task.Title, 40)
 		status := task.Status
 		step := task.CurrentStep
@@ -167,14 +167,6 @@ func outputJSONList(tasks []dto.TaskDTO, total int) error {
 }
 `, total)
 	return nil
-}
-
-// truncateID truncates an ID to specified length
-func truncateID(id string, maxLen int) string {
-	if len(id) <= maxLen {
-		return id
-	}
-	return id[:maxLen]
 }
 
 // truncateString truncates a string to specified length with ellipsis

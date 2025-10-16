@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/YoshitsuguKoike/deespec/internal/buildinfo"
 	"github.com/YoshitsuguKoike/deespec/internal/embed"
 	"github.com/YoshitsuguKoike/deespec/internal/infra/config"
 	"github.com/spf13/cobra"
@@ -22,7 +23,7 @@ func NewCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Initialize a workflow project with .deespec v0.1.14 structure",
+		Short: fmt.Sprintf("Initialize a workflow project with .deespec %s structure", buildinfo.GetVersion()),
 		Long: `Initialize a new deespec project with the standard directory structure.
 All files will be created under the .deespec/ directory.`,
 		RunE: func(c *cobra.Command, _ []string) error {
@@ -119,7 +120,7 @@ All files will be created under the .deespec/ directory.`,
 			}
 
 			// Print success message
-			fmt.Printf("Initialized .deespec v0.1.14 structure in %s:\n", deespecDir)
+			fmt.Printf("Initialized .deespec %s structure in %s:\n", buildinfo.GetVersion(), deespecDir)
 			fmt.Println("  ├── setting.json          # Configuration file")
 			fmt.Println("  ├── etc/")
 			fmt.Println("  │   ├── workflow.yaml")

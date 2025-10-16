@@ -4,6 +4,10 @@
 
 ## \[Unreleased]
 
+---
+
+## \[v0.3.0] - 2025-10-16
+
 ### 追加 (Added)
 
 * **`failed`ステータスの追加**: PBI分解処理が失敗した場合の状態管理を追加
@@ -17,8 +21,6 @@
   - ファイル:
     - `internal/embed/templates/prompts/PBI_DECOMPOSE.md.tmpl`
     - `internal/application/usecase/pbi/decompose_pbi_use_case.go`
-
-### 改善 (Improved)
 
 * **SBI生成場所の自動検証と修正機能**: AI が誤った場所にSBIを生成した場合の自動修正
   - サブディレクトリ内に生成されたSBIファイルを自動的に正しい場所へ移動

@@ -56,6 +56,7 @@ deespec
 
 # Internal documentation
 .docs/
+.serena/
 
 # >>> deespec v1
 /.deespec/var/

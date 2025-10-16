@@ -95,13 +95,21 @@ func (u *DecomposePBIUseCase) Execute(
 		return nil, fmt.Errorf("failed to build decompose prompt: %w", err)
 	}
 
-	// 5. Write prompt to file (always write, even in dry-run mode)
+	// 5. Update PBI status to planning (分解プロセス開始時点で更新)
+	if err := pbiEntity.UpdateStatus(pbi.StatusPlanning); err != nil {
+		return nil, fmt.Errorf("failed to update PBI status: %w", err)
+	}
+	if err := u.pbiRepo.Save(pbiEntity, pbiBody); err != nil {
+		return nil, fmt.Errorf("failed to save PBI: %w", err)
+	}
+
+	// 6. Write prompt to file (always write, even in dry-run mode)
 	promptFilePath, err := u.writePromptFile(pbiID, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write prompt file: %w", err)
 	}
 
-	// 6. Handle dry-run mode (return after writing prompt)
+	// 7. Handle dry-run mode (return after writing prompt)
 	if opts.DryRun {
 		return &DecomposeResult{
 			PBIID:          pbiID,
@@ -113,7 +121,7 @@ func (u *DecomposePBIUseCase) Execute(
 		}, nil
 	}
 
-	// 7. Execute AI agent with prompt (if gateway is available)
+	// 8. Execute AI agent with prompt (if gateway is available)
 	if u.agentGateway == nil {
 		// No agent gateway available (e.g., in tests) - return prompt-only result
 		log.Printf("Agent gateway not available (test mode)")
@@ -160,7 +168,7 @@ func (u *DecomposePBIUseCase) Execute(
 		}, nil
 	}
 
-	// 8. List generated SBI files
+	// 9. List generated SBI files
 	sbiFiles, err := u.listGeneratedSBIs(pbiID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list generated SBIs: %w", err)
@@ -177,22 +185,12 @@ func (u *DecomposePBIUseCase) Execute(
 		}, nil
 	}
 
-	// 9. Create approval.yaml manifest
+	// 10. Create approval.yaml manifest
 	if err := u.createApprovalManifest(ctx, pbiID, sbiFiles); err != nil {
 		return nil, fmt.Errorf("failed to create approval manifest: %w", err)
 	}
 
-	// 10. Update PBI status to planning
-	if err := pbiEntity.UpdateStatus(pbi.StatusPlanning); err != nil {
-		return nil, fmt.Errorf("failed to update PBI status: %w", err)
-	}
-
-	// 11. Save updated PBI (with existing body)
-	if err := u.pbiRepo.Save(pbiEntity, pbiBody); err != nil {
-		return nil, fmt.Errorf("failed to save PBI: %w", err)
-	}
-
-	// 12. Return success result
+	// 11. Return success result
 	return &DecomposeResult{
 		PBIID:          pbiID,
 		SBICount:       len(sbiFiles),

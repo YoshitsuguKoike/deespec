@@ -6,6 +6,18 @@
 
 ---
 
+## \[v0.2.8] - 2025-10-16
+
+### 修正 (Fixed)
+
+* **sbi listでULID全体を表示**: sbi showコマンドとの互換性を向上
+  - 問題: sbi listでIDが8文字に切り詰められ、sbi showコマンドで使用できなかった
+  - 修正: ULID全体（26文字）を表示することで、コピー＆ペーストで直接使用可能に
+  - pbi listの動作と一貫性を保ち、UXを改善
+  - ファイル: `internal/interface/cli/sbi/sbi_list.go`
+
+---
+
 ## \[v0.2.7] - 2025-10-16
 
 ### 追加 (Added)

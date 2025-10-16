@@ -89,6 +89,8 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 		if err := currentSBI.UpdateStatus(model.StatusDone); err != nil {
 			return nil, fmt.Errorf("failed to mark SBI as done: %w", err)
 		}
+		// Record work completion time for force termination
+		currentSBI.MarkAsCompleted()
 		if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
 			return nil, fmt.Errorf("failed to save SBI after force termination: %w", err)
 		}
@@ -155,11 +157,18 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 		if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
 			return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
 		}
+		// Record work start time when task is picked
+		currentSBI.MarkAsStarted()
 	}
 
 	// Now transition to the target status
 	if err := currentSBI.UpdateStatus(nextStatus); err != nil {
 		return nil, fmt.Errorf("failed to update SBI status: %w", err)
+	}
+
+	// Record work completion time when task is done or failed
+	if nextStatus == model.StatusDone || nextStatus == model.StatusFailed {
+		currentSBI.MarkAsCompleted()
 	}
 
 	// Update turn in execution state
@@ -307,6 +316,8 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		if err := currentSBI.UpdateStatus(model.StatusDone); err != nil {
 			return nil, fmt.Errorf("failed to mark SBI as done: %w", err)
 		}
+		// Record work completion time for force termination
+		currentSBI.MarkAsCompleted()
 		if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
 			return nil, fmt.Errorf("failed to save SBI after force termination: %w", err)
 		}
@@ -377,11 +388,18 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
 			return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
 		}
+		// Record work start time when task is picked
+		currentSBI.MarkAsStarted()
 	}
 
 	// Now transition to the target status
 	if err := currentSBI.UpdateStatus(nextStatus); err != nil {
 		return nil, fmt.Errorf("failed to update SBI status: %w", err)
+	}
+
+	// Record work completion time when task is done or failed
+	if nextStatus == model.StatusDone || nextStatus == model.StatusFailed {
+		currentSBI.MarkAsCompleted()
 	}
 
 	// Update turn and attempt in execution state

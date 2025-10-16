@@ -13,6 +13,12 @@ var schemaSQL string
 //go:embed migrations/004_add_ordering_fields.sql
 var migration004SQL string
 
+//go:embed migrations/005_add_sbi_dependencies.sql
+var migration005SQL string
+
+//go:embed migrations/006_add_sbi_work_timestamps.sql
+var migration006SQL string
+
 // Migrator manages database schema migrations
 type Migrator struct {
 	db *sql.DB
@@ -159,6 +165,8 @@ func (m *Migrator) applyIncrementalMigrations() error {
 		desc    string
 	}{
 		{4, migration004SQL, "Add sequence and registered_at fields to sbis table"},
+		{5, migration005SQL, "Add SBI dependencies table"},
+		{6, migration006SQL, "Add started_at and completed_at timestamps to sbis table"},
 	}
 
 	// Apply each migration if not already applied

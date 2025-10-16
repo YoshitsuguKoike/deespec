@@ -19,9 +19,11 @@ type SBI struct {
 // SBIMetadata contains SBI-specific metadata
 type SBIMetadata struct {
 	EstimatedHours float64
-	Priority       int       // 0=通常, 1=高, 2=緊急
-	Sequence       int       // 登録順序番号 (自動採番)
-	RegisteredAt   time.Time // 明示的な登録タイムスタンプ
+	Priority       int        // 0=通常, 1=高, 2=緊急
+	Sequence       int        // 登録順序番号 (自動採番)
+	RegisteredAt   time.Time  // 明示的な登録タイムスタンプ
+	StartedAt      *time.Time // 作業開始時刻 (PENDING→PICKED時に記録)
+	CompletedAt    *time.Time // 作業完了時刻 (DONE/FAILED時に記録)
 	Labels         []string
 	AssignedAgent  string   // e.g., "claude-code", "gemini-cli", "codex"
 	FilePaths      []string // Files to be modified/created
@@ -286,4 +288,36 @@ func (s *SBI) AddDependency(sbiID string) {
 // HasDependencies checks if this SBI has any dependencies
 func (s *SBI) HasDependencies() bool {
 	return len(s.metadata.DependsOn) > 0
+}
+
+// MarkAsStarted records the work start time
+func (s *SBI) MarkAsStarted() {
+	now := time.Now()
+	s.metadata.StartedAt = &now
+}
+
+// MarkAsCompleted records the work completion time
+func (s *SBI) MarkAsCompleted() {
+	now := time.Now()
+	s.metadata.CompletedAt = &now
+}
+
+// StartedAt returns the work start time
+func (s *SBI) StartedAt() *time.Time {
+	return s.metadata.StartedAt
+}
+
+// CompletedAt returns the work completion time
+func (s *SBI) CompletedAt() *time.Time {
+	return s.metadata.CompletedAt
+}
+
+// WorkDuration calculates the duration between start and completion
+// Returns nil if either timestamp is missing
+func (s *SBI) WorkDuration() *time.Duration {
+	if s.metadata.StartedAt == nil || s.metadata.CompletedAt == nil {
+		return nil
+	}
+	duration := s.metadata.CompletedAt.Sub(*s.metadata.StartedAt)
+	return &duration
 }

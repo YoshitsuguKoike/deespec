@@ -4,6 +4,18 @@
 
 ## \[Unreleased]
 
+### 追加 (Added)
+
+* **自己アップグレード機能**: deespec自身を最新版に更新するコマンドを実装
+  - `deespec upgrade` コマンドの追加
+  - GitHub Releases APIから最新バージョンを自動取得
+  - プラットフォーム別バイナリの自動ダウンロード（darwin/linux/windows × amd64/arm64対応）
+  - バイナリの安全な置き換え処理（バックアップ → 置き換え → 検証）
+  - エラー時の自動ロールバック機能
+  - `--force` フラグによる強制アップグレードオプション
+  - シンボリックリンクの実体を自動解決
+  - ファイル: `internal/interface/cli/upgrade/upgrade.go`
+
 ---
 
 ## \[v0.2.4] - 2025-10-16

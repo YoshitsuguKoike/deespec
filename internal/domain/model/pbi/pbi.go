@@ -29,6 +29,7 @@ const (
 	StatusPlaned     Status = "planed"      // 計画完了
 	StatusInProgress Status = "in_progress" // 実行中
 	StatusDone       Status = "done"        // 完了
+	StatusFailed     Status = "failed"      // 失敗
 )
 
 // Priority represents the PBI priority
@@ -81,7 +82,7 @@ func (p *PBI) GetMarkdownPath() string {
 // IsValid checks if the status is valid
 func (s Status) IsValid() bool {
 	switch s {
-	case StatusPending, StatusPlanning, StatusPlaned, StatusInProgress, StatusDone:
+	case StatusPending, StatusPlanning, StatusPlaned, StatusInProgress, StatusDone, StatusFailed:
 		return true
 	default:
 		return false

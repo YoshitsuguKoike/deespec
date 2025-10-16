@@ -4,6 +4,34 @@
 
 ## \[Unreleased]
 
+### 追加 (Added)
+
+* **`failed`ステータスの追加**: PBI分解処理が失敗した場合の状態管理を追加
+  - `StatusFailed`をPBIステータスenum に追加
+  - SBI生成に失敗した場合、PBIステータスを自動的に`failed`に更新
+  - ファイル: `internal/domain/model/pbi/pbi.go`
+
+* **deespecバージョン情報をプロンプトに追加**: AI生成時にdeespecのバージョンを明示
+  - プロンプトテンプレートに「システム情報」セクションを追加
+  - `{{.DeespecVersion}}`変数を使用して動的にバージョンを表示
+  - ファイル:
+    - `internal/embed/templates/prompts/PBI_DECOMPOSE.md.tmpl`
+    - `internal/application/usecase/pbi/decompose_pbi_use_case.go`
+
+### 改善 (Improved)
+
+* **SBI生成場所の自動検証と修正機能**: AI が誤った場所にSBIを生成した場合の自動修正
+  - サブディレクトリ内に生成されたSBIファイルを自動的に正しい場所へ移動
+  - PBIディレクトリ外にファイルが生成された場合はステータスを`failed`に変更
+  - 移動統計をユーザーにフィードバック（例: "2 files moved from subdirectories"）
+  - ファイル: `internal/application/usecase/pbi/decompose_pbi_use_case.go`
+
+* **シェルスクリプトの自動削除機能**: AI が生成した不要なスクリプトを自動削除
+  - `*.sh`, `*.bash`, `*.zsh`などのシェルスクリプトファイルを検出
+  - `register_*.sh`, `*_COMMANDS.sh`などの一般的なパターンも対象
+  - 削除されたスクリプト数をログ出力
+  - ファイル: `internal/application/usecase/pbi/decompose_pbi_use_case.go`
+
 ---
 
 ## \[v0.2.6] - 2025-10-16

@@ -6,6 +6,30 @@
 
 ---
 
+## \[v0.3.4] - 2025-10-17
+
+### 追加 (Added)
+
+- **WorkflowDecisionService導入**: ワークフロー判断ロジックを集中管理
+  - 新規サービス: `internal/domain/service/workflow_decision_service.go`
+  - 機能: SBIの状態遷移とステップ判断を一元管理
+  - メソッド: `DecideNextAction()` - SBI状態と実行結果から次のアクションを決定
+  - 分離したロジック: `only_implement`判断、REVIEWステップ処理、通常ワークフロー
+  - テスト: 6つのテストケースで主要パターンを検証
+  - ファイル: `internal/domain/service/workflow_decision_service.go`, `workflow_decision_service_test.go`
+
+### 修正 (Fixed)
+
+- **`only_implement`フラグが機能しない問題を修正**: 実装完了後にREVIEWステップをスキップ
+  - 問題: `only_implement=true` でもREVIEWステップに遷移していた
+  - 原因: ステータス判断ロジックが `only_implement` フラグをチェックしていなかった
+  - 修正: WorkflowDecisionServiceで最優先チェックとして実装
+  - 効果: `only_implement=true` のSBIは IMPLEMENTING → DONE に直接遷移（REVIEWスキップ）
+  - 既にREVIEW状態のSBIも自動完了処理を追加
+  - ファイル: `internal/application/usecase/execution/run_turn_use_case.go`
+
+---
+
 ## \[v0.3.3] - 2025-10-17
 
 ### 追加 (Added)

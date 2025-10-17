@@ -17,17 +17,18 @@ import (
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/model/sbi"
 	"github.com/YoshitsuguKoike/deespec/internal/domain/repository"
+	domainservice "github.com/YoshitsuguKoike/deespec/internal/domain/service"
 )
 
 // RunTurnUseCase orchestrates a single workflow turn execution
 type RunTurnUseCase struct {
-	journalRepo  repository.JournalRepository
-	sbiRepo      repository.SBIRepository
-	lockService  service.LockService
-	agentGateway output.AgentGateway
-	// TODO: Add PromptBuilder interface
-	maxTurns int
-	leaseTTL time.Duration
+	journalRepo       repository.JournalRepository
+	sbiRepo           repository.SBIRepository
+	lockService       service.LockService
+	agentGateway      output.AgentGateway
+	decisionService   *domainservice.WorkflowDecisionService
+	maxTurns          int
+	leaseTTL          time.Duration
 }
 
 // NewRunTurnUseCase creates a new RunTurnUseCase
@@ -46,13 +47,17 @@ func NewRunTurnUseCase(
 		leaseTTL = 10 * time.Minute // Default
 	}
 
+	// Initialize workflow decision service with max attempts = 3
+	decisionService := domainservice.NewWorkflowDecisionService(3)
+
 	return &RunTurnUseCase{
-		journalRepo:  journalRepo,
-		sbiRepo:      sbiRepo,
-		lockService:  lockService,
-		agentGateway: agentGateway,
-		maxTurns:     maxTurns,
-		leaseTTL:     leaseTTL,
+		journalRepo:     journalRepo,
+		sbiRepo:         sbiRepo,
+		lockService:     lockService,
+		agentGateway:    agentGateway,
+		decisionService: decisionService,
+		maxTurns:        maxTurns,
+		leaseTTL:        leaseTTL,
 	}
 }
 
@@ -244,19 +249,14 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 		}
 	}
 
-	// Check if this is a REVIEW step
-	// Since v0.2.13, review decisions are handled by `deespec sbi review` command
-	// which updates the status directly. We only need to wait for AI execution to complete.
-	currentStatus := currentSBI.Status()
-	isReviewStep := (currentStatus == model.StatusReviewing)
+	// Use WorkflowDecisionService to determine next action
+	action := uc.decisionService.DecideNextAction(currentSBI, stepOutput)
 
 	var nextStatus model.Status
 	var shouldIncrementAttempt bool
 
-	if isReviewStep {
-		// For REVIEW steps: AI agent executes `deespec sbi review --decision X --stdin` command
-		// The command updates the status (DONE or IMPLEMENTING) directly in the database
-		// We don't need to update status here - just reload the SBI to get the updated status
+	// Handle reload case (for REVIEW steps where AI updates DB directly)
+	if action.NeedsReload {
 		reloadedSBI, err := uc.sbiRepo.Find(ctx, repository.SBIID(currentSBI.ID().String()))
 		if err != nil {
 			return nil, fmt.Errorf("failed to reload SBI after review: %w", err)
@@ -264,36 +264,26 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 		if reloadedSBI == nil {
 			return nil, fmt.Errorf("SBI disappeared after review: %s", currentSBI.ID().String())
 		}
-
-		// Use the reloaded status - it was already updated by the review command
 		nextStatus = reloadedSBI.Status()
 		currentSBI = reloadedSBI
 		shouldIncrementAttempt = false
 	} else {
-		// For non-REVIEW steps: determine next status based on current status and decision
-		nextStatus, shouldIncrementAttempt = uc.determineNextStatusForSBI(
-			currentSBI.Status(),
-			stepOutput.Decision,
-			currentAttempt,
-		)
+		// Apply the decided action
+		nextStatus = action.NextStatus
+		shouldIncrementAttempt = action.ShouldIncrementAttempt
 
 		if shouldIncrementAttempt {
 			currentAttempt++
 		}
 
-		// Update SBI entity with new status and execution state
-		// Handle PENDING → PICKED transition if needed
-		if currentSBI.Status() == model.StatusPending && nextStatus != model.StatusPicked {
-			if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
-				return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
-			}
-			// Record work start time when task is picked
-			currentSBI.MarkAsStarted()
-		}
-
-		// Now transition to the target status
+		// Update SBI entity with new status
 		if err := currentSBI.UpdateStatus(nextStatus); err != nil {
 			return nil, fmt.Errorf("failed to update SBI status: %w", err)
+		}
+
+		// Record work start time when task is picked
+		if action.NextStatus == model.StatusPicked {
+			currentSBI.MarkAsStarted()
 		}
 
 		// Record work completion time when task is done or failed
@@ -302,7 +292,9 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 		}
 
 		// Update turn in execution state
-		currentSBI.IncrementTurn()
+		if action.ShouldIncrementTurn {
+			currentSBI.IncrementTurn()
+		}
 	}
 
 	// NOTE: done.md generation is commented out due to performance concerns
@@ -605,19 +597,14 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		}
 	}
 
-	// 6. Check if this is a REVIEW step
-	// Since v0.2.13, review decisions are handled by `deespec sbi review` command
-	// which updates the status directly. We only need to wait for AI execution to complete.
-	currentStatus := currentSBI.Status()
-	isReviewStep := (currentStatus == model.StatusReviewing)
+	// 6. Use WorkflowDecisionService to determine next action
+	action := uc.decisionService.DecideNextAction(currentSBI, stepOutput)
 
 	var nextStatus model.Status
 	var shouldIncrementAttempt bool
 
-	if isReviewStep {
-		// For REVIEW steps: AI agent executes `deespec sbi review --decision X --stdin` command
-		// The command updates the status (DONE or IMPLEMENTING) directly in the database
-		// We don't need to update status here - just reload the SBI to get the updated status
+	// Handle reload case (for REVIEW steps where AI updates DB directly)
+	if action.NeedsReload {
 		reloadedSBI, err := uc.sbiRepo.Find(ctx, repository.SBIID(currentSBI.ID().String()))
 		if err != nil {
 			return nil, fmt.Errorf("failed to reload SBI after review: %w", err)
@@ -625,37 +612,26 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		if reloadedSBI == nil {
 			return nil, fmt.Errorf("SBI disappeared after review: %s", currentSBI.ID().String())
 		}
-
-		// Use the reloaded status - it was already updated by the review command
 		nextStatus = reloadedSBI.Status()
 		currentSBI = reloadedSBI
 		shouldIncrementAttempt = false
 	} else {
-		// 7. For non-REVIEW steps: determine next status based on current status and decision
-		nextStatus, shouldIncrementAttempt = uc.determineNextStatusForSBI(
-			currentSBI.Status(),
-			stepOutput.Decision,
-			currentAttempt,
-		)
+		// Apply the decided action
+		nextStatus = action.NextStatus
+		shouldIncrementAttempt = action.ShouldIncrementAttempt
 
 		if shouldIncrementAttempt {
 			currentAttempt++
 		}
 
-		// 8. Update SBI entity with new status and execution state
-		// Handle PENDING → PICKED transition if needed (state machine requires this intermediate step)
-		if currentSBI.Status() == model.StatusPending && nextStatus != model.StatusPicked {
-			// First transition: PENDING → PICKED
-			if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
-				return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
-			}
-			// Record work start time when task is picked
-			currentSBI.MarkAsStarted()
-		}
-
-		// Now transition to the target status
+		// Update SBI entity with new status
 		if err := currentSBI.UpdateStatus(nextStatus); err != nil {
 			return nil, fmt.Errorf("failed to update SBI status: %w", err)
+		}
+
+		// Record work start time when task is picked
+		if action.NextStatus == model.StatusPicked {
+			currentSBI.MarkAsStarted()
 		}
 
 		// Record work completion time when task is done or failed
@@ -663,9 +639,10 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 			currentSBI.MarkAsCompleted()
 		}
 
-		// Update turn and attempt in execution state
-		currentSBI.IncrementTurn()
-		// TODO: Add method to update attempt if needed
+		// Update turn in execution state
+		if action.ShouldIncrementTurn {
+			currentSBI.IncrementTurn()
+		}
 	}
 
 	// NOTE: done.md generation is commented out due to performance concerns

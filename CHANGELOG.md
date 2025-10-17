@@ -4,6 +4,16 @@
 
 ## \[Unreleased]
 
+### 修正 (Fixed)
+
+- **TaskRepository.Listのフィルタリングバグ修正**: ParentIDフィルタが完全に無視されていた問題を修正
+  - 問題: `pbi show <id>` で親PBIによるSBIフィルタリングが機能せず、parent_pbi_id=NULLのSBIをすべて表示していた
+  - 原因: `TaskRepositoryImpl.List`メソッドで`filter.ParentID`を`SBIFilter.PBIID`にマッピングしていなかった
+  - 修正: ParentIDをPBIIDに変換してSBIFilterに設定するロジックを追加
+  - 影響: `pbi show`、`sbi list --parent-id`、その他ParentIDフィルタを使用するすべてのコマンド
+  - 効果: 指定したPBIに実際に紐づくSBIのみが正しく表示される
+  - ファイル: `internal/infrastructure/persistence/sqlite/task_repository_impl.go`
+
 ---
 
 ## \[v0.2.23] - 2025-10-17

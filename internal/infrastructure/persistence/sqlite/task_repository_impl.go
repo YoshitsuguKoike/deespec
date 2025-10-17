@@ -127,6 +127,11 @@ func (r *TaskRepositoryImpl) List(ctx context.Context, filter repository.TaskFil
 				Limit:    filter.Limit,
 				Offset:   filter.Offset,
 			}
+			// Map ParentID to PBIID for SBI filtering
+			if filter.ParentID != nil {
+				pbiID := repository.PBIID(*filter.ParentID)
+				sbiFilter.PBIID = &pbiID
+			}
 			sbis, err := r.sbiRepo.List(ctx, sbiFilter)
 			if err != nil {
 				return nil, err

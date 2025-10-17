@@ -6,6 +6,19 @@
 
 ---
 
+## \[v0.2.18] - 2025-10-17
+
+### 修正 (Fixed)
+
+- **PICK処理の完全な修正**: Execute()関数にもPENDINGチェックを追加
+  - 問題: v0.2.17ではExecuteForSBI()のみ修正したが、Execute()関数（逐次実行パス）の修正を忘れたため、実際のワークフローではPICK処理が依然として7分以上かかっていた
+  - 原因: ユーザーのワークフローはExecute()を使用しているが、この関数にはPENDINGチェックがなかった
+  - 修正: Execute()関数にもExecuteForSBI()と同じPENDINGステータスチェックを追加
+  - 効果: 両方の実行パス（並列・逐次）でPICK処理が数ミリ秒で完了し、不要なAIエージェント呼び出しとimplement_1.mdファイル作成を完全に防止
+  - ファイル: `internal/application/usecase/execution/run_turn_use_case.go:440-485`
+
+---
+
 ## \[v0.2.17] - 2025-10-17
 
 ### 修正 (Fixed)

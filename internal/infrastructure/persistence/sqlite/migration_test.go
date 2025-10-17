@@ -32,12 +32,12 @@ func TestMigration_NewDatabase(t *testing.T) {
 		t.Fatalf("Failed to query schema_migrations: %v", err)
 	}
 
-	if count < 4 {
-		t.Errorf("Expected at least 4 migration records, got %d", count)
+	if count < 6 {
+		t.Errorf("Expected at least 6 migration records (004, 005, 006), got %d", count)
 	}
 
-	// Verify sbis table has new fields
-	var hasSequence, hasRegisteredAt bool
+	// Verify sbis table has new fields (from migrations 004, 005, 006)
+	var hasSequence, hasRegisteredAt, hasStartedAt, hasCompletedAt bool
 
 	rows, err := db.Query("PRAGMA table_info(sbis)")
 	if err != nil {
@@ -61,6 +61,12 @@ func TestMigration_NewDatabase(t *testing.T) {
 		if name == "registered_at" {
 			hasRegisteredAt = true
 		}
+		if name == "started_at" {
+			hasStartedAt = true
+		}
+		if name == "completed_at" {
+			hasCompletedAt = true
+		}
 	}
 
 	if !hasSequence {
@@ -68,6 +74,12 @@ func TestMigration_NewDatabase(t *testing.T) {
 	}
 	if !hasRegisteredAt {
 		t.Error("sbis table missing 'registered_at' field")
+	}
+	if !hasStartedAt {
+		t.Error("sbis table missing 'started_at' field from migration 006")
+	}
+	if !hasCompletedAt {
+		t.Error("sbis table missing 'completed_at' field from migration 006")
 	}
 
 	// Verify ordering index exists
@@ -162,19 +174,19 @@ func TestMigration_ExistingDatabase(t *testing.T) {
 		t.Fatalf("Failed to migrate: %v", err)
 	}
 
-	// Verify version 4 was applied
+	// Verify version 6 was applied (migration 004, 005, 006)
 	var version int
 	err = db.QueryRow("SELECT MAX(version) FROM schema_migrations").Scan(&version)
 	if err != nil {
 		t.Fatalf("Failed to query version: %v", err)
 	}
 
-	if version != 4 {
-		t.Errorf("Expected version 4, got %d", version)
+	if version != 6 {
+		t.Errorf("Expected version 6, got %d", version)
 	}
 
-	// Verify new fields exist
-	var hasSequence, hasRegisteredAt bool
+	// Verify new fields exist (from migrations 004, 005, 006)
+	var hasSequence, hasRegisteredAt, hasStartedAt, hasCompletedAt bool
 	rows, err := db.Query("PRAGMA table_info(sbis)")
 	if err != nil {
 		t.Fatalf("Failed to get table info: %v", err)
@@ -197,6 +209,12 @@ func TestMigration_ExistingDatabase(t *testing.T) {
 		if name == "registered_at" {
 			hasRegisteredAt = true
 		}
+		if name == "started_at" {
+			hasStartedAt = true
+		}
+		if name == "completed_at" {
+			hasCompletedAt = true
+		}
 	}
 
 	if !hasSequence {
@@ -204,6 +222,12 @@ func TestMigration_ExistingDatabase(t *testing.T) {
 	}
 	if !hasRegisteredAt {
 		t.Error("sbis table missing 'registered_at' field after migration")
+	}
+	if !hasStartedAt {
+		t.Error("sbis table missing 'started_at' field after migration 006")
+	}
+	if !hasCompletedAt {
+		t.Error("sbis table missing 'completed_at' field after migration 006")
 	}
 
 	// Verify existing data was backfilled

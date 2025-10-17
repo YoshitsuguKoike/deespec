@@ -47,11 +47,12 @@ func (m *Migrator) Migrate() error {
 		if err := m.applyInitialSchema(); err != nil {
 			return fmt.Errorf("apply initial schema failed: %w", err)
 		}
-	} else {
-		// Apply incremental migrations for existing databases
-		if err := m.applyIncrementalMigrations(); err != nil {
-			return fmt.Errorf("apply incremental migrations failed: %w", err)
-		}
+	}
+
+	// Always apply incremental migrations (for both new and existing databases)
+	// This ensures new migrations added after schema.sql are always applied
+	if err := m.applyIncrementalMigrations(); err != nil {
+		return fmt.Errorf("apply incremental migrations failed: %w", err)
 	}
 
 	return nil

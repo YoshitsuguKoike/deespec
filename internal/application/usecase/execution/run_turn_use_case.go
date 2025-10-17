@@ -129,10 +129,11 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 		}, nil
 	}
 
-	// CRITICAL FIX: If this is a PICK operation (PENDING → PICKED), skip AI agent execution
-	// PICK should only update status, not call AI agent (which takes 7+ minutes)
+	// CRITICAL FIX: Handle status-only transitions without calling AI agent
+	// These are O(1) database updates, not O(AI_call) operations
+
+	// Case 1: PENDING → PICKED (task selection)
 	if prevStatus == model.StatusPending {
-		// Just update status to PICKED without calling AI agent
 		if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
 			return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
 		}
@@ -169,6 +170,53 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 			PrevStatus:    uc.mapDomainStatusToString(prevStatus),
 			NextStatus:    "WIP",
 			Decision:      "PICKED",
+			Attempt:       currentAttempt,
+			ArtifactPath:  "",
+			ErrorMsg:      "",
+			ElapsedMs:     time.Since(startTime).Milliseconds(),
+			CompletedAt:   time.Now(),
+			TaskCompleted: false,
+		}, nil
+	}
+
+	// Case 2: PICKED → IMPLEMENTING (status initialization)
+	// This happens when a PICKED task is selected for execution
+	if prevStatus == model.StatusPicked {
+		if err := currentSBI.UpdateStatus(model.StatusImplementing); err != nil {
+			return nil, fmt.Errorf("failed to update SBI status to IMPLEMENTING: %w", err)
+		}
+		currentSBI.IncrementTurn()
+
+		if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
+			return nil, fmt.Errorf("failed to save SBI to DB: %w", err)
+		}
+
+		// Write journal entry for status transition
+		journalRecord := &repository.JournalRecord{
+			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			SBIID:     currentSBI.ID().String(),
+			Turn:      currentTurn,
+			Step:      "status_init",
+			Status:    "WIP",
+			Attempt:   currentAttempt,
+			Decision:  "INITIALIZED",
+			ElapsedMs: time.Since(startTime).Milliseconds(),
+			Error:     "",
+			Artifacts: []interface{}{},
+		}
+
+		if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to append journal entry (status_init)\n")
+			fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+		}
+
+		return &dto.RunTurnOutput{
+			Turn:          currentTurn,
+			SBIID:         currentSBI.ID().String(),
+			NoOp:          false,
+			PrevStatus:    uc.mapDomainStatusToString(prevStatus),
+			NextStatus:    "WIP",
+			Decision:      "INITIALIZED",
 			Attempt:       currentAttempt,
 			ArtifactPath:  "",
 			ErrorMsg:      "",
@@ -435,10 +483,11 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		}, nil
 	}
 
-	// CRITICAL FIX: If this is a PICK operation (PENDING → PICKED), skip AI agent execution
-	// PICK should only update status, not call AI agent (which takes 7+ minutes)
+	// CRITICAL FIX: Handle status-only transitions without calling AI agent
+	// These are O(1) database updates, not O(AI_call) operations
+
+	// Case 1: PENDING → PICKED (task selection)
 	if prevStatus == model.StatusPending {
-		// Just update status to PICKED without calling AI agent
 		if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
 			return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
 		}
@@ -484,7 +533,54 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		}, nil
 	}
 
-	// 5. Execute workflow step
+	// Case 2: PICKED → IMPLEMENTING (status initialization)
+	// This happens when PickNextSBI() selects a PICKED task that was picked in previous turn
+	if prevStatus == model.StatusPicked {
+		if err := currentSBI.UpdateStatus(model.StatusImplementing); err != nil {
+			return nil, fmt.Errorf("failed to update SBI status to IMPLEMENTING: %w", err)
+		}
+		currentSBI.IncrementTurn()
+
+		if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
+			return nil, fmt.Errorf("failed to save SBI to DB: %w", err)
+		}
+
+		// Write journal entry for status transition
+		journalRecord := &repository.JournalRecord{
+			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			SBIID:     currentSBI.ID().String(),
+			Turn:      currentTurn,
+			Step:      "status_init",
+			Status:    "WIP",
+			Attempt:   currentAttempt,
+			Decision:  "INITIALIZED",
+			ElapsedMs: time.Since(startTime).Milliseconds(),
+			Error:     "",
+			Artifacts: []interface{}{},
+		}
+
+		if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to append journal entry (status_init)\n")
+			fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+		}
+
+		return &dto.RunTurnOutput{
+			Turn:          currentTurn,
+			SBIID:         currentSBI.ID().String(),
+			NoOp:          false,
+			PrevStatus:    uc.mapDomainStatusToString(prevStatus),
+			NextStatus:    "WIP",
+			Decision:      "INITIALIZED",
+			Attempt:       currentAttempt,
+			ArtifactPath:  "",
+			ErrorMsg:      "",
+			ElapsedMs:     time.Since(startTime).Milliseconds(),
+			CompletedAt:   time.Now(),
+			TaskCompleted: false,
+		}, nil
+	}
+
+	// 5. Execute workflow step (for IMPLEMENTING, REVIEWING, etc.)
 	stepOutput, err := uc.executeStepForSBI(ctx, currentSBI, currentTurn, currentAttempt)
 	if err != nil {
 		stepOutput = &dto.ExecuteStepOutput{

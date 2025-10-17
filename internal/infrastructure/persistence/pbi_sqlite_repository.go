@@ -11,6 +11,12 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// PBIWithSBICount represents a PBI with its associated SBI count
+type PBIWithSBICount struct {
+	PBI      *pbi.PBI
+	SBICount int
+}
+
 // PBISQLiteRepository implements pbi.Repository with SQLite + Markdown files
 type PBISQLiteRepository struct {
 	db       *sql.DB
@@ -161,6 +167,47 @@ func (r *PBISQLiteRepository) FindByStatus(status pbi.Status) ([]*pbi.PBI, error
 	return r.scanPBIs(rows)
 }
 
+// FindAllWithSBICount retrieves all PBIs with their SBI counts using JOIN
+func (r *PBISQLiteRepository) FindAllWithSBICount() ([]*PBIWithSBICount, error) {
+	rows, err := r.db.Query(`
+		SELECT p.id, p.title, p.status, p.story_points, p.priority,
+		       p.parent_epic_id, p.created_at, p.updated_at,
+		       COALESCE(COUNT(s.id), 0) as sbi_count
+		FROM pbis p
+		LEFT JOIN sbis s ON s.parent_pbi_id = p.id
+		GROUP BY p.id, p.title, p.status, p.story_points, p.priority,
+		         p.parent_epic_id, p.created_at, p.updated_at
+		ORDER BY p.created_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query PBIs with SBI counts: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanPBIsWithSBICount(rows)
+}
+
+// FindByStatusWithSBICount retrieves PBIs by status with their SBI counts using JOIN
+func (r *PBISQLiteRepository) FindByStatusWithSBICount(status pbi.Status) ([]*PBIWithSBICount, error) {
+	rows, err := r.db.Query(`
+		SELECT p.id, p.title, p.status, p.story_points, p.priority,
+		       p.parent_epic_id, p.created_at, p.updated_at,
+		       COALESCE(COUNT(s.id), 0) as sbi_count
+		FROM pbis p
+		LEFT JOIN sbis s ON s.parent_pbi_id = p.id
+		WHERE p.status = ?
+		GROUP BY p.id, p.title, p.status, p.story_points, p.priority,
+		         p.parent_epic_id, p.created_at, p.updated_at
+		ORDER BY p.created_at DESC
+	`, string(status))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query PBIs with SBI counts by status: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanPBIsWithSBICount(rows)
+}
+
 // Delete deletes a PBI (both database and Markdown file)
 func (r *PBISQLiteRepository) Delete(id string) error {
 	tx, err := r.db.Begin()
@@ -239,6 +286,58 @@ func (r *PBISQLiteRepository) scanPBIs(rows *sql.Rows) ([]*pbi.PBI, error) {
 	}
 
 	return pbis, rows.Err()
+}
+
+// scanPBIsWithSBICount scans multiple PBIs with SBI counts from rows
+func (r *PBISQLiteRepository) scanPBIsWithSBICount(rows *sql.Rows) ([]*PBIWithSBICount, error) {
+	var results []*PBIWithSBICount
+
+	for rows.Next() {
+		var p pbi.PBI
+		var status string
+		var priority int
+		var parentEpicID sql.NullString
+		var createdAt, updatedAt string
+		var sbiCount int
+
+		err := rows.Scan(
+			&p.ID, &p.Title, &status, &p.EstimatedStoryPoints,
+			&priority, &parentEpicID, &createdAt, &updatedAt,
+			&sbiCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan PBI with SBI count: %w", err)
+		}
+
+		// Parse status
+		p.Status = pbi.Status(status)
+
+		// Parse priority
+		p.Priority = pbi.Priority(priority)
+
+		// Parse parent epic ID
+		if parentEpicID.Valid {
+			p.ParentEpicID = parentEpicID.String
+		}
+
+		// Parse timestamps
+		p.CreatedAt, err = time.Parse(time.RFC3339, createdAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse created_at: %w", err)
+		}
+
+		p.UpdatedAt, err = time.Parse(time.RFC3339, updatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse updated_at: %w", err)
+		}
+
+		results = append(results, &PBIWithSBICount{
+			PBI:      &p,
+			SBICount: sbiCount,
+		})
+	}
+
+	return results, rows.Err()
 }
 
 // nullString returns a sql.NullString

@@ -6,6 +6,19 @@
 
 ---
 
+## \[v0.3.1] - 2025-10-17
+
+### 追加 (Added)
+
+- **`pbi list`コマンドにSBI数表示カラム追加**: 各PBIに紐づくSBI数を一覧で確認可能に
+  - 新機能: `pbi list`コマンドの出力に"SBIs"カラムを追加
+  - 実装: LEFT JOIN + GROUP BYによる最適化クエリで実現（N+1問題を回避）
+  - 性能: 単一クエリで全PBIのSBI数を集計（63 PBIs: ~5-15ms）
+  - 表示例: `SBIs`カラムに各PBIの関連SBI数を表示（0から10まで）
+  - ファイル: `internal/infrastructure/persistence/pbi_sqlite_repository.go`, `internal/interface/cli/pbi/list.go`
+
+---
+
 ## \[v0.3.0] - 2025-10-17
 
 ### 追加 (Added)

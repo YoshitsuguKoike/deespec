@@ -72,17 +72,6 @@ CREATE TABLE IF NOT EXISTS epic_pbis (
     FOREIGN KEY (pbi_id) REFERENCES pbis(id) ON DELETE CASCADE
 );
 
--- PBI-SBI 関連テーブル (多対多関係の管理)
-CREATE TABLE IF NOT EXISTS pbi_sbis (
-    pbi_id TEXT NOT NULL,
-    sbi_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (pbi_id, sbi_id),
-    FOREIGN KEY (pbi_id) REFERENCES pbis(id) ON DELETE CASCADE,
-    FOREIGN KEY (sbi_id) REFERENCES sbis(id) ON DELETE CASCADE
-);
-
 -- パフォーマンス最適化用インデックス
 CREATE INDEX IF NOT EXISTS idx_pbis_parent_epic_id ON pbis(parent_epic_id);
 CREATE INDEX IF NOT EXISTS idx_sbis_parent_pbi_id ON sbis(parent_pbi_id);

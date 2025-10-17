@@ -57,15 +57,15 @@ func runList(statusFilter string) error {
 	}
 	repo := persistence.NewPBISQLiteRepository(db, rootPath)
 
-	// Find PBIs
-	var pbis []*pbidomain.PBI
+	// Find PBIs with SBI counts
+	var pbiWithCounts []*persistence.PBIWithSBICount
 	if statusFilter != "" {
-		pbis, err = repo.FindByStatus(pbidomain.Status(statusFilter))
+		pbiWithCounts, err = repo.FindByStatusWithSBICount(pbidomain.Status(statusFilter))
 		if err != nil {
 			return fmt.Errorf("failed to find PBIs by status: %w", err)
 		}
 	} else {
-		pbis, err = repo.FindAll()
+		pbiWithCounts, err = repo.FindAllWithSBICount()
 		if err != nil {
 			return fmt.Errorf("failed to find all PBIs: %w", err)
 		}
@@ -73,34 +73,36 @@ func runList(statusFilter string) error {
 
 	// Display header
 	if statusFilter != "" {
-		fmt.Printf("PBI一覧（status=%s, %d件）\n", statusFilter, len(pbis))
+		fmt.Printf("PBI一覧（status=%s, %d件）\n", statusFilter, len(pbiWithCounts))
 	} else {
-		fmt.Printf("PBI一覧（全%d件）\n", len(pbis))
+		fmt.Printf("PBI一覧（全%d件）\n", len(pbiWithCounts))
 	}
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
 
-	if len(pbis) == 0 {
+	if len(pbiWithCounts) == 0 {
 		fmt.Println("No PBIs found.")
 		return nil
 	}
 
-	// Display table header
-	fmt.Printf("%-10s %-15s %-4s %-8s %s\n", "ID", "STATUS", "SP", "PRIORITY", "TITLE")
-	fmt.Println("─────────────────────────────────────────────────────────────")
+	// Display table header with SBIs column
+	fmt.Printf("%-10s %-15s %-4s %-8s %-5s %s\n", "ID", "STATUS", "SP", "PRIORITY", "SBIs", "TITLE")
+	fmt.Println("────────────────────────────────────────────────────────────────────")
 
-	// Display PBIs
-	for _, p := range pbis {
+	// Display PBIs with SBI counts
+	for _, pwc := range pbiWithCounts {
+		p := pwc.PBI
 		sp := "-"
 		if p.EstimatedStoryPoints > 0 {
 			sp = fmt.Sprintf("%d", p.EstimatedStoryPoints)
 		}
 
-		fmt.Printf("%-10s %-15s %-4s %-8s %s\n",
+		fmt.Printf("%-10s %-15s %-4s %-8s %-5d %s\n",
 			p.ID,
 			p.Status,
 			sp,
 			p.Priority.String(),
+			pwc.SBICount,
 			truncateString(p.Title, 40),
 		)
 	}

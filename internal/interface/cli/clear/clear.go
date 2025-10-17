@@ -320,7 +320,6 @@ func clearDatabase() error {
 	tables := []string{
 		"task_labels", // Task-label associations
 		"epic_pbis",   // Epic-PBI associations
-		"pbi_sbis",    // PBI-SBI associations
 		"sbis",        // SBI tasks
 		"pbis",        // PBI tasks
 		"epics",       // EPIC tasks

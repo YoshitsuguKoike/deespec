@@ -6,6 +6,19 @@
 
 ---
 
+## \[v0.2.19] - 2025-10-17
+
+### 修正 (Fixed)
+
+- **PICK処理の根本的な修正**: PICKEDステータスチェックを追加して状態遷移時のAIエージェント呼び出しを防止
+  - 根本原因: PickNextSBI()がPICKED/IMPLEMENTING/REVIEWINGステータスのタスクを優先的に選択するため、PENDING→PICKED遷移後の次のExecute()呼び出しでPICKEDタスクが選ばれ、AIエージェントを不必要に呼び出していた
+  - v0.2.18の問題: PENDINGチェックのみで、PICKEDステータスの場合はAIエージェントを呼び出してしまっていた
+  - 修正: PICKED→IMPLEMENTINGの状態遷移チェックをExecute()とExecuteForSBI()の両方に追加
+  - 効果: PENDING→PICKED（ミリ秒）、PICKED→IMPLEMENTING（ミリ秒）の両方がO(1)のステータス更新のみ実行され、IMPLEMENTINGステータス以降でのみAIエージェントが呼び出される
+  - ファイル: `internal/application/usecase/execution/run_turn_use_case.go`
+
+---
+
 ## \[v0.2.18] - 2025-10-17
 
 ### 修正 (Fixed)

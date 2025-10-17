@@ -6,6 +6,22 @@
 
 ---
 
+## \[v0.2.23] - 2025-10-17
+
+### 修正 (Fixed)
+
+- **強制終了時の状態遷移修正**: ターン上限到達時の状態遷移が不正だった問題を修正
+  - 問題: Turn上限（デフォルト8）を超えた際、`IMPLEMENTING` → `DONE`へ直接遷移を試みていた
+  - 原因: 状態機械のルールでは`IMPLEMENTING`から`DONE`への直接遷移は許可されていない
+    - `IMPLEMENTING`は`REVIEWING`, `FAILED`, `PENDING`にのみ遷移可能
+  - 修正: 強制終了時も正しい状態遷移パスを辿るように変更
+    - `IMPLEMENTING` → `REVIEWING` → `DONE`の2段階遷移
+  - 影響: 並列実行（ExecuteForSBI）と逐次実行（Execute）の両方
+  - 効果: ターン制限時も状態機械の不変条件が維持され、無限ループエラーを防止
+  - ファイル: `internal/application/usecase/execution/run_turn_use_case.go`
+
+---
+
 ## \[v0.2.22] - 2025-10-17
 
 ### 変更 (Changed)

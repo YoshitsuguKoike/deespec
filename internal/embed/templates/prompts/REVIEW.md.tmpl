@@ -1,46 +1,23 @@
 # Code Review Task
 
-## **CRITICAL: Output File Path**
+## **CRITICAL: Review Report Submission**
 
-You MUST write your review to the EXACT path below. DO NOT create files anywhere else.
+**DO NOT create any review files**. Instead, submit your review via command.
 
-**Required Output Path**: `{{.ArtifactPath}}`
+You MUST execute the following command with your review report:
 
-### **PATH VALIDATION**
-- ✅ CORRECT: `.deespec/specs/sbi/{SBI_ID}/review_{turn}.md`
-- ❌ WRONG: Any file in project root (e.g., `review_sbi_*.md`)
-- ❌ WRONG: Any other directory (e.g., `.deespec/artifacts/`, `.deespec/runs/`, `.deespec/tasks/`)
-
-**CRITICAL**: Use the Write tool with the EXACT path `{{.ArtifactPath}}` - do not modify or construct your own path.
-
-### **Required File Template (COPY THIS STRUCTURE)**
-
-```markdown
-## Summary
-DECISION: SUCCEEDED
-
-[Brief summary in Japanese: implementation quality, issues found, test results]
-
-## Review Details
-[Detailed review content in Japanese...]
-
-## Test Results
-[Test execution results...]
-
-## Recommendations
-[If any improvements needed...]
-
-{"decision": "succeeded"}
+```bash
+deespec sbi review {{.SBIID}} --turn {{.Turn}} --decision <DECISION> --stdin <<'EOF'
+[Your review report content here]
+EOF
 ```
 
-### **Validation Checklist**
-After writing the file, verify:
-- [ ] `## Summary` section exists in first 10 lines
-- [ ] `DECISION: [VALUE]` appears immediately after `## Summary` heading (within 1-2 lines)
-- [ ] JSON line `{"decision": "[value]"}` exists as the last line of the file
-- [ ] Both DECISION values match (case-insensitive: SUCCEEDED = succeeded)
+Replace `<DECISION>` with: SUCCEEDED, NEEDS_CHANGES, or FAILED
 
-**IMPORTANT**: If both metadata match, the system reads the decision from the file. If mismatch or missing, it falls back to agent output parsing.
+**STRICTLY FORBIDDEN**:
+- ❌ Creating any review files (review_*.md, report_*.md, etc.)
+- ❌ Using Write tool for reports
+- ❌ Creating files in `.deespec/` directory
 
 ---
 
@@ -49,7 +26,6 @@ After writing the file, verify:
 - **SBI ID**: {{.SBIID}}
 - **Turn**: {{.Turn}}
 - **Task**: {{.TaskDescription}}
-- **Review Output Path**: `{{.ArtifactPath}}` - EXACT absolute path for your review report
 - **Language**: Japanese preferred for reports
 
 **CRITICAL: Where Files Are Located**
@@ -58,15 +34,12 @@ After writing the file, verify:
    - Use Read/Grep/Glob tools to inspect these files
    - DO NOT modify any code during review
 
-2. **Review Report**: Write ONLY to `{{.ArtifactPath}}`
-   - This is an absolute path provided by the system
-   - Do NOT construct paths yourself
-   - Use Write tool with this EXACT path
-
-3. **DO NOT create `.deespec` directory**
+2. **DO NOT create `.deespec` directory**
    - `.deespec` is managed separately by deespec system
    - Never create `{{.WorkDir}}/.deespec/` or similar
-   - Never create files anywhere except the report at `{{.ArtifactPath}}`
+
+3. **DO NOT create any review files**
+   - Submit review via command only (see final step below)
 
 ## Your Review Task
 
@@ -90,21 +63,26 @@ Choose your decision:
 - ⚠️ **NEEDS_CHANGES**: Issues found that need fixing
 - ❌ **FAILED**: Critical issues or unable to complete
 
-### **Step 3: Write Review Report**
-Use the **template above** and write to {{.ArtifactPath}} using the Write tool.
+### **Step 3: Submit Review Report and Decision (CRITICAL)**
 
-**IMPORTANT**: Include both decision markers in your review file:
-1. **Header DECISION**: `DECISION: SUCCEEDED` (immediately after `## Summary`)
-2. **Footer JSON**: `{"decision": "succeeded"}` (last line of file)
-
-After writing, **verify the file structure** using the validation checklist.
-
-### **Step 4: Report Decision to System (CRITICAL)**
-
-**YOU MUST EXECUTE THIS COMMAND** - After writing the review file, immediately execute:
+**YOU MUST EXECUTE THIS COMMAND** - Submit your review and decision together:
 
 ```bash
-deespec sbi review {{.SBIID}} --turn {{.Turn}} --decision <YOUR_DECISION>
+deespec sbi review {{.SBIID}} --turn {{.Turn}} --decision <YOUR_DECISION> --stdin <<'EOF'
+## Summary
+DECISION: <YOUR_DECISION>
+
+[Brief summary in Japanese: implementation quality, issues found, test results]
+
+## Review Details
+[Detailed review content in Japanese...]
+
+## Test Results
+[Test execution results...]
+
+## Recommendations
+[If any improvements needed...]
+EOF
 ```
 
 Replace `<YOUR_DECISION>` with one of:
@@ -114,15 +92,30 @@ Replace `<YOUR_DECISION>` with one of:
 
 **Example**:
 ```bash
-deespec sbi review {{.SBIID}} --turn {{.Turn}} --decision SUCCEEDED
+deespec sbi review {{.SBIID}} --turn {{.Turn}} --decision SUCCEEDED --stdin <<'EOF'
+## Summary
+DECISION: SUCCEEDED
+
+実装は要件を満たしており、テストも全て合格しています。コード品質も良好です。
+
+## Review Details
+- 認証ミドルウェアが正しく実装されている
+- エラーハンドリングが適切
+- テストカバレッジは95%
+
+## Test Results
+全てのテストが合格しました。
+
+## Recommendations
+特になし。
+EOF
 ```
 
-**Why both mechanisms are required**:
-- **File markers (Step 3)**: Provide human-readable audit trail and backward compatibility
-- **Command execution (Step 4)**: Ensures reliable status update without file parsing ambiguity
-- **Redundancy**: If command fails, system can fall back to file parsing
-
-**CRITICAL**: You must use the Bash tool to execute this command. Do not skip this step - the workflow depends on it.
+**CRITICAL**:
+- Use the Bash tool to execute this command
+- Do NOT create any review files with Write tool
+- The command will save the report to `.deespec/reports/sbi/{{.SBIID}}/review_{{.Turn}}.md`
+- The command will update the SBI status based on your decision
 
 ---
 
@@ -130,18 +123,15 @@ deespec sbi review {{.SBIID}} --turn {{.Turn}} --decision SUCCEEDED
 
 ### **File Creation Rules - READ CAREFULLY**
 
-**You can ONLY create ONE file:**
-
-1. ✅ **Review Report** (at the exact path `{{.ArtifactPath}}`)
-   - Use Write tool with this EXACT absolute path
-   - This is the ONLY file you create
-   - Do NOT modify or construct this path yourself
+**You CANNOT create ANY files:**
 
 **STRICTLY FORBIDDEN:**
 - ❌ Creating `{{.WorkDir}}/.deespec/` directory
 - ❌ Creating any `.deespec/` directory anywhere
-- ❌ Creating report files in `{{.WorkDir}}/` (like `{{.WorkDir}}/review_*.md`)
-- ❌ Creating files anywhere except `{{.ArtifactPath}}`
+- ❌ Creating ANY review files (review_*.md, report_*.md, etc.)
+- ❌ Creating files in `{{.WorkDir}}/` with .md extension for reports
+- ❌ Creating files anywhere
+- ❌ Using Write tool for reports (use command instead)
 - ❌ Modifying any code or existing files (review only)
 
 ### **Directory Creation Rules**

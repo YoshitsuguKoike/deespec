@@ -6,6 +6,46 @@
 
 ---
 
+## \[v0.2.13] - 2025-10-17
+
+### 追加 (Added)
+
+* **`deespec sbi report`コマンド**: AIエージェントがレポートファイルを作成せずコマンド経由で提出
+  - 実装レポートを標準入力から受け取り`.deespec/reports/sbi/{SBIID}/`に保存
+  - レポート内容をヒアドキュメントで渡す仕組み
+  - Turn番号検証により古いレポートの誤適用を防止
+  - ファイル:
+    - `internal/interface/cli/sbi/sbi_report.go`（新規）
+    - `internal/application/usecase/report_sbi_use_case.go`（新規）
+    - `internal/interface/cli/sbi/sbi.go`
+
+### 改善 (Changed)
+
+* **`deespec sbi review`コマンドに`--stdin`オプション追加**: レビューレポートも標準入力から受け取り可能に
+  - 決定（decision）とレポート内容を同時に登録
+  - レポートは`.deespec/reports/sbi/{SBIID}/review_{turn}.md`に保存
+  - `--stdin`はオプション（後方互換性維持）
+  - ファイル: `internal/interface/cli/sbi/sbi_review.go`
+
+* **WIP/REVIEWプロンプトテンプレートを完全書き換え**: AIエージェントのファイル作成を禁止
+  - レポートファイルの作成を完全禁止
+  - 代わりに`deespec sbi report`/`deespec sbi review --stdin`コマンドの実行を指示
+  - AIがファイルパスを誤る問題を根本的に解決
+  - システムがレポート保存場所を一元管理
+  - ファイル:
+    - `internal/embed/templates/prompts/WIP.md.tmpl`
+    - `internal/embed/templates/prompts/REVIEW.md.tmpl`
+
+### 技術詳細
+
+* **レポート提出方式の変更**:
+  - 旧方式: AIが`{{.ArtifactPath}}`にファイル作成 → パス誤りのリスク
+  - 新方式: AIがコマンド実行 → システムがファイル作成
+  - レポート保存先: `.deespec/reports/sbi/{SBIID}/`（システムが自動作成）
+* **標準入力の利用**: ヒアドキュメント（`<<'EOF' ... EOF`）で改行を含む長文レポートを渡す
+
+---
+
 ## \[v0.2.12] - 2025-10-17
 
 ### 改善 (Changed)

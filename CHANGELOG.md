@@ -6,6 +6,37 @@
 
 ---
 
+## \[v0.2.9] - 2025-10-17
+
+### 追加 (Added)
+
+* **`deespec upgrade --prompt-only`コマンド**: プロンプトテンプレートのみを更新する機能
+  - バイナリを更新せずに、最新のプロンプトテンプレートを`.deespec/prompts/`に配置
+  - 5つのプロンプトファイル（REVIEW.md, WIP.md, DONE.md, REVIEW_AND_WIP.md, PBI_DECOMPOSE.md）を更新
+  - ファイル: `internal/interface/cli/upgrade/upgrade.go`
+
+* **通常のupgrade時に自動プロンプト更新**: バイナリ更新と同時にプロンプトも最新化
+  - `deespec upgrade`実行時、バイナリ更新後に自動的にプロンプトテンプレートも更新
+  - プロンプト更新が失敗してもupgrade処理は継続（警告のみ表示）
+  - ファイル: `internal/interface/cli/upgrade/upgrade.go`
+
+### 改善 (Changed)
+
+* **プロンプトテンプレートの厳格化**: AIエージェントによる不正なファイル作成を防止
+  - 全プロンプトテンプレートに**PATH VALIDATION**セクションを追加
+  - 正しいパスと間違ったパスの具体例を明示（✅/❌マーク付き）
+  - プロジェクトルートや不正ディレクトリへのファイル作成を明示的に禁止
+  - `.deespec/specs/sbi/{SBI_ID}/`および`.deespec/specs/pbi/{PBI_ID}/`のみに作成を制限
+  - 新規ディレクトリ作成を全面禁止（必要なディレクトリはシステムが事前作成）
+  - ファイル:
+    - `internal/embed/templates/prompts/REVIEW.md.tmpl`
+    - `internal/embed/templates/prompts/WIP.md.tmpl`
+    - `internal/embed/templates/prompts/DONE.md.tmpl`
+    - `internal/embed/templates/prompts/REVIEW_AND_WIP.md.tmpl`
+    - `internal/embed/templates/prompts/PBI_DECOMPOSE.md.tmpl`
+
+---
+
 ## \[v0.2.8] - 2025-10-16
 
 ### 修正 (Fixed)

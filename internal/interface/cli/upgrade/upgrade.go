@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/YoshitsuguKoike/deespec/internal/buildinfo"
+	"github.com/YoshitsuguKoike/deespec/internal/embed"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +28,7 @@ type GitHubRelease struct {
 
 func NewCommand() *cobra.Command {
 	var forceUpgrade bool
+	var promptOnly bool
 
 	cmd := &cobra.Command{
 		Use:   "upgrade",
@@ -37,17 +39,23 @@ This command will:
 1. Check the latest version available on GitHub
 2. Download the appropriate binary for your platform
 3. Replace the current binary with the new one
-4. Verify the installation
+4. Update prompt templates to .deespec/prompts/
+5. Verify the installation
 
 Example:
-  deespec upgrade              # Upgrade to latest version
-  deespec upgrade --force      # Force upgrade even if already latest`,
+  deespec upgrade              # Upgrade binary and prompts
+  deespec upgrade --force      # Force upgrade even if already latest
+  deespec upgrade --prompt-only # Update only prompt templates`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if promptOnly {
+				return upgradePromptsOnly()
+			}
 			return upgradeToLatest(forceUpgrade)
 		},
 	}
 
 	cmd.Flags().BoolVarP(&forceUpgrade, "force", "f", false, "Force upgrade even if already latest version")
+	cmd.Flags().BoolVar(&promptOnly, "prompt-only", false, "Update only prompt templates without upgrading binary")
 
 	return cmd
 }
@@ -104,6 +112,17 @@ func upgradeToLatest(force bool) error {
 	}
 
 	fmt.Printf("\n✅ Successfully upgraded to %s\n", latestVersion)
+
+	// Also update prompt templates
+	fmt.Println("\nUpdating prompt templates...")
+	if err := updatePromptTemplates(); err != nil {
+		// Don't fail the upgrade if prompt update fails
+		fmt.Printf("⚠️  Warning: Failed to update prompts: %v\n", err)
+		fmt.Println("    You can update prompts manually with: deespec upgrade --prompt-only")
+	} else {
+		fmt.Println("✅ Prompt templates updated")
+	}
+
 	fmt.Println("\nRun 'deespec version' to verify the installation")
 
 	return nil
@@ -200,5 +219,57 @@ func replaceBinary(newPath, oldPath string) error {
 	// バックアップ削除
 	os.Remove(backupPath)
 
+	return nil
+}
+
+// upgradePromptsOnly updates only prompt templates to .deespec/prompts/
+func upgradePromptsOnly() error {
+	fmt.Println("Updating prompt templates...")
+
+	if err := updatePromptTemplates(); err != nil {
+		return fmt.Errorf("failed to update prompts: %w", err)
+	}
+
+	fmt.Println("✅ Prompt templates updated successfully")
+	return nil
+}
+
+// updatePromptTemplates copies prompt templates from embedded files to .deespec/prompts/
+func updatePromptTemplates() error {
+	// Get all templates
+	templates, err := embed.GetTemplates()
+	if err != nil {
+		return fmt.Errorf("failed to get templates: %w", err)
+	}
+
+	// Filter only prompt templates
+	var promptTemplates []embed.Template
+	for _, tmpl := range templates {
+		if strings.HasPrefix(tmpl.Path, "prompts/") {
+			promptTemplates = append(promptTemplates, tmpl)
+		}
+	}
+
+	if len(promptTemplates) == 0 {
+		return fmt.Errorf("no prompt templates found")
+	}
+
+	// Write prompt templates to .deespec/prompts/
+	baseDir := ".deespec"
+	updatedCount := 0
+
+	for _, tmpl := range promptTemplates {
+		result, err := embed.WriteTemplate(baseDir, tmpl, true) // force=true to overwrite
+		if err != nil {
+			return fmt.Errorf("failed to write %s: %w", tmpl.Path, err)
+		}
+
+		if result.Action == "WROTE" || result.Action == "WROTE (force)" {
+			fmt.Printf("  ✓ Updated: %s\n", tmpl.Path)
+			updatedCount++
+		}
+	}
+
+	fmt.Printf("\nUpdated %d prompt template(s)\n", updatedCount)
 	return nil
 }

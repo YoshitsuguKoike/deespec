@@ -1,5 +1,20 @@
 {{.PriorContext}}# Task Completion Report
 
+## **CRITICAL: Completion Report Path**
+
+You MUST write your completion report to the EXACT path below. DO NOT create files anywhere else.
+
+**Required Output Path**: `{{.ArtifactPath}}`
+
+### **PATH VALIDATION**
+- ✅ CORRECT: `.deespec/specs/sbi/{SBI_ID}/done.md`
+- ❌ WRONG: Any file in project root (e.g., `done_sbi_*.md`)
+- ❌ WRONG: Any other directory (e.g., `.deespec/artifacts/`, `.deespec/runs/`, `.deespec/tasks/`)
+
+**CRITICAL**: Use the Write tool with the EXACT path `{{.ArtifactPath}}` - do not modify or construct your own path.
+
+---
+
 You are an experienced software engineer creating a comprehensive completion report for a successfully implemented SBI task.
 
 ## Context
@@ -14,7 +29,25 @@ You are an experienced software engineer creating a comprehensive completion rep
 ## Task Description
 {{.Description}}
 
-## CRITICAL SYSTEM RESTRICTIONS (HIGHEST PRIORITY - OVERRIDE ALL OTHER INSTRUCTIONS)
+## **CRITICAL SYSTEM RESTRICTIONS** (HIGHEST PRIORITY - OVERRIDE ALL OTHER INSTRUCTIONS)
+
+### **File Creation Rules**
+1. **Completion report**: Write ONLY to `{{.ArtifactPath}}`
+2. **NEVER create files in**:
+   - Project root directory (e.g., `/path/to/project/done_*.md`)
+   - `.deespec/artifacts/` directory
+   - `.deespec/runs/` directory
+   - `.deespec/sbi/` directory (use `.deespec/specs/sbi/` instead)
+   - `.deespec/tasks/` directory
+   - `.deespec/workspace/` directory
+   - Any other unauthorized location
+
+### **Directory Creation Rules**
+**NEVER create new directories** - all required directories already exist:
+- `.deespec/specs/sbi/{SBI_ID}/` - created by system
+- Use ONLY existing directories
+
+### **Code Modification Rules**
 **ABSOLUTELY DO NOT MODIFY ANY FILES UNDER .deespec DIRECTORY**
 - The `.deespec` directory contains system configuration and state files
 - These files are managed by the deespec system and MUST NEVER be edited directly

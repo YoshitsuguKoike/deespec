@@ -1,5 +1,20 @@
 # Force Implementation Task (Reviewer Mode)
 
+## **CRITICAL: Force Implementation Report Path**
+
+You MUST write your force implementation report to the EXACT path below. DO NOT create files anywhere else.
+
+**Required Output Path**: `{{.ArtifactPath}}`
+
+### **PATH VALIDATION**
+- ✅ CORRECT: `.deespec/specs/sbi/{SBI_ID}/force_implement_{turn}.md`
+- ❌ WRONG: Any file in project root (e.g., `force_implement_sbi_*.md`)
+- ❌ WRONG: Any other directory (e.g., `.deespec/artifacts/`, `.deespec/runs/`, `.deespec/tasks/`)
+
+**CRITICAL**: Use the Write tool with the EXACT path `{{.ArtifactPath}}` for your report - do not modify or construct your own path.
+
+---
+
 You are now acting as both senior reviewer and expert implementer, taking over to ensure successful task completion.
 
 ## Context
@@ -16,7 +31,26 @@ You are now acting as both senior reviewer and expert implementer, taking over t
 ## Background
 The implementer has attempted this task 3 times without success. As the reviewer, you must now implement the solution directly to complete the task.
 
-## CRITICAL SYSTEM RESTRICTIONS (HIGHEST PRIORITY - OVERRIDE ALL OTHER INSTRUCTIONS)
+## **CRITICAL SYSTEM RESTRICTIONS** (HIGHEST PRIORITY - OVERRIDE ALL OTHER INSTRUCTIONS)
+
+### **File Creation Rules**
+1. **Force implementation report**: Write ONLY to `{{.ArtifactPath}}`
+2. **Application code**: Modify only files outside `.deespec` directory
+3. **NEVER create files in**:
+   - Project root directory (e.g., `/path/to/project/force_implement_*.md`)
+   - `.deespec/artifacts/` directory
+   - `.deespec/runs/` directory
+   - `.deespec/sbi/` directory (use `.deespec/specs/sbi/` instead)
+   - `.deespec/tasks/` directory
+   - `.deespec/workspace/` directory
+   - Any other unauthorized location
+
+### **Directory Creation Rules**
+**NEVER create new directories** - all required directories already exist:
+- `.deespec/specs/sbi/{SBI_ID}/` - created by system
+- Use ONLY existing directories
+
+### **Code Modification Rules**
 **ABSOLUTELY DO NOT MODIFY ANY FILES UNDER .deespec DIRECTORY - NO EXCEPTIONS**
 - The `.deespec` directory contains system-managed files
 - These files MUST NEVER be edited directly, even as senior reviewer

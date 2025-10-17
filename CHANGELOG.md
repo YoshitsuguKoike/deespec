@@ -4,6 +4,10 @@
 
 ## \[Unreleased]
 
+---
+
+## \[v0.3.0] - 2025-10-17
+
 ### 追加 (Added)
 
 - **`sbi register`コマンドに`--parent-pbi`フラグを追加**: SBI登録時にPBIとの紐づけが可能に

@@ -129,7 +129,56 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 		}, nil
 	}
 
-	// Execute workflow step
+	// CRITICAL FIX: If this is a PICK operation (PENDING → PICKED), skip AI agent execution
+	// PICK should only update status, not call AI agent (which takes 7+ minutes)
+	if prevStatus == model.StatusPending {
+		// Just update status to PICKED without calling AI agent
+		if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
+			return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
+		}
+		currentSBI.MarkAsStarted()
+		currentSBI.IncrementTurn()
+
+		if err := uc.sbiRepo.Save(ctx, currentSBI); err != nil {
+			return nil, fmt.Errorf("failed to save SBI to DB: %w", err)
+		}
+
+		// Write journal entry for PICK
+		journalRecord := &repository.JournalRecord{
+			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			SBIID:     currentSBI.ID().String(),
+			Turn:      currentTurn,
+			Step:      "pick",
+			Status:    "WIP",
+			Attempt:   currentAttempt,
+			Decision:  "PICKED",
+			ElapsedMs: time.Since(startTime).Milliseconds(),
+			Error:     "",
+			Artifacts: []interface{}{},
+		}
+
+		if err := uc.journalRepo.Append(ctx, journalRecord); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  WARNING: Failed to append journal entry (pick)\n")
+			fmt.Fprintf(os.Stderr, "   Error: %v\n", err)
+		}
+
+		return &dto.RunTurnOutput{
+			Turn:          currentTurn,
+			SBIID:         currentSBI.ID().String(),
+			NoOp:          false,
+			PrevStatus:    uc.mapDomainStatusToString(prevStatus),
+			NextStatus:    "WIP",
+			Decision:      "PICKED",
+			Attempt:       currentAttempt,
+			ArtifactPath:  "",
+			ErrorMsg:      "",
+			ElapsedMs:     time.Since(startTime).Milliseconds(),
+			CompletedAt:   time.Now(),
+			TaskCompleted: false,
+		}, nil
+	}
+
+	// Execute workflow step (for IMPLEMENTING, REVIEWING, etc.)
 	stepOutput, err := uc.executeStepForSBI(ctx, currentSBI, currentTurn, currentAttempt)
 	if err != nil {
 		stepOutput = &dto.ExecuteStepOutput{

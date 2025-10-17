@@ -227,7 +227,13 @@ func (u *DecomposePBIUseCase) Execute(
 		return nil, fmt.Errorf("failed to create approval manifest: %w", err)
 	}
 
-	// 13. Return success result with validation info
+	// 13. Create integration task (統合テスト・修正タスク) for PBI-attached SBIs
+	if err := u.createIntegrationTask(ctx, pbiID); err != nil {
+		log.Printf("Warning: Failed to create integration task: %v", err)
+		// Don't fail the entire process, just log warning
+	}
+
+	// 14. Return success result with validation info
 	message := fmt.Sprintf("Successfully generated %d SBI files", len(sbiFiles))
 	if validationResult.MovedFiles > 0 {
 		message += fmt.Sprintf(" (%d files moved from subdirectories)", validationResult.MovedFiles)
@@ -235,10 +241,11 @@ func (u *DecomposePBIUseCase) Execute(
 	if validationResult.RemovedScripts > 0 {
 		message += fmt.Sprintf(" (%d shell scripts removed)", validationResult.RemovedScripts)
 	}
+	message += " + 1 integration task for PBI-level review"
 
 	return &DecomposeResult{
 		PBIID:          pbiID,
-		SBICount:       len(sbiFiles),
+		SBICount:       len(sbiFiles) + 1, // Include integration task in count
 		SBIFiles:       sbiFiles,
 		PromptFilePath: promptFilePath,
 		Message:        message,
@@ -690,5 +697,71 @@ func (u *DecomposePBIUseCase) removeShellScripts(pbiID string) error {
 		log.Printf("Removed %d shell script file(s) from %s", removedCount, pbiDir)
 	}
 
+	return nil
+}
+
+// createIntegrationTask creates a PBI-level integration/correction task (統合確認・修正タスク)
+// This task is automatically created after SBI generation to handle PBI-wide testing and corrections
+// Unlike implementation-only SBIs, this task goes through the full review cycle (only_implement=false)
+func (u *DecomposePBIUseCase) createIntegrationTask(ctx context.Context, pbiID string) error {
+	// 1. Build PBI directory path
+	pbiDir := filepath.Join(u.workingDir, ".deespec", "specs", "pbi", pbiID)
+
+	// 2. Find existing SBI files to determine next sequence number
+	pattern := filepath.Join(pbiDir, "sbi_*.md")
+	existingFiles, err := filepath.Glob(pattern)
+	if err != nil {
+		return fmt.Errorf("failed to list existing SBI files: %w", err)
+	}
+
+	nextSequence := len(existingFiles) + 1
+
+	// 3. Create integration task SBI file
+	integrationFileName := fmt.Sprintf("sbi_%03d_integration.md", nextSequence)
+	integrationFilePath := filepath.Join(pbiDir, integrationFileName)
+
+	// 4. Build integration task content
+	integrationContent := fmt.Sprintf(`# PBI統合確認・修正タスク
+
+## 概要
+このタスクは、%s に属する全SBIの実装を統合的に確認し、不足している部分や不整合がある場合は修正を行います。
+
+## タスク詳細
+### 確認項目
+1. **実装の完全性**: 全SBIが正しく実装され、PBI全体の機能が動作すること
+2. **統合性の確認**: 各SBI間の連携が正しく機能すること
+3. **不整合の検出**: SBI間で矛盾する実装がないこと
+4. **仕様との整合性**: PBIの受け入れ基準を満たしていること
+
+### 修正方針
+- 不足している実装を追加
+- 不整合がある場合は統一的な実装に修正
+- PBIレベルでの統合テストを実行し、問題があれば修正
+
+## 受け入れ基準
+- [ ] 全SBIの実装が統合的に動作すること
+- [ ] PBIの受け入れ基準を満たしていること
+- [ ] 統合テストが成功すること
+- [ ] ドキュメントが整合していること
+
+## 推定工数
+- 実装確認: 0.5時間
+- 修正実装: 1.0時間
+- 統合テスト: 0.5時間
+- 合計: 2.0時間
+
+---
+Parent PBI: %s
+Sequence: %d
+Labels: integration, review
+Only Implement: false
+`, pbiID, pbiID, nextSequence)
+
+	// 5. Write integration task file
+	if err := os.WriteFile(integrationFilePath, []byte(integrationContent), 0644); err != nil {
+		return fmt.Errorf("failed to write integration task file: %w", err)
+	}
+
+	log.Printf("Created integration task: %s", integrationFileName)
 	return nil
 }

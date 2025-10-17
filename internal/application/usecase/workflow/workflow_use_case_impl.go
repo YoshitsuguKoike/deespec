@@ -119,13 +119,26 @@ func (uc *WorkflowUseCaseImpl) ImplementTask(ctx context.Context, req dto.Implem
 	// Update task based on result
 	err = uc.txManager.InTransaction(ctx, func(txCtx context.Context) error {
 		if result.Success {
-			// Move to next step
-			if err := task.UpdateStep(result.NextStep); err != nil {
-				return err
-			}
-			if result.NextStep == model.StepReview {
-				if err := task.UpdateStatus(model.StatusReviewing); err != nil {
+			// Check if this is an SBI with only_implement=true
+			// If so, skip review and go directly to DONE
+			sbiTask, isSBI := task.(interface{ OnlyImplement() bool })
+			if isSBI && sbiTask.OnlyImplement() {
+				// Implementation-only workflow: skip review, go to DONE
+				if err := task.UpdateStep(model.StepDone); err != nil {
 					return err
+				}
+				if err := task.UpdateStatus(model.StatusDone); err != nil {
+					return err
+				}
+			} else {
+				// Full workflow: move to next step (usually Review)
+				if err := task.UpdateStep(result.NextStep); err != nil {
+					return err
+				}
+				if result.NextStep == model.StepReview {
+					if err := task.UpdateStatus(model.StatusReviewing); err != nil {
+						return err
+					}
 				}
 			}
 		} else {
@@ -152,11 +165,18 @@ func (uc *WorkflowUseCaseImpl) ImplementTask(ctx context.Context, req dto.Implem
 		childTaskIDStrs[i] = childID.String()
 	}
 
+	// Determine actual next step based on only_implement flag
+	actualNextStep := result.NextStep
+	sbiTask, isSBI := task.(interface{ OnlyImplement() bool })
+	if result.Success && isSBI && sbiTask.OnlyImplement() {
+		actualNextStep = model.StepDone
+	}
+
 	return &dto.ImplementTaskResponse{
 		Success:      result.Success,
 		Message:      result.Message,
 		TaskID:       req.TaskID,
-		NextStep:     result.NextStep.String(),
+		NextStep:     actualNextStep.String(),
 		Artifacts:    artifactPaths,
 		ChildTaskIDs: childTaskIDStrs,
 	}, nil

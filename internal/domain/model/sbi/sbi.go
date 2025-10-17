@@ -28,6 +28,7 @@ type SBIMetadata struct {
 	AssignedAgent  string   // e.g., "claude-code", "gemini-cli", "codex"
 	FilePaths      []string // Files to be modified/created
 	DependsOn      []string // IDs of SBIs that must be completed before this SBI
+	OnlyImplement  bool     // false=実装→レビュー（デフォルト）, true=実装のみ
 }
 
 // ExecutionState tracks the execution state of an SBI
@@ -320,4 +321,16 @@ func (s *SBI) WorkDuration() *time.Duration {
 	}
 	duration := s.metadata.CompletedAt.Sub(*s.metadata.StartedAt)
 	return &duration
+}
+
+// === Workflow Control Methods ===
+
+// OnlyImplement checks if this SBI should only do implementation (no review)
+func (s *SBI) OnlyImplement() bool {
+	return s.metadata.OnlyImplement
+}
+
+// SetOnlyImplement sets the only_implement flag
+func (s *SBI) SetOnlyImplement(onlyImplement bool) {
+	s.metadata.OnlyImplement = onlyImplement
 }

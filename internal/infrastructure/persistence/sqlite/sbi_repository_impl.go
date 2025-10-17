@@ -38,6 +38,7 @@ func (r *SBIRepositoryImpl) Find(ctx context.Context, id repository.SBIID) (*sbi
 		       estimated_hours, priority, sequence, registered_at, started_at, completed_at,
 		       labels, assigned_agent, file_paths,
 		       current_turn, current_attempt, max_turns, max_attempts, last_error, artifact_paths,
+		       only_implement,
 		       created_at, updated_at
 		FROM sbis
 		WHERE id = ?
@@ -103,8 +104,9 @@ func (r *SBIRepositoryImpl) Save(ctx context.Context, s *sbi.SBI) error {
 		                  estimated_hours, priority, sequence, registered_at, started_at, completed_at,
 		                  labels, assigned_agent, file_paths,
 		                  current_turn, current_attempt, max_turns, max_attempts, last_error, artifact_paths,
+		                  only_implement,
 		                  created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			description = excluded.description,
@@ -126,6 +128,7 @@ func (r *SBIRepositoryImpl) Save(ctx context.Context, s *sbi.SBI) error {
 			max_attempts = excluded.max_attempts,
 			last_error = excluded.last_error,
 			artifact_paths = excluded.artifact_paths,
+			only_implement = excluded.only_implement,
 			updated_at = excluded.updated_at
 	`
 
@@ -137,6 +140,7 @@ func (r *SBIRepositoryImpl) Save(ctx context.Context, s *sbi.SBI) error {
 		string(labelsJSON), metadata.AssignedAgent, string(filePathsJSON),
 		execution.CurrentTurn.Value(), execution.CurrentAttempt.Value(), execution.MaxTurns, execution.MaxAttempts,
 		execution.LastError, string(artifactPathsJSON),
+		metadata.OnlyImplement,
 		s.CreatedAt().Value(), s.UpdatedAt().Value(),
 	)
 	if err != nil {
@@ -173,6 +177,7 @@ func (r *SBIRepositoryImpl) List(ctx context.Context, filter repository.SBIFilte
 		       estimated_hours, priority, sequence, registered_at, started_at, completed_at,
 		       labels, assigned_agent, file_paths,
 		       current_turn, current_attempt, max_turns, max_attempts, last_error, artifact_paths,
+		       only_implement,
 		       created_at, updated_at
 		FROM sbis
 		WHERE 1=1
@@ -240,6 +245,7 @@ func (r *SBIRepositoryImpl) FindByPBIID(ctx context.Context, pbiID repository.PB
 		       estimated_hours, priority, sequence, registered_at, started_at, completed_at,
 		       labels, assigned_agent, file_paths,
 		       current_turn, current_attempt, max_turns, max_attempts, last_error, artifact_paths,
+		       only_implement,
 		       created_at, updated_at
 		FROM sbis
 		WHERE parent_pbi_id = ?
@@ -293,6 +299,7 @@ func (r *SBIRepositoryImpl) scanSBI(row *sql.Row) (*sbi.SBI, error) {
 		maxAttempts       int
 		lastError         sql.NullString
 		artifactPathsJSON sql.NullString
+		onlyImplement     bool
 		createdAt         string
 		updatedAt         string
 	)
@@ -302,6 +309,7 @@ func (r *SBIRepositoryImpl) scanSBI(row *sql.Row) (*sbi.SBI, error) {
 		&estimatedHours, &priority, &sequence, &registeredAt, &startedAt, &completedAt,
 		&labelsJSON, &assignedAgent, &filePathsJSON,
 		&currentTurn, &currentAttempt, &maxTurns, &maxAttempts, &lastError, &artifactPathsJSON,
+		&onlyImplement,
 		&createdAt, &updatedAt,
 	)
 	if err != nil {
@@ -325,6 +333,7 @@ func (r *SBIRepositoryImpl) scanSBI(row *sql.Row) (*sbi.SBI, error) {
 		estimatedHours, priority, sequence, registeredAt, startedAt, completedAt,
 		labelsJSON, assignedAgent, filePathsJSON,
 		currentTurn, currentAttempt, maxTurns, maxAttempts, lastError, artifactPathsJSON,
+		onlyImplement,
 		createdAtTime, updatedAtTime)
 }
 
@@ -352,6 +361,7 @@ func (r *SBIRepositoryImpl) scanSBIFromRows(rows *sql.Rows, ctx context.Context)
 		maxAttempts       int
 		lastError         sql.NullString
 		artifactPathsJSON sql.NullString
+		onlyImplement     bool
 		createdAt         string
 		updatedAt         string
 	)
@@ -361,6 +371,7 @@ func (r *SBIRepositoryImpl) scanSBIFromRows(rows *sql.Rows, ctx context.Context)
 		&estimatedHours, &priority, &sequence, &registeredAt, &startedAt, &completedAt,
 		&labelsJSON, &assignedAgent, &filePathsJSON,
 		&currentTurn, &currentAttempt, &maxTurns, &maxAttempts, &lastError, &artifactPathsJSON,
+		&onlyImplement,
 		&createdAt, &updatedAt,
 	)
 	if err != nil {
@@ -381,6 +392,7 @@ func (r *SBIRepositoryImpl) scanSBIFromRows(rows *sql.Rows, ctx context.Context)
 		estimatedHours, priority, sequence, registeredAt, startedAt, completedAt,
 		labelsJSON, assignedAgent, filePathsJSON,
 		currentTurn, currentAttempt, maxTurns, maxAttempts, lastError, artifactPathsJSON,
+		onlyImplement,
 		createdAtTime, updatedAtTime)
 }
 
@@ -397,6 +409,7 @@ func (r *SBIRepositoryImpl) reconstructSBI(
 	labelsJSON, assignedAgent, filePathsJSON sql.NullString,
 	currentTurn, currentAttempt, maxTurns, maxAttempts int,
 	lastError, artifactPathsJSON sql.NullString,
+	onlyImplement bool,
 	createdAt, updatedAt time.Time,
 ) (*sbi.SBI, error) {
 	// Unmarshal JSON arrays
@@ -478,6 +491,7 @@ func (r *SBIRepositoryImpl) reconstructSBI(
 		Labels:         labels,
 		AssignedAgent:  assignedAgent.String,
 		FilePaths:      filePaths,
+		OnlyImplement:  onlyImplement,
 	}
 
 	// Reconstruct execution state

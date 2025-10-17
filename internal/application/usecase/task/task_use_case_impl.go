@@ -121,6 +121,7 @@ func (uc *TaskUseCaseImpl) CreateSBI(ctx context.Context, req dto.CreateSBIReque
 			AssignedAgent:  req.AssignedAgent,
 			FilePaths:      req.FilePaths,
 			DependsOn:      req.DependsOn,
+			OnlyImplement:  req.OnlyImplement,
 		},
 	)
 	if err != nil {

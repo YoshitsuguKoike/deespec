@@ -19,15 +19,16 @@ import (
 
 // sbiRegisterFlags holds the flags for sbi register command
 type sbiRegisterFlags struct {
-	title     string
-	body      string
-	parentPBI string   // Parent PBI ID to link this SBI to
-	labels    string   // Comma-separated labels
-	labelArray []string // Multiple --label flags
-	dependsOn  []string // SBI IDs that this SBI depends on
-	jsonOut    bool
-	dryRun     bool
-	quiet      bool
+	title         string
+	body          string
+	parentPBI     string   // Parent PBI ID to link this SBI to
+	labels        string   // Comma-separated labels
+	labelArray    []string // Multiple --label flags
+	dependsOn     []string // SBI IDs that this SBI depends on
+	onlyImplement bool     // If true, skip review cycle (implementation-only)
+	jsonOut       bool
+	dryRun        bool
+	quiet         bool
 }
 
 // NewSBIRegisterCommand creates the sbi register command
@@ -66,6 +67,7 @@ Examples:
 	cmd.Flags().StringVar(&flags.labels, "labels", "", "Comma-separated list of labels")
 	cmd.Flags().StringSliceVar(&flags.labelArray, "label", []string{}, "Label for the specification (can be specified multiple times)")
 	cmd.Flags().StringSliceVar(&flags.dependsOn, "depends-on", []string{}, "SBI IDs that must be completed before this SBI (can be specified multiple times)")
+	cmd.Flags().BoolVar(&flags.onlyImplement, "only-implement", false, "Skip review cycle and go directly to DONE after implementation")
 	cmd.Flags().BoolVar(&flags.jsonOut, "json", false, "Output result in JSON format")
 	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Simulate registration without creating files")
 	cmd.Flags().BoolVar(&flags.quiet, "quiet", false, "Suppress non-error output")
@@ -183,11 +185,12 @@ func runSBIRegister(ctx context.Context, flags *sbiRegisterFlags) error {
 
 	// Create SBI request
 	req := dto.CreateSBIRequest{
-		Title:       flags.title,
-		Description: body,
-		ParentPBIID: parentPBIID,
-		Labels:      labels,
-		DependsOn:   flags.dependsOn,
+		Title:         flags.title,
+		Description:   body,
+		ParentPBIID:   parentPBIID,
+		Labels:        labels,
+		DependsOn:     flags.dependsOn,
+		OnlyImplement: flags.onlyImplement,
 	}
 
 	// Execute the use case

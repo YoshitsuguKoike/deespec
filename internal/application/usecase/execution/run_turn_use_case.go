@@ -140,39 +140,66 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 		}
 	}
 
-	// Determine next status based on current status and decision
-	nextStatus, shouldIncrementAttempt := uc.determineNextStatusForSBI(
-		currentSBI.Status(),
-		stepOutput.Decision,
-		currentAttempt,
-	)
+	// Check if this is a REVIEW step
+	// Since v0.2.13, review decisions are handled by `deespec sbi review` command
+	// which updates the status directly. We only need to wait for AI execution to complete.
+	currentStatus := currentSBI.Status()
+	isReviewStep := (currentStatus == model.StatusReviewing)
 
-	if shouldIncrementAttempt {
-		currentAttempt++
-	}
+	var nextStatus model.Status
+	var shouldIncrementAttempt bool
 
-	// Update SBI entity with new status and execution state
-	// Handle PENDING → PICKED transition if needed
-	if currentSBI.Status() == model.StatusPending && nextStatus != model.StatusPicked {
-		if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
-			return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
+	if isReviewStep {
+		// For REVIEW steps: AI agent executes `deespec sbi review --decision X --stdin` command
+		// The command updates the status (DONE or IMPLEMENTING) directly in the database
+		// We don't need to update status here - just reload the SBI to get the updated status
+		reloadedSBI, err := uc.sbiRepo.Find(ctx, repository.SBIID(currentSBI.ID().String()))
+		if err != nil {
+			return nil, fmt.Errorf("failed to reload SBI after review: %w", err)
 		}
-		// Record work start time when task is picked
-		currentSBI.MarkAsStarted()
-	}
+		if reloadedSBI == nil {
+			return nil, fmt.Errorf("SBI disappeared after review: %s", currentSBI.ID().String())
+		}
 
-	// Now transition to the target status
-	if err := currentSBI.UpdateStatus(nextStatus); err != nil {
-		return nil, fmt.Errorf("failed to update SBI status: %w", err)
-	}
+		// Use the reloaded status - it was already updated by the review command
+		nextStatus = reloadedSBI.Status()
+		currentSBI = reloadedSBI
+		shouldIncrementAttempt = false
+	} else {
+		// For non-REVIEW steps: determine next status based on current status and decision
+		nextStatus, shouldIncrementAttempt = uc.determineNextStatusForSBI(
+			currentSBI.Status(),
+			stepOutput.Decision,
+			currentAttempt,
+		)
 
-	// Record work completion time when task is done or failed
-	if nextStatus == model.StatusDone || nextStatus == model.StatusFailed {
-		currentSBI.MarkAsCompleted()
-	}
+		if shouldIncrementAttempt {
+			currentAttempt++
+		}
 
-	// Update turn in execution state
-	currentSBI.IncrementTurn()
+		// Update SBI entity with new status and execution state
+		// Handle PENDING → PICKED transition if needed
+		if currentSBI.Status() == model.StatusPending && nextStatus != model.StatusPicked {
+			if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
+				return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
+			}
+			// Record work start time when task is picked
+			currentSBI.MarkAsStarted()
+		}
+
+		// Now transition to the target status
+		if err := currentSBI.UpdateStatus(nextStatus); err != nil {
+			return nil, fmt.Errorf("failed to update SBI status: %w", err)
+		}
+
+		// Record work completion time when task is done or failed
+		if nextStatus == model.StatusDone || nextStatus == model.StatusFailed {
+			currentSBI.MarkAsCompleted()
+		}
+
+		// Update turn in execution state
+		currentSBI.IncrementTurn()
+	}
 
 	// NOTE: done.md generation is commented out due to performance concerns
 	//
@@ -370,41 +397,68 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 		}
 	}
 
-	// 6. Determine next status based on current status and decision
-	nextStatus, shouldIncrementAttempt := uc.determineNextStatusForSBI(
-		currentSBI.Status(),
-		stepOutput.Decision,
-		currentAttempt,
-	)
+	// 6. Check if this is a REVIEW step
+	// Since v0.2.13, review decisions are handled by `deespec sbi review` command
+	// which updates the status directly. We only need to wait for AI execution to complete.
+	currentStatus := currentSBI.Status()
+	isReviewStep := (currentStatus == model.StatusReviewing)
 
-	if shouldIncrementAttempt {
-		currentAttempt++
-	}
+	var nextStatus model.Status
+	var shouldIncrementAttempt bool
 
-	// 7. Update SBI entity with new status and execution state
-	// Handle PENDING → PICKED transition if needed (state machine requires this intermediate step)
-	if currentSBI.Status() == model.StatusPending && nextStatus != model.StatusPicked {
-		// First transition: PENDING → PICKED
-		if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
-			return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
+	if isReviewStep {
+		// For REVIEW steps: AI agent executes `deespec sbi review --decision X --stdin` command
+		// The command updates the status (DONE or IMPLEMENTING) directly in the database
+		// We don't need to update status here - just reload the SBI to get the updated status
+		reloadedSBI, err := uc.sbiRepo.Find(ctx, repository.SBIID(currentSBI.ID().String()))
+		if err != nil {
+			return nil, fmt.Errorf("failed to reload SBI after review: %w", err)
 		}
-		// Record work start time when task is picked
-		currentSBI.MarkAsStarted()
-	}
+		if reloadedSBI == nil {
+			return nil, fmt.Errorf("SBI disappeared after review: %s", currentSBI.ID().String())
+		}
 
-	// Now transition to the target status
-	if err := currentSBI.UpdateStatus(nextStatus); err != nil {
-		return nil, fmt.Errorf("failed to update SBI status: %w", err)
-	}
+		// Use the reloaded status - it was already updated by the review command
+		nextStatus = reloadedSBI.Status()
+		currentSBI = reloadedSBI
+		shouldIncrementAttempt = false
+	} else {
+		// 7. For non-REVIEW steps: determine next status based on current status and decision
+		nextStatus, shouldIncrementAttempt = uc.determineNextStatusForSBI(
+			currentSBI.Status(),
+			stepOutput.Decision,
+			currentAttempt,
+		)
 
-	// Record work completion time when task is done or failed
-	if nextStatus == model.StatusDone || nextStatus == model.StatusFailed {
-		currentSBI.MarkAsCompleted()
-	}
+		if shouldIncrementAttempt {
+			currentAttempt++
+		}
 
-	// Update turn and attempt in execution state
-	currentSBI.IncrementTurn()
-	// TODO: Add method to update attempt if needed
+		// 8. Update SBI entity with new status and execution state
+		// Handle PENDING → PICKED transition if needed (state machine requires this intermediate step)
+		if currentSBI.Status() == model.StatusPending && nextStatus != model.StatusPicked {
+			// First transition: PENDING → PICKED
+			if err := currentSBI.UpdateStatus(model.StatusPicked); err != nil {
+				return nil, fmt.Errorf("failed to update SBI status to PICKED: %w", err)
+			}
+			// Record work start time when task is picked
+			currentSBI.MarkAsStarted()
+		}
+
+		// Now transition to the target status
+		if err := currentSBI.UpdateStatus(nextStatus); err != nil {
+			return nil, fmt.Errorf("failed to update SBI status: %w", err)
+		}
+
+		// Record work completion time when task is done or failed
+		if nextStatus == model.StatusDone || nextStatus == model.StatusFailed {
+			currentSBI.MarkAsCompleted()
+		}
+
+		// Update turn and attempt in execution state
+		currentSBI.IncrementTurn()
+		// TODO: Add method to update attempt if needed
+	}
 
 	// NOTE: done.md generation is commented out due to performance concerns
 	//
@@ -537,11 +591,11 @@ func (uc *RunTurnUseCase) executeStepForSBI(ctx context.Context, sbiEntity *sbi.
 		}, err
 	}
 
-	// Extract decision for review steps
+	// Note: Decision extraction for review steps is no longer needed here
+	// Since v0.2.13, AI agents execute `deespec sbi review --decision SUCCEEDED --stdin` command
+	// which updates the status directly in ReviewSBIUseCase.Execute()
+	// The decision extraction logic is only kept for backward compatibility with old workflow
 	decision := "PENDING"
-	if currentStatus == "REVIEW" || currentStatus == "REVIEW&WIP" {
-		decision, _ = uc.extractDecisionWithLogging(artifactPath, agentResult.Output, sbiID)
-	}
 
 	// Check if artifact file was created by Claude
 	artifactCreated := false

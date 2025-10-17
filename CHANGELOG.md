@@ -6,6 +6,21 @@
 
 ---
 
+## \[v0.2.10] - 2025-10-17
+
+### 修正 (Fixed)
+
+* **マイグレーションテストの修正**: バージョン6対応とインクリメンタルマイグレーション適用の改善
+  - TestMigration_NewDatabaseで期待レコード数を4から6に更新
+  - TestMigration_ExistingDatabaseで期待バージョンを4から6に更新
+  - started_atとcompleted_atフィールドの確認を追加（migration 006対応）
+  - 新規データベースでもインクリメンタルマイグレーションが常に適用されるように修正
+  - ファイル:
+    - `internal/infrastructure/persistence/sqlite/migration_test.go`
+    - `internal/infrastructure/persistence/sqlite/migration.go`
+
+---
+
 ## \[v0.2.9] - 2025-10-17
 
 ### 追加 (Added)

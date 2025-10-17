@@ -926,15 +926,48 @@ func (uc *RunTurnUseCase) extractDecision(output string) string {
 // extractDecisionWithLogging extracts decision from artifact file with metadata validation and logging
 // Returns decision string and source indicator for debugging
 func (uc *RunTurnUseCase) extractDecisionWithLogging(artifactPath string, agentOutput string, sbiID string) (decision string, source string) {
-	// Try to read artifact file
-	content, err := os.ReadFile(artifactPath)
+	// First, try to determine the turn number from artifactPath (e.g., "review_4.md" -> 4)
+	// This is needed to check the new reports directory
+	var reportPath string
+	if strings.Contains(artifactPath, "review_") {
+		// Extract turn number from path like ".deespec/specs/sbi/{SBIID}/review_{turn}.md"
+		filename := filepath.Base(artifactPath)
+		// filename is like "review_4.md"
+		parts := strings.Split(filename, "_")
+		if len(parts) == 2 {
+			turnStr := strings.TrimSuffix(parts[1], ".md")
+			// Construct new reports path: .deespec/reports/sbi/{SBIID}/review_{turn}.md
+			reportPath = filepath.Join(".deespec", "reports", "sbi", sbiID, fmt.Sprintf("review_%s.md", turnStr))
+		}
+	}
+
+	// Try to read from new reports location first (priority)
+	var content []byte
+	var err error
+	var actualPath string
+
+	if reportPath != "" {
+		content, err = os.ReadFile(reportPath)
+		if err == nil {
+			actualPath = reportPath
+		}
+	}
+
+	// Fall back to old artifact path if new path doesn't exist
 	if err != nil {
-		// Artifact doesn't exist yet, use agent output
+		content, err = os.ReadFile(artifactPath)
+		actualPath = artifactPath
+	}
+
+	if err != nil {
+		// Artifact doesn't exist in either location, use agent output
 		decision = uc.extractDecision(agentOutput)
-		fmt.Fprintf(os.Stderr, "[decision] SBI=%s, Source=agent_output (file not found), Decision=%s\n", sbiID, decision)
+		fmt.Fprintf(os.Stderr, "[decision] SBI=%s, Source=agent_output (file not found), Decision=%s, CheckedPaths=[%s, %s]\n",
+			sbiID, decision, reportPath, artifactPath)
 		return decision, "agent_output"
 	}
 
+	fmt.Fprintf(os.Stderr, "[decision] SBI=%s, ReadFrom=%s\n", sbiID, actualPath)
 	fileContent := string(content)
 
 	// Extract decision from head (first 20 lines, ## Summary section)

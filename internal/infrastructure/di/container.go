@@ -39,6 +39,7 @@ type Container struct {
 	epicRepo      repository.EPICRepository
 	pbiRepo       repository.PBIRepository
 	sbiRepo       repository.SBIRepository
+	sbiExecLogRepo repository.SBIExecLogRepository
 	runLockRepo   repository.RunLockRepository
 	stateLockRepo repository.StateLockRepository
 	labelRepo     repository.LabelRepository
@@ -179,6 +180,7 @@ func (c *Container) initializeInfrastructure() error {
 	c.epicRepo = sqliterepo.NewEPICRepository(db)
 	c.pbiRepo = sqliterepo.NewPBIRepository(db)
 	c.sbiRepo = sqliterepo.NewSBIRepository(db)
+	c.sbiExecLogRepo = sqliterepo.NewSBIExecLogRepository(db)
 	c.runLockRepo = sqliterepo.NewRunLockRepository(db)
 	c.stateLockRepo = sqliterepo.NewStateLockRepository(db)
 	// Note: labelRepo will be initialized when GetLabelRepository() is called
@@ -397,6 +399,11 @@ func (c *Container) GetLockService() service.LockService {
 // GetSBIRepository returns the SBI repository
 func (c *Container) GetSBIRepository() repository.SBIRepository {
 	return c.sbiRepo
+}
+
+// GetSBIExecLogRepository returns the SBI execution log repository
+func (c *Container) GetSBIExecLogRepository() repository.SBIExecLogRepository {
+	return c.sbiExecLogRepo
 }
 
 // GetLabelRepository returns the label repository

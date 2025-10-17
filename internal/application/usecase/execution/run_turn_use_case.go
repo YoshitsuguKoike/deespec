@@ -85,7 +85,14 @@ func (uc *RunTurnUseCase) ExecuteForSBI(ctx context.Context, sbiID string, input
 
 	// Check turn limit
 	if currentTurn > uc.maxTurns {
-		// Force termination - transition to DONE status
+		// Force termination - must follow valid state transitions
+		// If currently IMPLEMENTING, transition to REVIEWING first, then to DONE
+		if prevStatus == model.StatusImplementing {
+			if err := currentSBI.UpdateStatus(model.StatusReviewing); err != nil {
+				return nil, fmt.Errorf("failed to transition to REVIEWING: %w", err)
+			}
+		}
+		// Now transition to DONE (valid from REVIEWING status)
 		if err := currentSBI.UpdateStatus(model.StatusDone); err != nil {
 			return nil, fmt.Errorf("failed to mark SBI as done: %w", err)
 		}
@@ -436,7 +443,14 @@ func (uc *RunTurnUseCase) Execute(ctx context.Context, input dto.RunTurnInput) (
 
 	// 4. Check turn limit
 	if currentTurn > uc.maxTurns {
-		// Force termination - transition to DONE status
+		// Force termination - must follow valid state transitions
+		// If currently IMPLEMENTING, transition to REVIEWING first, then to DONE
+		if prevStatus == model.StatusImplementing {
+			if err := currentSBI.UpdateStatus(model.StatusReviewing); err != nil {
+				return nil, fmt.Errorf("failed to transition to REVIEWING: %w", err)
+			}
+		}
+		// Now transition to DONE (valid from REVIEWING status)
 		if err := currentSBI.UpdateStatus(model.StatusDone); err != nil {
 			return nil, fmt.Errorf("failed to mark SBI as done: %w", err)
 		}

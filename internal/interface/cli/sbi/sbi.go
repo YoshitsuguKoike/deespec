@@ -21,7 +21,6 @@ func NewSBICommand() *cobra.Command {
 	cmd.AddCommand(NewSBIShowCommand())
 	cmd.AddCommand(NewSBIResetCommand())
 	cmd.AddCommand(NewSBIHistoryCommand())
-	cmd.AddCommand(NewSBIReviewCommand())
 	cmd.AddCommand(NewSBIReportCommand())
 
 	return cmd

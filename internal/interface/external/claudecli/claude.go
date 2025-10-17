@@ -62,7 +62,7 @@ func (r Runner) Run(ctx context.Context, prompt string, extraArgs ...string) (st
 func (r Runner) RunWithOptions(ctx context.Context, prompt string, opts *RunOptions, extraArgs ...string) (string, error) {
 	// JSON形式で出力を取得（構造化された結果）
 	// 権限確認をスキップして動作確認を優先
-	args := []string{"-p", "-m", "haiku", "--dangerously-skip-permissions", "--output-format", "json"}
+	args := []string{"-p", "--dangerously-skip-permissions", "--output-format", "json"}
 
 	// Add tool permissions if specified
 	if opts != nil {
@@ -125,7 +125,7 @@ func (r Runner) RunWithStream(ctx context.Context, prompt string, streamCtx *Str
 	// stream-json形式で出力を取得
 	// Note: If Claude CLI doesn't support stream-json, try just json with verbose
 	// 権限確認をスキップして動作確認を優先
-	args := []string{"-p", "-m", "haiku", "--dangerously-skip-permissions", "--verbose", "--output-format", "stream-json"}
+	args := []string{"-p", "--dangerously-skip-permissions", "--verbose", "--output-format", "stream-json"}
 
 	// Log the command for debugging
 	if streamCtx.LogWriter != nil {

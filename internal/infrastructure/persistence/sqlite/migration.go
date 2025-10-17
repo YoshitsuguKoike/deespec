@@ -22,6 +22,9 @@ var migration006SQL string
 //go:embed migrations/007_create_sbi_exec_logs.sql
 var migration007SQL string
 
+//go:embed migrations/008_add_only_implement_flag.sql
+var migration008SQL string
+
 // Migrator manages database schema migrations
 type Migrator struct {
 	db *sql.DB
@@ -172,6 +175,7 @@ func (m *Migrator) applyIncrementalMigrations() error {
 		{5, migration005SQL, "Add SBI dependencies table"},
 		{6, migration006SQL, "Add started_at and completed_at timestamps to sbis table"},
 		{7, migration007SQL, "Create SBI execution logs table"},
+		{8, migration008SQL, "Add only_implement flag to sbis table for workflow control"},
 	}
 
 	// Apply each migration if not already applied

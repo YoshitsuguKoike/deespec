@@ -6,15 +6,22 @@
 
 ---
 
-## \[v0.3.2] - 2025-10-17
+## \[v0.3.3] - 2025-10-17
 
 ### 追加 (Added)
 
-- **-pモードでClaude CLI呼び出し時に`-m haiku`フラグを追加**: 効率的なモデル選択でコスト削減
-  - 新機能: `-p`（プロンプトモード）でClaude CLIを実行する際、`-m haiku`フラグを自動付与
-  - 効果: Haiku モデルを使用することで、応答速度向上とコスト削減を実現
-  - 対象コマンド: `deespec sbi run -p` および関連プロンプト実行フロー
-  - ファイル: Claude CLI呼び出し部分の実装箇所
+- **`only_implement`フラグ用マイグレーション追加**: SBIワークフロー制御機能のデータベースサポート
+  - マイグレーション008を追加: `only_implement` BOOLEAN カラムをsbisテーブルに追加
+  - デフォルト値: false（通常の実装→レビューサイクル）
+  - true設定時: 実装のみでレビューステップをスキップ
+  - ファイル: `internal/infrastructure/persistence/sqlite/migrations/008_add_only_implement_flag.sql`
+
+### 変更 (Changed)
+
+- **Claude CLI呼び出しから`-m haiku`フラグを削除**: デフォルトモデル選択に戻す
+  - 変更: `-p`モードでの自動 Haiku モデル指定を削除
+  - 理由: モデル選択を Claude CLI のデフォルト動作に委ねる
+  - ファイル: `internal/interface/external/claudecli/claude.go`
 
 ---
 

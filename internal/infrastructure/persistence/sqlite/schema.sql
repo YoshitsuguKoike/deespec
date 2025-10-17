@@ -186,7 +186,7 @@ CREATE INDEX IF NOT EXISTS idx_sbi_deps_depends_on ON sbi_dependencies(depends_o
 INSERT OR IGNORE INTO schema_migrations (version, description)
 VALUES (5, 'Add sbi_dependencies table for dependency management');
 
--- SBI workflow control (Version 6)
+-- SBI workflow control (Version 8)
 -- Add only_implement flag to control SBI workflow (implementation-only vs full review cycle)
 INSERT OR IGNORE INTO schema_migrations (version, description)
-VALUES (6, 'Add only_implement flag to sbis table for workflow control');
+VALUES (8, 'Add only_implement flag to sbis table for workflow control');

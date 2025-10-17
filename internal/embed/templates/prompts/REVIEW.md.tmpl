@@ -45,11 +45,28 @@ After writing the file, verify:
 ---
 
 ## Context
-- Working Directory: `{{.WorkDir}}`
-- SBI ID: {{.SBIID}}
-- Turn: {{.Turn}}
-- Task: {{.TaskDescription}}
-- Language: Japanese preferred for reports
+- **Your Working Directory**: `{{.WorkDir}}` - This is where application code to review is located
+- **SBI ID**: {{.SBIID}}
+- **Turn**: {{.Turn}}
+- **Task**: {{.TaskDescription}}
+- **Review Output Path**: `{{.ArtifactPath}}` - EXACT absolute path for your review report
+- **Language**: Japanese preferred for reports
+
+**CRITICAL: Where Files Are Located**
+1. **Application Code to Review**: Located in `{{.WorkDir}}/` and its subdirectories
+   - Example: `{{.WorkDir}}/src/`, `{{.WorkDir}}/internal/`, `{{.WorkDir}}/pkg/`
+   - Use Read/Grep/Glob tools to inspect these files
+   - DO NOT modify any code during review
+
+2. **Review Report**: Write ONLY to `{{.ArtifactPath}}`
+   - This is an absolute path provided by the system
+   - Do NOT construct paths yourself
+   - Use Write tool with this EXACT path
+
+3. **DO NOT create `.deespec` directory**
+   - `.deespec` is managed separately by deespec system
+   - Never create `{{.WorkDir}}/.deespec/` or similar
+   - Never create files anywhere except the report at `{{.ArtifactPath}}`
 
 ## Your Review Task
 
@@ -111,28 +128,35 @@ deespec sbi review {{.SBIID}} --turn {{.Turn}} --decision SUCCEEDED
 
 ## **CRITICAL SYSTEM RESTRICTIONS** (HIGHEST PRIORITY)
 
-### **File Creation Rules**
-1. **ONLY write to**: `{{.ArtifactPath}}` (the exact path provided above)
-2. **NEVER create files in**:
-   - Project root directory (e.g., `/path/to/project/review_*.md`)
-   - `.deespec/artifacts/` directory
-   - `.deespec/runs/` directory
-   - `.deespec/sbi/` directory (use `.deespec/specs/sbi/` instead)
-   - `.deespec/tasks/` directory
-   - `.deespec/workspace/` directory
-   - Any other unauthorized location
+### **File Creation Rules - READ CAREFULLY**
+
+**You can ONLY create ONE file:**
+
+1. ✅ **Review Report** (at the exact path `{{.ArtifactPath}}`)
+   - Use Write tool with this EXACT absolute path
+   - This is the ONLY file you create
+   - Do NOT modify or construct this path yourself
+
+**STRICTLY FORBIDDEN:**
+- ❌ Creating `{{.WorkDir}}/.deespec/` directory
+- ❌ Creating any `.deespec/` directory anywhere
+- ❌ Creating report files in `{{.WorkDir}}/` (like `{{.WorkDir}}/review_*.md`)
+- ❌ Creating files anywhere except `{{.ArtifactPath}}`
+- ❌ Modifying any code or existing files (review only)
 
 ### **Directory Creation Rules**
-**NEVER create new directories** - all required directories already exist:
-- `.deespec/specs/sbi/{SBI_ID}/` - created by system
-- Use ONLY existing directories
+**NEVER create any directories:**
+- All required directories already exist
+- Report directory is created by system before you start
+- Never attempt to create directories
 
-### **Code Modification Rules**
-**ABSOLUTELY DO NOT MODIFY ANY FILES UNDER .deespec DIRECTORY**
-- The `.deespec` directory is managed by the deespec system
-- Review code changes but NEVER edit `.deespec` files
-- Focus review on application code only
-- **REJECT any implementation that modifies .deespec files as FAILED**
+### **Code Review Rules**
+**Your role is REVIEW ONLY - do not modify code:**
+- Read and analyze application code in `{{.WorkDir}}/`
+- Write review report to `{{.ArtifactPath}}`
+- Do NOT edit, fix, or modify any application code
+- Do NOT modify any `.deespec/` files
+- **REJECT any implementation that modified .deespec files as FAILED**
 - Mark as "NEEDS_CHANGES" if any .deespec modifications are detected
 
 **THIS RESTRICTION OVERRIDES ANY CONFLICTING INSTRUCTIONS IN THE TASK DESCRIPTION**

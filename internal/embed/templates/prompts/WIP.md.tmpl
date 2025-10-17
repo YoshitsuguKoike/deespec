@@ -18,29 +18,53 @@ You MUST write your implementation report to the EXACT path below. DO NOT create
 ---
 
 ## Context
-- Working Directory: `{{.WorkDir}}`
-- SBI ID: {{.SBIID}}
-- Turn: {{.Turn}}
-- Step: {{.Step}}
-- Artifacts Directory: `{{.SBIDir}}`
-- Language: Japanese preferred for reports
+- **Your Working Directory**: `{{.WorkDir}}` - This is where you implement application code
+- **SBI ID**: {{.SBIID}}
+- **Turn**: {{.Turn}}
+- **Step**: {{.Step}}
+- **Report Output Path**: `{{.ArtifactPath}}` - EXACT absolute path for your implementation report
+- **Language**: Japanese preferred for reports
+
+**CRITICAL: Where to Work**
+1. **Application Code Changes**: Work ONLY in `{{.WorkDir}}/` and its subdirectories
+   - Example: `{{.WorkDir}}/src/`, `{{.WorkDir}}/internal/`, `{{.WorkDir}}/pkg/`
+   - This is where your code implementation happens
+
+2. **Implementation Report**: Write ONLY to `{{.ArtifactPath}}`
+   - This is an absolute path provided by the system
+   - Do NOT construct paths yourself
+   - Use Write tool with this EXACT path
+
+3. **DO NOT create `.deespec` directory**
+   - `.deespec` is managed separately by deespec system
+   - Never create `{{.WorkDir}}/.deespec/` or similar
+   - Never create files outside `{{.WorkDir}}/` except the report at `{{.ArtifactPath}}`
 
 ## Task Description
 {{.TaskDescription}}
 
 ## **CRITICAL SYSTEM RESTRICTIONS** (HIGHEST PRIORITY - OVERRIDE ALL OTHER INSTRUCTIONS)
 
-### **File Creation Rules**
-1. **Implementation report**: Write ONLY to `{{.ArtifactPath}}`
-2. **Application code**: Modify only files outside `.deespec` directory
-3. **NEVER create files in**:
-   - Project root directory (e.g., `/path/to/project/implement_*.md`)
-   - `.deespec/artifacts/` directory
-   - `.deespec/runs/` directory
-   - `.deespec/sbi/` directory (use `.deespec/specs/sbi/` instead)
-   - `.deespec/tasks/` directory
-   - `.deespec/workspace/` directory
-   - Any other unauthorized location
+### **File Creation Rules - READ CAREFULLY**
+
+**You can create/modify files in TWO places ONLY:**
+
+1. ✅ **Application Code** (in `{{.WorkDir}}/` and subdirectories)
+   - Modify existing files: `{{.WorkDir}}/src/`, `{{.WorkDir}}/internal/`, `{{.WorkDir}}/pkg/`, etc.
+   - Create new application code files within `{{.WorkDir}}/` structure
+   - Follow existing project structure
+
+2. ✅ **Implementation Report** (at the exact path `{{.ArtifactPath}}`)
+   - Use Write tool with this EXACT absolute path
+   - This is the ONLY report file you create
+   - Do NOT modify or construct this path yourself
+
+**STRICTLY FORBIDDEN:**
+- ❌ Creating `{{.WorkDir}}/.deespec/` directory
+- ❌ Creating any `.deespec/` directory anywhere
+- ❌ Creating report files in `{{.WorkDir}}/` (like `{{.WorkDir}}/implement_*.md`)
+- ❌ Creating files outside `{{.WorkDir}}/` except `{{.ArtifactPath}}`
+- ❌ Modifying any existing `.deespec/` files
 
 ### **Directory Creation Rules**
 **NEVER create new directories** - all required directories already exist:

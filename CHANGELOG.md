@@ -4,6 +4,17 @@
 
 ## \[Unreleased]
 
+### 改善 (Changed)
+
+* **プロンプトテンプレートのパス説明を改善**: AIエージェントの作業場所をより明確に説明
+  - 作業ディレクトリ、レポート出力パス、禁止事項を3つのセクションに分離
+  - アプリケーションコードの場所を具体例付きで説明
+  - `.deespec`ディレクトリの作成禁止を強調（システムが管理）
+  - レビュー時は読み取り専用、実装時は変更可能という役割を明確化
+  - ファイル:
+    - `internal/embed/templates/prompts/REVIEW.md.tmpl`
+    - `internal/embed/templates/prompts/WIP.md.tmpl`
+
 ---
 
 ## \[v0.2.11] - 2025-10-17

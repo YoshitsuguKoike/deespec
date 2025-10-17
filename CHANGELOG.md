@@ -4,6 +4,21 @@
 
 ## \[Unreleased]
 
+### 追加 (Added)
+
+- **SBIリスト表示の強化**: `deespec sbi list`コマンドでTURN、STARTED、COMPLETED列を表示
+  - 追加された列:
+    - TURN: 現在のターン番号（CurrentTurn）
+    - STARTED: 作業開始時刻（StartedAt - PENDING→PICKED遷移時）
+    - COMPLETED: 作業完了時刻（CompletedAt - DONE/FAILED遷移時）
+  - StartedAtとCompletedAtフィールドをSBIDTOに追加
+  - nullable time.Time型（*time.Time）で未設定時は"-"を表示
+  - SBIの実行状態とライフサイクルの可視性が向上
+  - ファイル:
+    - `internal/application/dto/task_dto.go`
+    - `internal/application/usecase/task/task_use_case_impl.go`
+    - `internal/interface/cli/sbi/sbi_list.go`
+
 ---
 
 ## \[v0.2.20] - 2025-10-17

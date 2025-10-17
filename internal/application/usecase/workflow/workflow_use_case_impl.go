@@ -80,21 +80,33 @@ func (uc *WorkflowUseCaseImpl) ImplementTask(ctx context.Context, req dto.Implem
 		return nil, errors.New("task must be PICKED or IMPLEMENTING to execute implementation")
 	}
 
-	// Update status to IMPLEMENTING
-	err = uc.txManager.InTransaction(ctx, func(txCtx context.Context) error {
-		if err := task.UpdateStatus(model.StatusImplementing); err != nil {
-			return err
+	// If PICKED, only update status to IMPLEMENTING without executing implementation
+	// This prevents duplicate execution: once at pick time and again at implementing time
+	if task.Status() == model.StatusPicked {
+		err = uc.txManager.InTransaction(ctx, func(txCtx context.Context) error {
+			if err := task.UpdateStatus(model.StatusImplementing); err != nil {
+				return err
+			}
+			if err := task.UpdateStep(model.StepImplement); err != nil {
+				return err
+			}
+			return uc.taskRepo.Save(txCtx, task)
+		})
+		if err != nil {
+			return nil, err
 		}
-		if err := task.UpdateStep(model.StepImplement); err != nil {
-			return err
-		}
-		return uc.taskRepo.Save(txCtx, task)
-	})
-	if err != nil {
-		return nil, err
+
+		return &dto.ImplementTaskResponse{
+			Success:      true,
+			Message:      "Task status updated to IMPLEMENTING. Call ImplementTask again to execute implementation.",
+			TaskID:       req.TaskID,
+			NextStep:     model.StepImplement.String(),
+			Artifacts:    []string{},
+			ChildTaskIDs: []string{},
+		}, nil
 	}
 
-	// Execute implementation strategy
+	// Task is already IMPLEMENTING - execute implementation strategy
 	result, err := uc.strategyRegistry.ExecuteImplementation(ctx, task)
 	if err != nil {
 		// Record error and save task state

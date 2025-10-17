@@ -8,7 +8,13 @@
 
 ## \[v0.2.14] - 2025-10-17
 
-リリース用バージョン（v0.2.13と同一内容）
+### 修正 (Fixed)
+
+* **重複実装の防止**: PICKEDステータスでの不要な実装実行を抑制
+  - 問題: pickのタイミングで実装が実行され、その後implementingステータスでも実装が実行されることで、1回のタスクで2回実装が行われていた
+  - 修正: `ImplementTask`関数を変更し、PICKEDステータスの場合はIMPLEMENTINGへのステータス変更のみを行い、実装は実行しないように改善
+  - 効果: トークン消費量の削減と実行速度の向上（不要な実装実行を1回削減）
+  - ファイル: `internal/application/usecase/workflow/workflow_use_case_impl.go`
 
 ---
 

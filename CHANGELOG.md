@@ -4,6 +4,10 @@
 
 ## \[Unreleased]
 
+---
+
+## \[v0.2.21] - 2025-10-17
+
 ### 追加 (Added)
 
 - **SBIリスト表示の強化**: `deespec sbi list`コマンドでTURN、STARTED、COMPLETED列を表示

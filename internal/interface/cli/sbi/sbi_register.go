@@ -19,9 +19,10 @@ import (
 
 // sbiRegisterFlags holds the flags for sbi register command
 type sbiRegisterFlags struct {
-	title      string
-	body       string
-	labels     string   // Comma-separated labels
+	title     string
+	body      string
+	parentPBI string   // Parent PBI ID to link this SBI to
+	labels    string   // Comma-separated labels
 	labelArray []string // Multiple --label flags
 	dependsOn  []string // SBI IDs that this SBI depends on
 	jsonOut    bool
@@ -45,6 +46,9 @@ Examples:
   # Register with title and body from command line
   deespec sbi register --title "User Authentication" --body "Implementation details..."
 
+  # Register and link to a parent PBI
+  deespec sbi register --title "Auth API Implementation" --parent-pbi PBI-001 --body "Details..."
+
   # Register with title and body from stdin
   echo "Implementation details..." | deespec sbi register --title "User Authentication"
 
@@ -58,6 +62,7 @@ Examples:
 	// Define flags
 	cmd.Flags().StringVar(&flags.title, "title", "", "Title of the specification (required)")
 	cmd.Flags().StringVar(&flags.body, "body", "", "Body content of the specification (reads from stdin if not provided)")
+	cmd.Flags().StringVar(&flags.parentPBI, "parent-pbi", "", "Parent PBI ID to link this SBI to")
 	cmd.Flags().StringVar(&flags.labels, "labels", "", "Comma-separated list of labels")
 	cmd.Flags().StringSliceVar(&flags.labelArray, "label", []string{}, "Label for the specification (can be specified multiple times)")
 	cmd.Flags().StringSliceVar(&flags.dependsOn, "depends-on", []string{}, "SBI IDs that must be completed before this SBI (can be specified multiple times)")
@@ -170,10 +175,17 @@ func runSBIRegister(ctx context.Context, flags *sbiRegisterFlags) error {
 	// Get Task UseCase
 	taskUseCase := container.GetTaskUseCase()
 
+	// Prepare parent PBI ID if provided
+	var parentPBIID *string
+	if flags.parentPBI != "" {
+		parentPBIID = &flags.parentPBI
+	}
+
 	// Create SBI request
 	req := dto.CreateSBIRequest{
 		Title:       flags.title,
 		Description: body,
+		ParentPBIID: parentPBIID,
 		Labels:      labels,
 		DependsOn:   flags.dependsOn,
 	}
@@ -210,6 +222,9 @@ func runSBIRegister(ctx context.Context, flags *sbiRegisterFlags) error {
 		fmt.Printf("Successfully registered SBI\n")
 		fmt.Printf("ID: %s\n", sbiDTO.ID)
 		fmt.Printf("Spec path: %s\n", specPath)
+		if parentPBIID != nil {
+			fmt.Printf("Parent PBI: %s\n", *parentPBIID)
+		}
 		if len(labels) > 0 {
 			fmt.Printf("Labels: %v\n", labels)
 		}

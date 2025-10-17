@@ -4,6 +4,22 @@
 
 ## \[Unreleased]
 
+### 追加 (Added)
+
+- **`sbi register`コマンドに`--parent-pbi`フラグを追加**: SBI登録時にPBIとの紐づけが可能に
+  - 新機能: `--parent-pbi <PBI-ID>` フラグでSBI登録時に親PBIを指定可能
+  - 使用例: `deespec sbi register --title "認証API実装" --parent-pbi PBI-001`
+  - 効果: PBI-SBI階層管理が登録時から可能になり、後からの手動紐づけが不要に
+  - 表示: 登録成功時に親PBI IDを表示
+  - ファイル: `internal/interface/cli/sbi/sbi_register.go`
+
+- **親PBI ID一括更新スクリプト追加**: 既存SBIのspec.mdから親PBI情報を抽出して一括更新
+  - スクリプト: `scripts/update_sbi_parent_pbi.sh`
+  - 機能: spec.mdファイルの`Parent PBI:`行からPBI IDを抽出し、sbisテーブルのparent_pbi_idカラムを更新
+  - 使用例: `./scripts/update_sbi_parent_pbi.sh /path/to/project`
+  - 効果: 既存プロジェクトでもPBI-SBI紐づけを簡単に実現
+  - 統計表示: 処理数、成功数、スキップ数、エラー数を表示
+
 ### 修正 (Fixed)
 
 - **TaskRepository.Listのフィルタリングバグ修正**: ParentIDフィルタが完全に無視されていた問題を修正

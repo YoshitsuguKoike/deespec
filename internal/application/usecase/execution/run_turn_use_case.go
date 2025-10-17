@@ -758,12 +758,13 @@ func (uc *RunTurnUseCase) executeStepForSBI(ctx context.Context, sbiEntity *sbi.
 	step := uc.statusToStep(currentStatus)
 
 	// Determine artifact path
-	// Special case: done.md has no turn suffix
+	// Since v0.2.13, reports are saved to .deespec/reports/sbi/ via commands
+	// This path is used for journal records and fallback file creation
 	var artifactPath string
 	if step == "done" {
-		artifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/done.md", sbiID)
+		artifactPath = fmt.Sprintf(".deespec/reports/sbi/%s/done.md", sbiID)
 	} else {
-		artifactPath = fmt.Sprintf(".deespec/specs/sbi/%s/%s_%d.md", sbiID, step, turn)
+		artifactPath = fmt.Sprintf(".deespec/reports/sbi/%s/%s_%d.md", sbiID, step, turn)
 	}
 
 	// Build prompt with artifact generation instruction
@@ -857,7 +858,8 @@ func (uc *RunTurnUseCase) buildPromptWithArtifact(sbiEntity *sbi.SBI, step strin
 		templatePath = ".deespec/prompts/WIP.md"
 	case "review":
 		templatePath = ".deespec/prompts/REVIEW.md"
-		data.ImplementPath = fmt.Sprintf(".deespec/specs/sbi/%s/implement_%d.md", sbiID, turn-1)
+		// Since v0.2.13, reports are in .deespec/reports/sbi/
+		data.ImplementPath = fmt.Sprintf(".deespec/reports/sbi/%s/implement_%d.md", sbiID, turn-1)
 	case "force_implement":
 		templatePath = ".deespec/prompts/REVIEW_AND_WIP.md"
 	case "done":
@@ -956,7 +958,8 @@ Use the Write tool to create this file with your full implementation report.
 `, priorContext, sbiID, title, description, turn, attempt, artifactPath)
 
 	case "review":
-		implementPath := fmt.Sprintf(".deespec/specs/sbi/%s/implement_%d.md", sbiID, turn-1)
+		// Since v0.2.13, reports are in .deespec/reports/sbi/
+		implementPath := fmt.Sprintf(".deespec/reports/sbi/%s/implement_%d.md", sbiID, turn-1)
 		return fmt.Sprintf(`%s# Code Review Task
 
 **SBI ID**: %s
@@ -1050,13 +1053,15 @@ func (uc *RunTurnUseCase) buildPriorContextInstructions(sbiID string, currentTur
 	context.WriteString("## IMPORTANT: Review Prior Work First\n\n")
 	context.WriteString("Before starting your task, you MUST:\n\n")
 	context.WriteString("### 1. Read All Existing Artifacts\n\n")
-	context.WriteString(fmt.Sprintf("Check and read files in: `.deespec/specs/sbi/%s/`\n\n", sbiID))
+	context.WriteString("Check and read files in the following locations:\n")
+	context.WriteString(fmt.Sprintf("- `.deespec/specs/sbi/%s/` - Specification and old reports\n", sbiID))
+	context.WriteString(fmt.Sprintf("- `.deespec/reports/sbi/%s/` - New implementation and review reports\n\n", sbiID))
 	context.WriteString("Expected files:\n")
-	context.WriteString("- `spec.md`: Original specification\n")
+	context.WriteString("- `spec.md`: Original specification (in specs directory)\n")
 
 	if currentTurn > 1 {
-		context.WriteString("- Previous implementation reports: `implement_*.md`\n")
-		context.WriteString("- Previous review reports: `review_*.md`\n")
+		context.WriteString("- Previous implementation reports: `implement_*.md` (in reports directory)\n")
+		context.WriteString("- Previous review reports: `review_*.md` (in reports directory)\n")
 		context.WriteString("- Notes and rollup files if any\n\n")
 
 		context.WriteString("**Why this matters**:\n")
@@ -1065,7 +1070,7 @@ func (uc *RunTurnUseCase) buildPriorContextInstructions(sbiID string, currentTur
 		context.WriteString("- Build upon previous progress\n")
 		context.WriteString("- Maintain consistency across turns\n\n")
 
-		context.WriteString(fmt.Sprintf("**Action**: Use the Read tool to read `.deespec/specs/sbi/%s/spec.md` and any `implement_*.md` or `review_*.md` files from previous turns.\n\n", sbiID))
+		context.WriteString(fmt.Sprintf("**Action**: Use the Read tool to read `.deespec/specs/sbi/%s/spec.md` and check both `.deespec/specs/sbi/%s/` and `.deespec/reports/sbi/%s/` for any `implement_*.md` or `review_*.md` files from previous turns.\n\n", sbiID, sbiID, sbiID))
 	} else {
 		context.WriteString(fmt.Sprintf("\n**Action**: Use the Read tool to read `.deespec/specs/sbi/%s/spec.md` to understand the full specification.\n\n", sbiID))
 	}
@@ -1374,11 +1379,20 @@ func (uc *RunTurnUseCase) determineNextStatus(currentStatus string, decision str
 // collectImplementPaths collects all implement_N.md paths for an SBI
 func (uc *RunTurnUseCase) collectImplementPaths(sbiID string, maxTurn int) []string {
 	var paths []string
-	sbiDir := fmt.Sprintf(".deespec/specs/sbi/%s", sbiID)
+	// Since v0.2.13, reports are in .deespec/reports/sbi/ but old reports may be in .deespec/specs/sbi/
+	reportsDir := fmt.Sprintf(".deespec/reports/sbi/%s", sbiID)
+	specsDir := fmt.Sprintf(".deespec/specs/sbi/%s", sbiID)
 
-	// Check for implement files from turn 1 to maxTurn
+	// Check for implement files from turn 1 to maxTurn in both locations
 	for turn := 1; turn < maxTurn; turn++ {
-		implementPath := filepath.Join(sbiDir, fmt.Sprintf("implement_%d.md", turn))
+		// Try new location first
+		implementPath := filepath.Join(reportsDir, fmt.Sprintf("implement_%d.md", turn))
+		if _, err := os.Stat(implementPath); err == nil {
+			paths = append(paths, implementPath)
+			continue
+		}
+		// Fall back to old location
+		implementPath = filepath.Join(specsDir, fmt.Sprintf("implement_%d.md", turn))
 		if _, err := os.Stat(implementPath); err == nil {
 			paths = append(paths, implementPath)
 		}
@@ -1390,11 +1404,20 @@ func (uc *RunTurnUseCase) collectImplementPaths(sbiID string, maxTurn int) []str
 // collectReviewPaths collects all review_N.md paths for an SBI
 func (uc *RunTurnUseCase) collectReviewPaths(sbiID string, maxTurn int) []string {
 	var paths []string
-	sbiDir := fmt.Sprintf(".deespec/specs/sbi/%s", sbiID)
+	// Since v0.2.13, reports are in .deespec/reports/sbi/ but old reports may be in .deespec/specs/sbi/
+	reportsDir := fmt.Sprintf(".deespec/reports/sbi/%s", sbiID)
+	specsDir := fmt.Sprintf(".deespec/specs/sbi/%s", sbiID)
 
-	// Check for review files from turn 1 to maxTurn
+	// Check for review files from turn 1 to maxTurn in both locations
 	for turn := 1; turn < maxTurn; turn++ {
-		reviewPath := filepath.Join(sbiDir, fmt.Sprintf("review_%d.md", turn))
+		// Try new location first
+		reviewPath := filepath.Join(reportsDir, fmt.Sprintf("review_%d.md", turn))
+		if _, err := os.Stat(reviewPath); err == nil {
+			paths = append(paths, reviewPath)
+			continue
+		}
+		// Fall back to old location
+		reviewPath = filepath.Join(specsDir, fmt.Sprintf("review_%d.md", turn))
 		if _, err := os.Stat(reviewPath); err == nil {
 			paths = append(paths, reviewPath)
 		}

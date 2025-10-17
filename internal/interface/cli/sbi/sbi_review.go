@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/YoshitsuguKoike/deespec/internal/application/usecase"
+	"github.com/YoshitsuguKoike/deespec/internal/buildinfo"
 	"github.com/YoshitsuguKoike/deespec/internal/infrastructure/persistence/sqlite"
 	infrarepo "github.com/YoshitsuguKoike/deespec/internal/infrastructure/repository"
 	"github.com/spf13/cobra"
@@ -108,6 +110,12 @@ Legacy example (without report):
 			if err := reviewUseCase.Execute(ctx, sbiID, turn, decision); err != nil {
 				return fmt.Errorf("failed to execute review: %w", err)
 			}
+
+			// Log review execution
+			currentTime := time.Now().Format("2006-01-02 15:04:05")
+			version := buildinfo.GetVersion()
+			fmt.Fprintf(os.Stderr, "[review] SBI=%s, DECISION=%s, Turn=%d, Time=%s, Version=%s\n",
+				sbiID, decision, turn, currentTime, version)
 
 			// If stdin content is provided, save review report to file
 			if useStdin && reviewContent != "" {

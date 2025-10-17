@@ -4,6 +4,24 @@
 
 ## \[Unreleased]
 
+### 追加 (Added)
+
+- **レビューコマンドログ出力**: `deespec sbi review`実行時にSBI ID、決定、Turn番号、時刻、バージョンを出力
+  - 出力形式: `[review] SBI=<ID>, DECISION=<SUCCEEDED|NEEDS_CHANGES|FAILED>, Turn=<N>, Time=<YYYY-MM-DD HH:MM:SS>, Version=<vX.Y.Z>`
+  - デバッグとトレーサビリティの向上
+  - ファイル: `internal/interface/cli/sbi/sbi_review.go`
+
+### 修正 (Fixed)
+
+- **タスクログパスの修正**: レポートパスを`.deespec/reports/sbi/`に統一し、後方互換性を維持
+  - 問題: タスクログ（implement_*.md, review_*.md）が古い`.deespec/specs/sbi/`パスにハードコードされていた
+  - 修正:
+    - 新しいレポートは`.deespec/reports/sbi/{SBIID}/`に保存
+    - 過去のレポート読み取りは両方のディレクトリをチェック（新→旧の順）
+    - AIエージェントへの指示で両方の場所を明示
+  - 効果: コマンドベースのレポート提出（v0.2.13以降）と整合性が取れ、レポートが正しい場所に保存される
+  - ファイル: `internal/application/usecase/execution/run_turn_use_case.go`
+
 ---
 
 ## \[v0.2.19] - 2025-10-17

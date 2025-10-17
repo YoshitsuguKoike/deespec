@@ -6,6 +6,38 @@
 
 ---
 
+## \[v0.2.11] - 2025-10-17
+
+### 追加 (Added)
+
+* **`deespec sbi review`コマンド**: AIエージェントがレビュー決定を直接報告可能に
+  - レビュー完了後に`deespec sbi review <SBI_ID> --turn <TURN> --decision <DECISION>`を実行
+  - 決定値: SUCCEEDED（完了）、NEEDS_CHANGES（修正必要）、FAILED（失敗）を受け付け
+  - 大文字小文字を自動正規化（succeeded/SUCCEEDED両方受付）
+  - Turn番号検証により古いレビューの誤適用を防止
+  - ファイル:
+    - `internal/interface/cli/sbi/sbi_review.go`（新規）
+    - `internal/application/usecase/review_sbi_use_case.go`（新規）
+    - `internal/interface/cli/sbi/sbi.go`
+
+### 改善 (Changed)
+
+* **REVIEWプロンプトテンプレートの改善**: 二重の決定記録メカニズムを実装
+  - Step 3: ファイル内にheader DECISION + footer JSONを記載（人間可読な監査証跡）
+  - Step 4: `deespec sbi review`コマンドを実行（確実な状態更新）
+  - 両方のメカニズムにより、決定の記録漏れを防止
+  - コマンド失敗時はファイルパースにフォールバック可能
+  - ファイル: `internal/embed/templates/prompts/REVIEW.md.tmpl`
+
+### 技術詳細
+
+* **Status遷移ロジック**:
+  - SUCCEEDED: REVIEWING → DONE（`completed_at`タイムスタンプ記録）
+  - NEEDS_CHANGES/FAILED: REVIEWING → IMPLEMENTING（Turnインクリメント、次回実行で優先的にpick）
+* **Picker互換性**: IMPLEMENTINGステータスは優先度1でpickされる（既存動作維持）
+
+---
+
 ## \[v0.2.10] - 2025-10-17
 
 ### 修正 (Fixed)

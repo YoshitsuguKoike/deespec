@@ -76,7 +76,36 @@ Choose your decision:
 ### **Step 3: Write Review Report**
 Use the **template above** and write to {{.ArtifactPath}} using the Write tool.
 
+**IMPORTANT**: Include both decision markers in your review file:
+1. **Header DECISION**: `DECISION: SUCCEEDED` (immediately after `## Summary`)
+2. **Footer JSON**: `{"decision": "succeeded"}` (last line of file)
+
 After writing, **verify the file structure** using the validation checklist.
+
+### **Step 4: Report Decision to System (CRITICAL)**
+
+**YOU MUST EXECUTE THIS COMMAND** - After writing the review file, immediately execute:
+
+```bash
+deespec sbi review {{.SBIID}} --turn {{.Turn}} --decision <YOUR_DECISION>
+```
+
+Replace `<YOUR_DECISION>` with one of:
+- `SUCCEEDED` - if implementation is correct and complete
+- `NEEDS_CHANGES` - if minor fixes are needed
+- `FAILED` - if critical issues were found
+
+**Example**:
+```bash
+deespec sbi review {{.SBIID}} --turn {{.Turn}} --decision SUCCEEDED
+```
+
+**Why both mechanisms are required**:
+- **File markers (Step 3)**: Provide human-readable audit trail and backward compatibility
+- **Command execution (Step 4)**: Ensures reliable status update without file parsing ambiguity
+- **Redundancy**: If command fails, system can fall back to file parsing
+
+**CRITICAL**: You must use the Bash tool to execute this command. Do not skip this step - the workflow depends on it.
 
 ---
 

@@ -15,9 +15,9 @@ import (
 
 // ReportSBIUseCase handles implementation and review report submission from AI agents
 type ReportSBIUseCase struct {
-	sbiRepo        repository.SBIRepository
-	journalRepo    repository.JournalRepository
-	execLogRepo    repository.SBIExecLogRepository
+	sbiRepo     repository.SBIRepository
+	journalRepo repository.JournalRepository
+	execLogRepo repository.SBIExecLogRepository
 }
 
 // NewReportSBIUseCase creates a new ReportSBIUseCase

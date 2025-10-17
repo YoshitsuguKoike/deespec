@@ -4,6 +4,31 @@
 
 ## \[Unreleased]
 
+### 変更 (Changed)
+
+- **`pbi show`コマンドの動作変更**: デフォルトでSBIリストを表示、PBI詳細は`--detail`フラグで表示
+  - デフォルト動作: `pbi show <id>` → 指定PBIに紐づくSBIリストを表形式で表示
+  - 新フラグ: `--detail` / `-d` → PBIファイルの詳細情報を表示（従来の動作）
+  - 表示形式: `sbi list`と同じカラム構成（ID、TITLE、STATUS、STEP、TURN、STARTED、COMPLETED、CREATED）
+  - 効果: PBIの配下SBI一覧を素早く確認でき、プロジェクト管理の利便性が向上
+  - ファイル: `internal/interface/cli/pbi/show.go`
+
+### 修正 (Fixed)
+
+- **マイグレーションテストの更新**: migration 007追加に伴うテスト期待値の修正
+  - 問題: sbi_exec_logsテーブル追加（migration 007）後、テストが期待バージョン6のままだった
+  - 修正: テスト期待値をバージョン7に更新、カウント期待値も7に変更
+  - ファイル: `internal/infrastructure/persistence/sqlite/migration_test.go`
+
+- **コードフォーマット整形**: `gofmt -s`による自動整形を適用
+  - 構造体フィールドのアライメント調整
+  - インターフェース型の複数行フォーマット
+  - ファイル:
+    - `internal/application/usecase/report_sbi_use_case.go`
+    - `internal/domain/repository/sbi_exec_log_repository.go`
+    - `internal/infrastructure/di/container.go`
+    - `internal/interface/cli/pbi/show.go`
+
 ---
 
 ## \[v0.2.21] - 2025-10-17

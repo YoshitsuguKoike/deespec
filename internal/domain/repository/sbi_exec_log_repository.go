@@ -7,14 +7,14 @@ import (
 
 // SBIExecLog represents a single execution log entry for an SBI turn
 type SBIExecLog struct {
-	ID          int64
-	SBIID       string
-	Turn        int
-	Step        string  // 'IMPLEMENT' or 'REVIEW'
-	Decision    *string // NULL for IMPLEMENT, decision string for REVIEW
-	ReportPath  string
-	ExecutedAt  time.Time
-	CreatedAt   time.Time
+	ID         int64
+	SBIID      string
+	Turn       int
+	Step       string  // 'IMPLEMENT' or 'REVIEW'
+	Decision   *string // NULL for IMPLEMENT, decision string for REVIEW
+	ReportPath string
+	ExecutedAt time.Time
+	CreatedAt  time.Time
 }
 
 // SBIExecLogRepository defines the interface for SBI execution log persistence

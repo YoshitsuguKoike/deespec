@@ -83,7 +83,9 @@ func runShowSBIList(ctx context.Context, pbiID string) error {
 }
 
 // outputSBITable outputs the SBI list in table format
-func outputSBITable(tasks []dto.TaskDTO, pbiID string, taskUseCase interface{ GetSBI(context.Context, string) (*dto.SBIDTO, error) }, ctx context.Context) error {
+func outputSBITable(tasks []dto.TaskDTO, pbiID string, taskUseCase interface {
+	GetSBI(context.Context, string) (*dto.SBIDTO, error)
+}, ctx context.Context) error {
 	if len(tasks) == 0 {
 		fmt.Printf("No SBIs found for PBI: %s\n", pbiID)
 		return nil

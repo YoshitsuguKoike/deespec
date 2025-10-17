@@ -35,14 +35,14 @@ type Container struct {
 	db *sql.DB
 
 	// Infrastructure Layer - Repositories (SQLite implementations)
-	taskRepo      repository.TaskRepository
-	epicRepo      repository.EPICRepository
-	pbiRepo       repository.PBIRepository
-	sbiRepo       repository.SBIRepository
+	taskRepo       repository.TaskRepository
+	epicRepo       repository.EPICRepository
+	pbiRepo        repository.PBIRepository
+	sbiRepo        repository.SBIRepository
 	sbiExecLogRepo repository.SBIExecLogRepository
-	runLockRepo   repository.RunLockRepository
-	stateLockRepo repository.StateLockRepository
-	labelRepo     repository.LabelRepository
+	runLockRepo    repository.RunLockRepository
+	stateLockRepo  repository.StateLockRepository
+	labelRepo      repository.LabelRepository
 
 	// Infrastructure Layer - Gateways
 	agentGateway   output.AgentGateway

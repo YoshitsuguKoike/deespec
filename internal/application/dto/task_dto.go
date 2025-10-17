@@ -41,13 +41,15 @@ type PBIDTO struct {
 // SBIDTO represents an SBI with specific metadata and execution state
 type SBIDTO struct {
 	TaskDTO
-	EstimatedHours float64   `json:"estimated_hours"`
-	Priority       int       `json:"priority"`
-	Sequence       int       `json:"sequence"`      // Registration sequence number (auto-incremented)
-	RegisteredAt   time.Time `json:"registered_at"` // Explicit registration timestamp
-	Labels         []string  `json:"labels"`
-	AssignedAgent  string    `json:"assigned_agent"`
-	FilePaths      []string  `json:"file_paths"`
+	EstimatedHours float64    `json:"estimated_hours"`
+	Priority       int        `json:"priority"`
+	Sequence       int        `json:"sequence"`      // Registration sequence number (auto-incremented)
+	RegisteredAt   time.Time  `json:"registered_at"` // Explicit registration timestamp
+	StartedAt      *time.Time `json:"started_at"`    // Work start time (when PENDING→PICKED)
+	CompletedAt    *time.Time `json:"completed_at"`  // Work completion time (when DONE/FAILED)
+	Labels         []string   `json:"labels"`
+	AssignedAgent  string     `json:"assigned_agent"`
+	FilePaths      []string   `json:"file_paths"`
 
 	// Execution state
 	CurrentTurn    int      `json:"current_turn"`

@@ -116,10 +116,18 @@ func outputTableList(tasks []dto.TaskDTO, total, offset int) error {
 	defer w.Flush()
 
 	// Print header
-	fmt.Fprintf(w, "ID\tTITLE\tSTATUS\tSTEP\tCREATED\n")
-	fmt.Fprintf(w, "---\t-----\t------\t----\t-------\n")
+	fmt.Fprintf(w, "ID\tTITLE\tSTATUS\tSTEP\tTURN\tSTARTED\tCOMPLETED\tCREATED\n")
+	fmt.Fprintf(w, "---\t-----\t------\t----\t----\t-------\t---------\t-------\n")
 
-	// Print rows
+	// Print rows - need to fetch detailed SBI info for each task
+	ctx := context.Background()
+	container, err := common.InitializeContainer()
+	if err != nil {
+		return fmt.Errorf("failed to initialize container: %w", err)
+	}
+	defer container.Close()
+	taskUseCase := container.GetTaskUseCase()
+
 	for _, task := range tasks {
 		id := task.ID // Show full ULID for sbi show command compatibility
 		title := truncateString(task.Title, 40)
@@ -127,7 +135,18 @@ func outputTableList(tasks []dto.TaskDTO, total, offset int) error {
 		step := task.CurrentStep
 		created := formatTime(task.CreatedAt)
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", id, title, status, step, created)
+		// Fetch detailed SBI info to get turn, started_at, completed_at
+		sbiDTO, err := taskUseCase.GetSBI(ctx, task.ID)
+		turn := "-"
+		started := "-"
+		completed := "-"
+		if err == nil {
+			turn = fmt.Sprintf("%d", sbiDTO.CurrentTurn)
+			started = formatTimePtr(sbiDTO.StartedAt)
+			completed = formatTimePtr(sbiDTO.CompletedAt)
+		}
+
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", id, title, status, step, turn, started, completed, created)
 	}
 
 	// Print summary
@@ -180,6 +199,14 @@ func truncateString(s string, maxLen int) string {
 // formatTime formats a time.Time for display
 func formatTime(t time.Time) string {
 	if t.IsZero() {
+		return "-"
+	}
+	return t.Format("2006-01-02 15:04")
+}
+
+// formatTimePtr formats a *time.Time for display
+func formatTimePtr(t *time.Time) string {
+	if t == nil || t.IsZero() {
 		return "-"
 	}
 	return t.Format("2006-01-02 15:04")

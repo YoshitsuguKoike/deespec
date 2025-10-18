@@ -21,6 +21,7 @@ import (
 type sbiRegisterFlags struct {
 	title         string
 	body          string
+	fromFile      string   // File path to read body content from
 	parentPBI     string   // Parent PBI ID to link this SBI to
 	labels        string   // Comma-separated labels
 	labelArray    []string // Multiple --label flags
@@ -50,6 +51,12 @@ Examples:
   # Register and link to a parent PBI
   deespec sbi register --title "Auth API Implementation" --parent-pbi PBI-001 --body "Details..."
 
+  # Register with title and body from file
+  deespec sbi register --title "New Feature" --from-file spec.md --parent-pbi PBI-001
+
+  # Short form with -f flag
+  deespec sbi register --title "New Feature" -f spec.md --parent-pbi PBI-001 --only-implement
+
   # Register with title and body from stdin
   echo "Implementation details..." | deespec sbi register --title "User Authentication"
 
@@ -63,6 +70,7 @@ Examples:
 	// Define flags
 	cmd.Flags().StringVar(&flags.title, "title", "", "Title of the specification (required)")
 	cmd.Flags().StringVar(&flags.body, "body", "", "Body content of the specification (reads from stdin if not provided)")
+	cmd.Flags().StringVarP(&flags.fromFile, "from-file", "f", "", "File path to read body content from")
 	cmd.Flags().StringVar(&flags.parentPBI, "parent-pbi", "", "Parent PBI ID to link this SBI to")
 	cmd.Flags().StringVar(&flags.labels, "labels", "", "Comma-separated list of labels")
 	cmd.Flags().StringSliceVar(&flags.labelArray, "label", []string{}, "Label for the specification (can be specified multiple times)")
@@ -127,10 +135,20 @@ func runSBIRegister(ctx context.Context, flags *sbiRegisterFlags) error {
 		return fmt.Errorf("title is required")
 	}
 
-	// Get body content
+	// Get body content (priority: --body > --from-file > stdin)
 	body := flags.body
+
+	// If --from-file is specified, read from file
+	if body == "" && flags.fromFile != "" {
+		data, err := os.ReadFile(flags.fromFile)
+		if err != nil {
+			return fmt.Errorf("failed to read from file '%s': %w", flags.fromFile, err)
+		}
+		body = string(data)
+	}
+
+	// If still empty and stdin is available, read from stdin
 	if body == "" && !isInputFromTerminal() {
-		// Read from stdin if body not provided and stdin is available
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return fmt.Errorf("failed to read from stdin: %w", err)

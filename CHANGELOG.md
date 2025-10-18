@@ -6,6 +6,18 @@
 
 ---
 
+## \[v0.3.6] - 2025-10-18
+
+### 追加 (Added)
+
+- **`sbi register`コマンドに`--from-file`/`-f`フラグ追加**: ファイルから本文を読み込んでSBI登録
+  - 新フラグ: `--from-file <path>` または `-f <path>` でファイルパスを指定
+  - 優先順位: `--body` > `--from-file` > 標準入力
+  - 使用例: `deespec sbi register --title "新機能" -f spec.md --parent-pbi PBI-001 --only-implement`
+  - ファイル: `internal/interface/cli/sbi/sbi_register.go`
+
+---
+
 ## \[v0.3.5] - 2025-10-18
 
 ### 修正 (Fixed)

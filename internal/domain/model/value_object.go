@@ -95,7 +95,7 @@ func (s Status) CanTransitionTo(next Status) bool {
 	validTransitions := map[Status][]Status{
 		StatusPending:      {StatusPicked},
 		StatusPicked:       {StatusImplementing, StatusPending},
-		StatusImplementing: {StatusReviewing, StatusFailed, StatusPending},
+		StatusImplementing: {StatusReviewing, StatusDone, StatusFailed, StatusPending}, // Added StatusDone for only_implement=true workflow
 		StatusReviewing:    {StatusDone, StatusImplementing, StatusFailed},
 		StatusDone:         {},
 		StatusFailed:       {StatusPending},

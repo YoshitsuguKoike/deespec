@@ -6,6 +6,19 @@
 
 ---
 
+## \[v0.3.5] - 2025-10-18
+
+### 修正 (Fixed)
+
+- **状態遷移ルールに IMPLEMENTING → DONE を追加**: `only_implement=true` ワークフローを有効化
+  - 問題: 状態機械が IMPLEMENTING → DONE の直接遷移を拒否していた
+  - エラー: "invalid status transition from IMPLEMENTING to DONE"
+  - 修正: `StatusImplementing` の許可遷移リストに `StatusDone` を追加
+  - 効果: `only_implement=true` のSBIがREVIEWをスキップしてDONEに遷移可能に
+  - ファイル: `internal/domain/model/value_object.go:98`
+
+---
+
 ## \[v0.3.4] - 2025-10-17
 
 ### 追加 (Added)

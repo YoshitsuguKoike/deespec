@@ -907,14 +907,18 @@ func RunTurnWithContainer(container *di.Container, autoFB bool) error {
 			common.Info("   Status: %s", output.NextStatus)
 		} else if output.TaskCompleted {
 			common.Info("   ✓ Task completed: %s", output.SBIID)
-			common.Info("   Final decision: %s", output.Decision)
+			// Only show decision if it's a meaningful review decision
+			if isReviewDecision(output.Decision) {
+				common.Info("   Final decision: %s", output.Decision)
+			}
 		} else {
 			common.Info("   SBI: %s", output.SBIID)
 			common.Info("   Transition: %s -> %s", output.PrevStatus, output.NextStatus)
 			if output.PrevStep != output.NextStep {
 				common.Info("   Step: %s -> %s", output.PrevStep, output.NextStep)
 			}
-			if output.Decision != "" {
+			// Only show decision if it's a meaningful review decision (not internal markers)
+			if isReviewDecision(output.Decision) {
 				common.Info("   Decision: %s", output.Decision)
 			}
 			if output.Attempt > 0 {
@@ -938,6 +942,21 @@ func RunTurnWithContainer(container *di.Container, autoFB bool) error {
 
 	common.Debug("Turn execution took %v", time.Since(startTime))
 	return nil
+}
+
+// isReviewDecision checks if a decision string is a meaningful review decision
+// Returns false for internal markers (INITIALIZED, PICKED, PENDING) and empty strings
+func isReviewDecision(decision string) bool {
+	if decision == "" {
+		return false
+	}
+	// Internal markers that should not be displayed as decisions
+	internalMarkers := map[string]bool{
+		"INITIALIZED": true,
+		"PICKED":      true,
+		"PENDING":     true,
+	}
+	return !internalMarkers[decision]
 }
 
 // RunTurn executes a single workflow turn (Legacy compatibility wrapper)

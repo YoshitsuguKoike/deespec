@@ -88,15 +88,28 @@ func (uc *ReportSBIUseCase) Execute(ctx context.Context, sbiID string, turn int,
 
 	switch step {
 	case "implement":
-		// IMPLEMENTING → REVIEWING (implementation complete, needs review)
+		// IMPLEMENTING → REVIEWING or DONE (depending on only_implement flag)
 		if previousStatus != model.StatusImplementing {
 			return fmt.Errorf("invalid status for implement report: expected IMPLEMENTING, got %s", previousStatus)
 		}
-		nextStatus = model.StatusReviewing
-		if err := sbi.UpdateStatus(model.StatusReviewing); err != nil {
-			return fmt.Errorf("failed to update status to REVIEWING: %w", err)
+
+		// Check only_implement flag to determine next status
+		if sbi.OnlyImplement() {
+			// Skip review phase for SBIs with parent PBI (only_implement=true)
+			nextStatus = model.StatusDone
+			if err := sbi.UpdateStatus(model.StatusDone); err != nil {
+				return fmt.Errorf("failed to update status to DONE: %w", err)
+			}
+			sbi.MarkAsCompleted()
+			fmt.Printf("✅ Implementation completed, marked as DONE (only_implement=true) (SBI: %s, Turn: %d)\n", sbiID, turn)
+		} else {
+			// Normal workflow: move to review phase
+			nextStatus = model.StatusReviewing
+			if err := sbi.UpdateStatus(model.StatusReviewing); err != nil {
+				return fmt.Errorf("failed to update status to REVIEWING: %w", err)
+			}
+			fmt.Printf("✅ Implementation completed, moving to review (SBI: %s, Turn: %d)\n", sbiID, turn)
 		}
-		fmt.Printf("✅ Implementation completed, moving to review (SBI: %s, Turn: %d)\n", sbiID, turn)
 
 	case "review":
 		// Validate decision for review step

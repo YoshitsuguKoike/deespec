@@ -22,13 +22,13 @@ import (
 
 // RunTurnUseCase orchestrates a single workflow turn execution
 type RunTurnUseCase struct {
-	journalRepo       repository.JournalRepository
-	sbiRepo           repository.SBIRepository
-	lockService       service.LockService
-	agentGateway      output.AgentGateway
-	decisionService   *domainservice.WorkflowDecisionService
-	maxTurns          int
-	leaseTTL          time.Duration
+	journalRepo     repository.JournalRepository
+	sbiRepo         repository.SBIRepository
+	lockService     service.LockService
+	agentGateway    output.AgentGateway
+	decisionService *domainservice.WorkflowDecisionService
+	maxTurns        int
+	leaseTTL        time.Duration
 }
 
 // NewRunTurnUseCase creates a new RunTurnUseCase

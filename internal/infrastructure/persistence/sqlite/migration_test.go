@@ -32,8 +32,8 @@ func TestMigration_NewDatabase(t *testing.T) {
 		t.Fatalf("Failed to query schema_migrations: %v", err)
 	}
 
-	if count < 7 {
-		t.Errorf("Expected at least 7 migration records (004, 005, 006, 007), got %d", count)
+	if count < 8 {
+		t.Errorf("Expected at least 8 migration records (004, 005, 006, 007, 008), got %d", count)
 	}
 
 	// Verify sbis table has new fields (from migrations 004, 005, 006)
@@ -181,8 +181,8 @@ func TestMigration_ExistingDatabase(t *testing.T) {
 		t.Fatalf("Failed to query version: %v", err)
 	}
 
-	if version != 7 {
-		t.Errorf("Expected version 7, got %d", version)
+	if version != 8 {
+		t.Errorf("Expected version 8, got %d", version)
 	}
 
 	// Verify new fields exist (from migrations 004, 005, 006)

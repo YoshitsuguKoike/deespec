@@ -4,6 +4,28 @@
 
 ## \[Unreleased]
 
+### 修正 (Fixed)
+
+- **`only_implement`フラグが実装レポート提出時に無視される問題を修正**: 親PBI持ちSBIが一時的にREVIEWING状態になる不具合を解消
+  - 問題: `report_sbi_use_case.go` が実装完了時に `only_implement` フラグをチェックせず、常に REVIEWING に遷移していた
+  - 影響: 親PBI持ちSBI (`only_implement=true`) でも一時的に REVIEWING 状態になり、ハートビートログに `[REVIEW]` が表示されていた
+  - 修正: 実装レポート提出時に `only_implement` フラグをチェックし、true の場合は直接 DONE に遷移
+  - 効果: 親PBI持ちSBIはレビューフェーズをスキップして直接完了状態になる
+  - ファイル: `internal/application/usecase/report_sbi_use_case.go:97-112`
+
+- **ログ出力の改善**: 内部マーカー（INITIALIZED, PICKED, PENDING）を非表示化
+  - 問題: ステータス遷移の内部マーカーがログに表示され、ユーザーに混乱を与えていた
+  - 例: `Decision: INITIALIZED` (PICKED→IMPLEMENTING遷移), `Final decision: PENDING` (デフォルト値)
+  - 修正: `isReviewDecision()` ヘルパー関数を追加し、意味のある決定のみ表示
+  - 効果: ログがすっきりして、ユーザーが理解しやすくなる
+  - ファイル: `internal/interface/cli/run/run.go:911-922, 947-960`
+
+- **マイグレーションの整合性修正**: schema.sql と個別マイグレーションファイルの重複を解消
+  - 問題: `schema.sql` に migration 008 の記録が含まれており、migration 006, 007 がスキップされていた
+  - 修正: schema.sql から将来のマイグレーション記録（6, 7, 8）と `only_implement` カラム定義を削除
+  - 効果: 新規データベースでも全てのマイグレーションが正しく適用される
+  - ファイル: `internal/infrastructure/persistence/sqlite/schema.sql:59-60, 189-192`
+
 ---
 
 ## \[v0.3.6] - 2025-10-18

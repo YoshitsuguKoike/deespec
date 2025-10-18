@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS sbis (
     max_attempts INTEGER NOT NULL DEFAULT 3,
     last_error TEXT,
     artifact_paths TEXT, -- JSON array
-    only_implement BOOLEAN DEFAULT 0,               -- false=実装→レビュー（デフォルト）, true=実装のみ
+    -- only_implement column added by migration 008
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_pbi_id) REFERENCES pbis(id) ON DELETE SET NULL
@@ -186,7 +186,5 @@ CREATE INDEX IF NOT EXISTS idx_sbi_deps_depends_on ON sbi_dependencies(depends_o
 INSERT OR IGNORE INTO schema_migrations (version, description)
 VALUES (5, 'Add sbi_dependencies table for dependency management');
 
--- SBI workflow control (Version 8)
--- Add only_implement flag to control SBI workflow (implementation-only vs full review cycle)
-INSERT OR IGNORE INTO schema_migrations (version, description)
-VALUES (8, 'Add only_implement flag to sbis table for workflow control');
+-- Note: Migrations 6, 7, 8 are handled by incremental migration files
+-- and should not be included in schema.sql
